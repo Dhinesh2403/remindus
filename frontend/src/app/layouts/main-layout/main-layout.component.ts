@@ -13,7 +13,7 @@ import {
   homeOutline, home,
   calendarOutline, calendar,
   peopleOutline, people,
-  statsChartOutline, statsChart,
+  notificationsOutline, notifications,
   settingsOutline, settings,
 } from 'ionicons/icons';
 import { FriendService } from '../../core/services/friend.service';
@@ -51,9 +51,9 @@ import { FriendService } from '../../core/services/friend.service';
           <span class="tab-label">Friends</span>
         </ion-tab-button>
 
-        <ion-tab-button tab="insights" href="/app/insights">
-          <ion-icon name="stats-chart-outline"></ion-icon>
-          <span class="tab-label">Insights</span>
+        <ion-tab-button tab="reminders" href="/app/reminders">
+          <ion-icon name="notifications-outline"></ion-icon>
+          <span class="tab-label">Reminders</span>
         </ion-tab-button>
 
         <ion-tab-button tab="settings" href="/app/settings">
@@ -104,7 +104,7 @@ export class MainLayoutComponent implements OnInit {
       homeOutline, home,
       calendarOutline, calendar,
       peopleOutline, people,
-      statsChartOutline, statsChart,
+      notificationsOutline, notifications,
       settingsOutline, settings,
     });
   }

@@ -20,20 +20,27 @@ export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type ReminderStatus = 'pending' | 'done' | 'snoozed' | 'missed';
 export type NotificationType = 'push' | 'email' | 'sms' | 'whatsapp';
 
+export interface AssignedUser {
+  _id: string;
+  name: string;
+  avatar?: string;
+}
+
 export interface Reminder {
   _id: string;
   title: string;
   description?: string;
-  date: string;          // ISO date string
-  time: string;          // "HH:mm"
+  date: string;
+  time: string;
   type: ReminderType;
   repeatType: RepeatType;
   priority: Priority;
-  reminderWindowMinutes: number;  // minutes before to notify
+  reminderWindowMinutes: number;
   notificationTypes: NotificationType[];
   status: ReminderStatus;
-  assignedTo?: string;   // userId
-  assignedBy?: string;   // userId
+  sharedStatus?: string;
+  assignedTo?: AssignedUser | string | null;
+  assignedBy?: string | null;
   snoozeCount: number;
   snoozeUntil?: string;
   completedAt?: string;

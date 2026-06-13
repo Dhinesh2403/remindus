@@ -46,6 +46,12 @@ const reminderSchema = new mongoose.Schema(
     completedAt:  { type: Date,   default: null },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    sharedStatus: {
+      type: String,
+      enum: ['sent', 'received', 'acknowledged', 'processing', 'skipped', 'completed'],
+      default: null,
+    },
+    preAlertSent: { type: Boolean, default: false },
     nextFireAt: { type: Date, index: true },
   },
   { timestamps: true }

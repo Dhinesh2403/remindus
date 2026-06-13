@@ -19,7 +19,9 @@ function startJobs() {
       const dueReminders = await Reminder.find({
         status:     { $in: ['pending', 'snoozed'] },
         nextFireAt: { $lte: now },
-      }).populate('userId', 'name email phone notifPrefs pushSubscription');
+      })
+        .populate('userId', 'name email phone notifPrefs pushSubscription fcmToken')
+        .populate('assignedTo', 'name fcmToken pushSubscription');
 
       for (const reminder of dueReminders) {
         await fireReminder(reminder);
@@ -30,6 +32,44 @@ function startJobs() {
       }
     } catch (err) {
       logger.error('[Cron] reminder-fire error:', err.message);
+    }
+  });
+
+  // ── Pre-alert: notify assigned friend 2 minutes before fire time ───────
+  cron.schedule('* * * * *', async () => {
+    try {
+      const now   = new Date();
+      const soon  = new Date(now.getTime() + 2 * 60 * 1000); // exactly 2 min from now
+      const delta = 60 * 1000; // ±30s window to avoid missing a tick
+
+      const upcoming = await Reminder.find({
+        assignedTo:   { $ne: null },
+        status:       'pending',
+        preAlertSent: false,
+        nextFireAt:   { $gte: new Date(soon.getTime() - delta), $lt: new Date(soon.getTime() + delta) },
+      }).populate('userId', 'name').populate('assignedTo', 'name fcmToken pushSubscription');
+
+      for (const reminder of upcoming) {
+        const assignedTo = reminder.assignedTo;
+        if (!assignedTo) continue;
+
+        await notifService.createAndPush({
+          userId:  assignedTo._id,
+          type:    'reminder_pre_alert',
+          title:   '⏰ Reminder in 2 minutes',
+          message: `"${reminder.title}" set by ${reminder.userId?.name} is due soon`,
+          data:    { reminderId: String(reminder._id), type: 'friend_request' },
+        });
+
+        reminder.preAlertSent = true;
+        await reminder.save();
+      }
+
+      if (upcoming.length > 0) {
+        logger.info(`[Cron] Sent ${upcoming.length} pre-alert(s)`);
+      }
+    } catch (err) {
+      logger.error('[Cron] pre-alert error:', err.message);
     }
   });
 
@@ -100,20 +140,35 @@ async function fireReminder(reminder) {
     ? reminder.notificationTypes
     : ['push'];
 
-  await notifService.send({
-    user,
-    reminder,
-    channels: notifTypes,
-  });
-
-  // Create in-app notification
+  // Notify the reminder owner
+  await notifService.send({ user, reminder, channels: notifTypes });
   await notifService.createAndPush({
     userId:  user._id,
     type:    'reminder_due',
     title:   `⏰ ${reminder.title}`,
     message: reminder.description || 'Your reminder is due now!',
-    data:    { reminderId: reminder._id },
+    data:    { reminderId: String(reminder._id), type: 'reminder_due' },
   });
+
+  // If assigned to a friend, fire notification to them too with action options
+  if (reminder.assignedTo?._id) {
+    await notifService.createAndPush({
+      userId:  reminder.assignedTo._id,
+      type:    'friend_reminder_due',
+      title:   `⏰ ${reminder.title}`,
+      message: `Reminder from ${user.name} is due now! Tap to take action.`,
+      data:    {
+        reminderId:  String(reminder._id),
+        type:        'friend_request',   // routes push tap to friends tab
+        senderName:  user.name,
+      },
+    });
+
+    // Update sharedStatus to 'received' if still at 'sent'
+    if (reminder.sharedStatus === 'sent' || !reminder.sharedStatus) {
+      await reminder.constructor.findByIdAndUpdate(reminder._id, { sharedStatus: 'received' });
+    }
+  }
 }
 
 function computeNextDate(currentDate, repeatType) {

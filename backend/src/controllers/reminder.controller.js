@@ -206,6 +206,89 @@ exports.assign = asyncHandler(async (req, res) => {
   res.json({ success: true, data: reminder });
 });
 
+// ── PATCH /api/reminders/:id/shared-status ───────────────────────────────
+exports.updateSharedStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const uid = req.user._id;
+
+  const reminder = await Reminder.findOne({ _id: req.params.id, assignedTo: uid });
+  if (!reminder) throw new AppError('Reminder not found', 404);
+
+  reminder.sharedStatus = status;
+  if (status === 'completed') reminder.completedAt = new Date();
+  await reminder.save();
+
+  if (reminder.assignedBy) {
+    const notifMap = {
+      received:     { emoji: '📬', text: 'received your reminder' },
+      acknowledged: { emoji: '👀', text: 'acknowledged your reminder' },
+      processing:   { emoji: '🔄', text: 'started working on your reminder' },
+      completed:    { emoji: '✅', text: 'completed your reminder' },
+      skipped:      { emoji: '⏭️', text: 'skipped your reminder' },
+    };
+    const n = notifMap[status] || { emoji: '🔔', text: 'updated your reminder status' };
+    await notifService.createAndPush({
+      userId:  reminder.assignedBy,
+      type:    'reminder_status_update',
+      title:   `${n.emoji} ${req.user.name} ${n.text}`,
+      message: `"${reminder.title}"`,
+      data:    { reminderId: String(reminder._id), sharedStatus: status, type: 'friend_request' },
+    });
+  }
+
+  res.json({ success: true, data: reminder });
+});
+
+// ── PATCH /api/reminders/:id/snooze-assigned ─────────────────────────────
+exports.snoozeAssigned = asyncHandler(async (req, res) => {
+  const { minutes = 10 } = req.body;
+  const uid = req.user._id;
+
+  const reminder = await Reminder.findOne({ _id: req.params.id, assignedTo: uid });
+  if (!reminder) throw new AppError('Reminder not found', 404);
+
+  const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000);
+  reminder.status      = 'snoozed';
+  reminder.snoozeUntil = snoozeUntil;
+  reminder.nextFireAt  = snoozeUntil;
+  reminder.preAlertSent = false; // allow pre-alert to fire again
+  reminder.$inc        = undefined;
+  reminder.snoozeCount = (reminder.snoozeCount || 0) + 1;
+  await reminder.save();
+
+  // Notify sender of snooze
+  if (reminder.assignedBy) {
+    await notifService.createAndPush({
+      userId:  reminder.assignedBy,
+      type:    'reminder_status_update',
+      title:   `⏰ Reminder snoozed`,
+      message: `${req.user.name} snoozed "${reminder.title}" by ${minutes} min`,
+      data:    { reminderId: String(reminder._id), type: 'friend_request' },
+    });
+  }
+
+  res.json({ success: true, data: reminder });
+});
+
+// ── GET /api/reminders/shared/:friendId ──────────────────────────────────
+exports.getSharedWithFriend = asyncHandler(async (req, res) => {
+  const uid      = req.user._id;
+  const friendId = req.params.friendId;
+
+  const reminders = await Reminder.find({
+    $or: [
+      { userId: uid, assignedTo: friendId },
+      { assignedTo: uid, assignedBy: friendId },
+    ],
+  })
+    .select('title date time sharedStatus assignedTo assignedBy userId status')
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .lean();
+
+  res.json({ success: true, data: reminders });
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 async function updateStreak(userId) {
   const user = await User.findById(userId);
