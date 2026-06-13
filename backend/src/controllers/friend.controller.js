@@ -156,11 +156,10 @@ exports.accept = asyncHandler(async (req, res) => {
 
 // ── PATCH /api/friends/:id/reject ────────────────────────────────────────
 exports.reject = asyncHandler(async (req, res) => {
-  const f = await Friendship.findOneAndUpdate(
-    { _id: req.params.id, recipient: req.user._id },
-    { status: 'rejected' },
-    { new: true }
-  );
+  const f = await Friendship.findOneAndDelete({
+    _id: req.params.id,
+    recipient: req.user._id,
+  });
   if (!f) throw new AppError('Friend request not found', 404);
   res.json({ success: true, message: 'Request declined' });
 });

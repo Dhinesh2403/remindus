@@ -120,7 +120,7 @@ import { ReminderService } from '../core/services/reminder.service';
   `,
   styles: [`
     .dashboard-content { --background: var(--rm-bg); }
-    .home-header { padding: 12px 16px 16px; background: var(--rm-card); border-radius: 0 0 24px 24px; margin-bottom: 16px; box-shadow: var(--rm-shadow-md); }
+    .home-header { padding: calc(env(safe-area-inset-top) + 12px) 16px 16px; background: var(--rm-card); border-radius: 0 0 24px 24px; margin-bottom: 16px; box-shadow: var(--rm-shadow-md); }
     .header-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
     .header-brand-icon { width: 30px; height: 30px; border-radius: 8px; }
     .header-brand-name { font-size: 15px; font-weight: 800; color: var(--rm-purple); letter-spacing: -0.3px; font-family: 'Nunito', sans-serif; }

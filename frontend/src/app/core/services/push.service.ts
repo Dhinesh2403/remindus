@@ -1,6 +1,7 @@
 // src/app/core/services/push.service.ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { environment } from '../../../environments/environment';
@@ -13,7 +14,8 @@ import { environment } from '../../../environments/environment';
  */
 @Injectable({ providedIn: 'root' })
 export class PushService {
-  private http = inject(HttpClient);
+  private http   = inject(HttpClient);
+  private router = inject(Router);
   private readonly API = `${environment.apiUrl}/users/me/fcm-token`;
 
   async init(): Promise<void> {
@@ -50,8 +52,17 @@ export class PushService {
 
     // Notification tapped (background / killed state)
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('[Push] Notification tapped:', action.notification.data);
-      // TODO: navigate to relevant screen based on action.notification.data.type
+      const data = action.notification.data ?? {};
+      const type = data['type'] as string;
+
+      if (type === 'friend_request' || type === 'friend_accepted') {
+        this.router.navigate(['/app/friends']);
+      } else if (type === 'reminder:due' || type === 'reminder:assigned') {
+        const id = data['reminderId'];
+        this.router.navigate(id ? ['/app/reminders', id] : ['/app/home']);
+      } else {
+        this.router.navigate(['/app/home']);
+      }
     });
   }
 

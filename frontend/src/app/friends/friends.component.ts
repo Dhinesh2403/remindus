@@ -12,9 +12,10 @@ import {
   personAddOutline, chatbubbleOutline, callOutline,
   ellipseOutline, checkmarkCircle, closeOutline, searchOutline,
 } from 'ionicons/icons';
-import { Subject, EMPTY } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { Subject, EMPTY, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, filter } from 'rxjs/operators';
 import { FriendService, Friend, UserSearchResult } from '../core/services/friend.service';
+import { SocketService } from '../core/services/socket.service';
 
 @Component({
   selector: 'app-friends',
@@ -251,6 +252,7 @@ import { FriendService, Friend, UserSearchResult } from '../core/services/friend
 })
 export class FriendsComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
+  private socketService = inject(SocketService);
   private toastCtrl    = inject(ToastController);
 
   isLoading       = signal(true);
@@ -264,8 +266,9 @@ export class FriendsComponent implements OnInit, OnDestroy {
   isSearching   = signal(false);
   sending       = signal<string | null>(null);
 
-  private search$ = new Subject<string>();
-  private searchSub: any;
+  private search$   = new Subject<string>();
+  private searchSub: Subscription | undefined;
+  private socketSub: Subscription | undefined;
 
   readonly filtered = () => {
     const q = this.searchQuery().toLowerCase();
@@ -281,6 +284,12 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.load();
+
+    // Reload when a new friend request arrives while this tab is open
+    this.socketSub = this.socketService.on<{ type: string }>('notification:new').pipe(
+      filter(n => n.type === 'friend_request' || n.type === 'friend_accepted')
+    ).subscribe(() => this.load());
+
     this.searchSub = this.search$.pipe(
       debounceTime(300),
       distinctUntilChanged(),
@@ -302,7 +311,10 @@ export class FriendsComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.searchSub?.unsubscribe(); }
+  ngOnDestroy() {
+    this.searchSub?.unsubscribe();
+    this.socketSub?.unsubscribe();
+  }
 
   private load() {
     this.isLoading.set(true);
