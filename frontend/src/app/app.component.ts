@@ -1,9 +1,8 @@
 // src/app/app.component.ts
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, effect } from '@angular/core';
 import { IonApp, IonRouterOutlet }   from '@ionic/angular/standalone';
 import { AuthService }    from './core/services/auth.service';
 import { ThemeService }   from './core/services/theme.service';
-import { NotificationService } from './core/services/notification.service';
 import { PushService }    from './core/services/push.service';
 
 @Component({
@@ -13,21 +12,27 @@ import { PushService }    from './core/services/push.service';
   template:    `<ion-app><ion-router-outlet></ion-router-outlet></ion-app>`,
 })
 export class AppComponent implements OnInit {
-  private authService         = inject(AuthService);
-  private themeService        = inject(ThemeService);
-  private notificationService = inject(NotificationService);
-  private pushService         = inject(PushService);
+  private authService  = inject(AuthService);
+  private themeService = inject(ThemeService);
+  private pushService  = inject(PushService);
+
+  private pushInitialised = false;
+
+  constructor() {
+    // Runs whenever isAuthenticated changes — covers both app-boot restore and fresh login
+    effect(() => {
+      if (this.authService.isAuthenticated() && !this.pushInitialised) {
+        this.pushInitialised = true;
+        this.pushService.init();
+      }
+      if (!this.authService.isAuthenticated()) {
+        this.pushInitialised = false;
+      }
+    });
+  }
 
   ngOnInit(): void {
-    // Restore theme preference
     this.themeService.init();
-
-    // Restore auth session from stored tokens
     this.authService.restoreSession();
-
-    // Register FCM token once user is authenticated
-    if (this.authService.isAuthenticated()) {
-      this.pushService.init();
-    }
   }
 }
