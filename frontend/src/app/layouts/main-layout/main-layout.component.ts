@@ -1,5 +1,5 @@
 // src/app/layouts/main-layout/main-layout.component.ts
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonTabs,
@@ -16,7 +16,7 @@ import {
   statsChartOutline, statsChart,
   settingsOutline, settings,
 } from 'ionicons/icons';
-import { NotificationService } from '../../core/services/notification.service';
+import { FriendService } from '../../core/services/friend.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -45,6 +45,9 @@ import { NotificationService } from '../../core/services/notification.service';
 
         <ion-tab-button tab="friends" href="/app/friends">
           <ion-icon name="people-outline"></ion-icon>
+          @if (pendingCount() > 0) {
+            <ion-badge color="danger">{{ pendingCount() }}</ion-badge>
+          }
           <span class="tab-label">Friends</span>
         </ion-tab-button>
 
@@ -55,9 +58,6 @@ import { NotificationService } from '../../core/services/notification.service';
 
         <ion-tab-button tab="settings" href="/app/settings">
           <ion-icon name="settings-outline"></ion-icon>
-          @if (unreadCount() > 0) {
-            <ion-badge color="danger">{{ unreadCount() }}</ion-badge>
-          }
           <span class="tab-label">Settings</span>
         </ion-tab-button>
 
@@ -95,9 +95,9 @@ import { NotificationService } from '../../core/services/notification.service';
     }
   `],
 })
-export class MainLayoutComponent {
-  private notificationService = inject(NotificationService);
-  readonly unreadCount = this.notificationService.unreadCount;
+export class MainLayoutComponent implements OnInit {
+  private friendService = inject(FriendService);
+  readonly pendingCount = this.friendService.pendingCount;
 
   constructor() {
     addIcons({
@@ -107,5 +107,9 @@ export class MainLayoutComponent {
       statsChartOutline, statsChart,
       settingsOutline, settings,
     });
+  }
+
+  ngOnInit() {
+    this.friendService.getFriends().subscribe();
   }
 }

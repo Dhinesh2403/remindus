@@ -77,9 +77,10 @@ exports.searchUsers = asyncHandler(async (req, res) => {
     ],
   }).select('name email avatar').limit(15);
 
-  // Exclude users already connected (any friendship status)
+  // Exclude users with active/pending connections, but allow rejected to re-appear
   const existingFriendships = await Friendship.find({
     $or: [{ requester: uid }, { recipient: uid }],
+    status: { $in: ['pending', 'accepted'] },
   }).select('requester recipient');
 
   const connectedIds = new Set(
