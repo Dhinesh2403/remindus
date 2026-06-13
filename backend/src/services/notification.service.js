@@ -26,10 +26,19 @@ if (vapidReady) {
   logger.warn('VAPID keys not configured — web push notifications disabled.');
 }
 
-// ── Configure Twilio ──────────────────────────────────────────────────────
-const twilioClient = (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
-  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-  : null;
+// ── Configure Twilio (only if a real SID is present) ─────────────────────
+const twilioReady = process.env.TWILIO_ACCOUNT_SID?.startsWith('AC') &&
+                    process.env.TWILIO_AUTH_TOKEN;
+let twilioClient = null;
+if (twilioReady) {
+  try {
+    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  } catch (err) {
+    logger.warn('Twilio configuration failed — SMS/WhatsApp disabled:', err.message);
+  }
+} else {
+  logger.warn('Twilio credentials not configured — SMS/WhatsApp notifications disabled.');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 /**
