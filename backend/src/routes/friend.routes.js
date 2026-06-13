@@ -10,6 +10,7 @@ const { validate }      = require('../middlewares/validate');
 router.use(authenticate);
 
 router.get('/',                                         ctrl.getFriends);
+router.get('/search',                                   ctrl.searchUsers);
 router.post('/request',
   [body('query').trim().notEmpty().withMessage('Email or username is required')],
   validate,

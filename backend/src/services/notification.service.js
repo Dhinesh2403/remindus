@@ -5,8 +5,36 @@ const webpush     = require('web-push');
 const nodemailer  = require('nodemailer');
 const twilio      = require('twilio');
 const Notification = require('../models/Notification');
+const User         = require('../models/User');
 const { emitToUser }  = require('../sockets');
 const logger      = require('../utils/logger');
+
+// ── Configure Firebase Admin (only if service account env vars are present) ──
+let firebaseAdmin = null;
+const firebaseReady = process.env.FIREBASE_PROJECT_ID &&
+                      process.env.FIREBASE_CLIENT_EMAIL &&
+                      process.env.FIREBASE_PRIVATE_KEY;
+if (firebaseReady) {
+  try {
+    firebaseAdmin = require('firebase-admin');
+    if (!firebaseAdmin.apps.length) {
+      firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.cert({
+          projectId:   process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          // Railway env vars strip newlines — restore them
+          privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+    }
+    logger.info('Firebase Admin SDK initialised.');
+  } catch (err) {
+    firebaseAdmin = null;
+    logger.warn('Firebase Admin init failed — FCM push disabled:', err.message);
+  }
+} else {
+  logger.warn('Firebase env vars not set — FCM push notifications disabled.');
+}
 
 // ── Configure web-push (only if valid VAPID keys are present) ────────────
 const vapidReady = process.env.VAPID_PUBLIC_KEY &&
@@ -87,6 +115,24 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
       isRead:    false,
       createdAt: notif.createdAt,
     });
+
+    // FCM push notification (mobile) — fire and forget
+    if (firebaseAdmin) {
+      const user = await User.findById(userId).select('fcmToken').lean();
+      if (user?.fcmToken) {
+        firebaseAdmin.messaging().send({
+          token:        user.fcmToken,
+          notification: { title, body: message },
+          data:         { type, ...Object.fromEntries(
+            Object.entries(data).map(([k, v]) => [k, String(v)])
+          )},
+          android: {
+            priority: 'high',
+            notification: { sound: 'default', channelId: 'remindme_default' },
+          },
+        }).catch(err => logger.warn('[FCM] Send failed:', err.message));
+      }
+    }
 
     return notif;
   } catch (err) {

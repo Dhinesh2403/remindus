@@ -23,6 +23,12 @@ export interface PendingRequest {
   email: string;
 }
 
+export interface UserSearchResult {
+  _id:   string;
+  name:  string;
+  email: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FriendService {
   private http = inject(HttpClient);
@@ -30,6 +36,12 @@ export class FriendService {
 
   getFriends(): Observable<{ friends: Friend[]; pending: PendingRequest[] }> {
     return this.http.get<{ friends: Friend[]; pending: PendingRequest[] }>(this.API);
+  }
+
+  searchUsers(query: string): Observable<{ users: UserSearchResult[] }> {
+    return this.http.get<{ users: UserSearchResult[] }>(`${this.API}/search`, {
+      params: { q: query },
+    });
   }
 
   sendRequest(query: string): Observable<{ message: string }> {

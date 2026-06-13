@@ -33,11 +33,14 @@ const userSchema = new mongoose.Schema(
       whatsapp:  { type: Boolean, default: false },
     },
 
-    // Push subscription (Web Push)
+    // Push subscription (Web Push / VAPID)
     pushSubscription: {
       endpoint: String,
       keys:     { auth: String, p256dh: String },
     },
+
+    // FCM token for Firebase push notifications (mobile)
+    fcmToken: { type: String, default: null },
 
     // Phone (for SMS/WhatsApp)
     phone:         { type: String, default: null },

@@ -4,6 +4,7 @@ import { IonApp, IonRouterOutlet }   from '@ionic/angular/standalone';
 import { AuthService }    from './core/services/auth.service';
 import { ThemeService }   from './core/services/theme.service';
 import { NotificationService } from './core/services/notification.service';
+import { PushService }    from './core/services/push.service';
 
 @Component({
   selector:    'app-root',
@@ -15,6 +16,7 @@ export class AppComponent implements OnInit {
   private authService         = inject(AuthService);
   private themeService        = inject(ThemeService);
   private notificationService = inject(NotificationService);
+  private pushService         = inject(PushService);
 
   ngOnInit(): void {
     // Restore theme preference
@@ -23,7 +25,9 @@ export class AppComponent implements OnInit {
     // Restore auth session from stored tokens
     this.authService.restoreSession();
 
-    // Load notifications after auth
-    // (NotificationService subscribes to socket events automatically)
+    // Register FCM token once user is authenticated
+    if (this.authService.isAuthenticated()) {
+      this.pushService.init();
+    }
   }
 }

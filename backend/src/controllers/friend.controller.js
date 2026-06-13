@@ -59,6 +59,39 @@ exports.getFriends = asyncHandler(async (req, res) => {
   });
 });
 
+// ── GET /api/friends/search?q=name ───────────────────────────────────────
+exports.searchUsers = asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim().length < 3) {
+    return res.json({ success: true, users: [] });
+  }
+
+  const uid = req.user._id;
+
+  // Find users whose name matches (case-insensitive), excluding self
+  const users = await User.find({
+    _id:  { $ne: uid },
+    name: { $regex: q.trim(), $options: 'i' },
+  }).select('name email').limit(15);
+
+  // Exclude users already connected (any friendship status)
+  const existingFriendships = await Friendship.find({
+    $or: [{ requester: uid }, { recipient: uid }],
+  }).select('requester recipient');
+
+  const connectedIds = new Set(
+    existingFriendships.map(f =>
+      String(f.requester) === String(uid)
+        ? String(f.recipient)
+        : String(f.requester)
+    )
+  );
+
+  const filtered = users.filter(u => !connectedIds.has(String(u._id)));
+
+  res.json({ success: true, users: filtered });
+});
+
 // ── POST /api/friends/request ─────────────────────────────────────────────
 exports.sendRequest = asyncHandler(async (req, res) => {
   const { query } = req.body;  // email or @username

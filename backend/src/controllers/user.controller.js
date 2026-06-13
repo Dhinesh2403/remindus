@@ -174,3 +174,11 @@ exports.deleteAccount = asyncHandler(async (req, res) => {
   ]);
   res.json({ success: true, message: 'Account deleted' });
 });
+
+
+// ── PATCH /api/users/me/fcm-token ────────────────────────────────────────
+exports.updateFcmToken = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  await User.findByIdAndUpdate(req.user._id, { fcmToken: token || null });
+  res.json({ success: true, message: 'FCM token updated' });
+});

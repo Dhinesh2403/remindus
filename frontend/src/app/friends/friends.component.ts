@@ -1,18 +1,20 @@
 // src/app/friends/friends.component.ts
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonContent, IonHeader, IonToolbar, IonTitle, IonButtons,
   IonButton, IonIcon, IonRefresher, IonRefresherContent,
-  IonSearchbar, IonSkeletonText, IonAvatar,
-  AlertController, ToastController,
+  IonSearchbar, IonSkeletonText,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   personAddOutline, chatbubbleOutline, callOutline,
-  ellipseOutline, checkmarkCircle,
+  ellipseOutline, checkmarkCircle, closeOutline, searchOutline,
 } from 'ionicons/icons';
-import { FriendService, Friend } from '../core/services/friend.service';
+import { Subject, EMPTY } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { FriendService, Friend, UserSearchResult } from '../core/services/friend.service';
 
 @Component({
   selector: 'app-friends',
@@ -31,7 +33,7 @@ import { FriendService, Friend } from '../core/services/friend.service';
             <div class="page-title">Accountability Buddies</div>
             <div class="page-sub">Manage your reminder network</div>
           </div>
-          <button class="btn-add-friend" (click)="openAddFriend()">
+          <button class="btn-add-friend" (click)="openAddPanel()">
             <ion-icon name="person-add-outline"></ion-icon>
             Add Friend
           </button>
@@ -44,7 +46,62 @@ import { FriendService, Friend } from '../core/services/friend.service';
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
 
-      <!-- Search -->
+      <!-- ── Add Friend Search Panel ── -->
+      @if (showAddPanel()) {
+        <div class="add-panel">
+          <div class="add-panel-header">
+            <ion-icon name="search-outline" class="panel-icon"></ion-icon>
+            <span class="panel-title">Find Friends</span>
+            <button class="btn-close-panel" (click)="closeAddPanel()">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </div>
+
+          <div class="add-panel-input-wrap">
+            <input
+              class="friend-search-input"
+              type="text"
+              placeholder="Search by name (3+ letters)..."
+              autocomplete="off"
+              (input)="onFriendSearch($event)"
+            />
+          </div>
+
+          @if (addQuery().length > 0 && addQuery().length < 3) {
+            <div class="panel-hint">Type at least 3 characters to search</div>
+          }
+
+          @if (isSearching()) {
+            <div class="panel-loading">
+              <div class="loader-ring"></div>
+              <span>Searching...</span>
+            </div>
+          } @else if (searchResults().length > 0) {
+            <div class="search-results">
+              @for (user of searchResults(); track user._id) {
+                <div class="result-row">
+                  <div class="result-avatar">{{ user.name[0].toUpperCase() }}</div>
+                  <div class="result-info">
+                    <div class="result-name">{{ user.name }}</div>
+                    <div class="result-email">{{ user.email }}</div>
+                  </div>
+                  <button
+                    class="btn-add-user"
+                    [disabled]="sending() === user._id"
+                    (click)="addFriend(user)"
+                  >
+                    {{ sending() === user._id ? '...' : 'Add' }}
+                  </button>
+                </div>
+              }
+            </div>
+          } @else if (addQuery().length >= 3 && !isSearching()) {
+            <div class="panel-hint">No users found matching "{{ addQuery() }}"</div>
+          }
+        </div>
+      }
+
+      <!-- Search existing friends -->
       <div class="search-wrap">
         <ion-searchbar
           placeholder="Search friends..."
@@ -89,7 +146,7 @@ import { FriendService, Friend } from '../core/services/friend.service';
           <div class="empty-emoji">👥</div>
           <h3>No friends yet</h3>
           <p>Add friends to hold each other accountable!</p>
-          <button class="btn-empty-add" (click)="openAddFriend()">
+          <button class="btn-empty-add" (click)="openAddPanel()">
             <ion-icon name="person-add-outline"></ion-icon>
             Add Your First Friend
           </button>
@@ -166,6 +223,33 @@ import { FriendService, Friend } from '../core/services/friend.service';
     .page-sub { font-size: 13px; color: var(--rm-text-secondary); margin-top: 2px; }
     .btn-add-friend { display: flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--rm-purple); color: white; border: none; border-radius: 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
     .btn-add-friend ion-icon { font-size: 16px; }
+
+    /* ── Add Friend Panel ── */
+    .add-panel { margin: 12px 16px 0; background: var(--rm-card); border-radius: 20px; padding: 16px; box-shadow: var(--rm-shadow-sm); border: 1.5px solid var(--rm-purple-light); }
+    .add-panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .panel-icon { font-size: 18px; color: var(--rm-purple); }
+    .panel-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--rm-text-primary); }
+    .btn-close-panel { width: 30px; height: 30px; border: none; background: var(--rm-surface); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--rm-text-secondary); padding: 0; }
+    .btn-close-panel ion-icon { font-size: 18px; pointer-events: none; }
+    .add-panel-input-wrap { margin-bottom: 4px; }
+    .friend-search-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--rm-border); border-radius: 12px; background: var(--rm-surface); color: var(--rm-text-primary); font-size: 15px; font-family: inherit; outline: none; box-sizing: border-box; }
+    .friend-search-input:focus { border-color: var(--rm-purple); }
+    .friend-search-input::placeholder { color: var(--rm-text-muted); }
+    .panel-hint { font-size: 13px; color: var(--rm-text-muted); padding: 10px 2px; text-align: center; }
+    .panel-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; color: var(--rm-text-secondary); font-size: 14px; }
+    .loader-ring { width: 18px; height: 18px; border: 2.5px solid var(--rm-border); border-top-color: var(--rm-purple); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .search-results { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+    .result-row { display: flex; align-items: center; gap: 10px; padding: 10px 6px; border-radius: 12px; transition: background 0.15s; }
+    .result-row:active { background: var(--rm-surface); }
+    .result-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--rm-purple-light); color: var(--rm-purple); font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .result-info { flex: 1; min-width: 0; }
+    .result-name { font-size: 14px; font-weight: 700; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-email { font-size: 12px; color: var(--rm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .btn-add-user { padding: 8px 16px; background: var(--rm-purple); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+    .btn-add-user:disabled { opacity: 0.6; cursor: default; }
+
+    /* Search existing friends */
     .search-wrap { padding: 8px 12px 0; }
     .custom-searchbar { --background: var(--rm-surface); --border-radius: 14px; --box-shadow: var(--rm-shadow-sm); --color: var(--rm-text-primary); --placeholder-color: var(--rm-text-muted); padding: 0; }
 
@@ -215,15 +299,24 @@ import { FriendService, Friend } from '../core/services/friend.service';
     .btn-icon ion-icon { font-size: 18px; }
   `],
 })
-export class FriendsComponent implements OnInit {
+export class FriendsComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
-  private alertCtrl    = inject(AlertController);
   private toastCtrl    = inject(ToastController);
 
-  isLoading      = signal(true);
-  searchQuery    = signal('');
-  friends        = signal<Friend[]>([]);
+  isLoading       = signal(true);
+  searchQuery     = signal('');
+  friends         = signal<Friend[]>([]);
   pendingRequests = signal<any[]>([]);
+
+  // Add-friend search panel
+  showAddPanel  = signal(false);
+  addQuery      = signal('');
+  searchResults = signal<UserSearchResult[]>([]);
+  isSearching   = signal(false);
+  sending       = signal<string | null>(null);
+
+  private search$ = new Subject<string>();
+  private searchSub: any;
 
   readonly filtered = () => {
     const q = this.searchQuery().toLowerCase();
@@ -233,10 +326,36 @@ export class FriendsComponent implements OnInit {
   };
 
   constructor() {
-    addIcons({ personAddOutline, chatbubbleOutline, callOutline, ellipseOutline, checkmarkCircle });
+    addIcons({ personAddOutline, chatbubbleOutline, callOutline, ellipseOutline, checkmarkCircle, closeOutline, searchOutline });
   }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+
+    this.searchSub = this.search$.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      switchMap(q => {
+        if (q.length < 3) {
+          this.searchResults.set([]);
+          this.isSearching.set(false);
+          return EMPTY;
+        }
+        this.isSearching.set(true);
+        return this.friendService.searchUsers(q);
+      }),
+    ).subscribe({
+      next: (res: any) => {
+        this.searchResults.set(res.users ?? []);
+        this.isSearching.set(false);
+      },
+      error: () => this.isSearching.set(false),
+    });
+  }
+
+  ngOnDestroy() {
+    this.searchSub?.unsubscribe();
+  }
 
   private load() {
     this.isLoading.set(true);
@@ -265,44 +384,61 @@ export class FriendsComponent implements OnInit {
     this.searchQuery.set(event.detail.value ?? '');
   }
 
-  async openAddFriend() {
-    const alert = await this.alertCtrl.create({
-      header: 'Add Friend',
-      message: 'Enter their email or username',
-      inputs: [{ name: 'query', type: 'email', placeholder: 'email@example.com or @username' }],
-      buttons: [
-        { text: 'Cancel', role: 'cancel' },
-        {
-          text: 'Send Request',
-          handler: (data) => {
-            if (!data.query) return false;
-            this.friendService.sendRequest(data.query).subscribe({
-              next: async () => {
-                const toast = await this.toastCtrl.create({
-                  message: '🎉 Friend request sent!',
-                  duration: 2500,
-                  color: 'success',
-                  position: 'top',
-                });
-                toast.present();
-              },
-              error: async (err) => {
-                const toast = await this.toastCtrl.create({
-                  message: err?.error?.message || 'User not found',
-                  duration: 2500,
-                  color: 'danger',
-                  position: 'top',
-                });
-                toast.present();
-              },
-            });
-            return true;
-          },
-        },
-      ],
-    });
-    await alert.present();
+  // ── Add-friend panel ─────────────────────────────────────────────────────
+
+  openAddPanel() {
+    this.showAddPanel.set(true);
+    this.addQuery.set('');
+    this.searchResults.set([]);
+    this.isSearching.set(false);
+    setTimeout(() => {
+      (document.querySelector('.friend-search-input') as HTMLInputElement)?.focus();
+    }, 100);
   }
+
+  closeAddPanel() {
+    this.showAddPanel.set(false);
+    this.addQuery.set('');
+    this.searchResults.set([]);
+    this.isSearching.set(false);
+    this.sending.set(null);
+  }
+
+  onFriendSearch(event: Event) {
+    const q = (event.target as HTMLInputElement).value.trim();
+    this.addQuery.set(q);
+    this.search$.next(q);
+  }
+
+  async addFriend(user: UserSearchResult) {
+    this.sending.set(user._id);
+    this.friendService.sendRequest(user.email).subscribe({
+      next: async () => {
+        this.sending.set(null);
+        this.closeAddPanel();
+        const toast = await this.toastCtrl.create({
+          message: `🎉 Friend request sent to ${user.name}!`,
+          duration: 2500,
+          color: 'success',
+          position: 'top',
+        });
+        toast.present();
+        this.load();
+      },
+      error: async (err) => {
+        this.sending.set(null);
+        const toast = await this.toastCtrl.create({
+          message: err?.error?.message || 'Could not send request',
+          duration: 2500,
+          color: 'danger',
+          position: 'top',
+        });
+        toast.present();
+      },
+    });
+  }
+
+  // ── Existing friends actions ──────────────────────────────────────────────
 
   accept(id: string) {
     this.friendService.accept(id).subscribe(() => this.load());
@@ -313,29 +449,11 @@ export class FriendsComponent implements OnInit {
   }
 
   async sendReminder(friend: Friend) {
-    const alert = await this.alertCtrl.create({
-      header: `Remind ${friend.name}`,
-      inputs: [
-        { name: 'title',   type: 'text',     placeholder: 'Reminder title' },
-        { name: 'message', type: 'textarea',  placeholder: 'Optional message...' },
-      ],
-      buttons: [
-        { text: 'Cancel', role: 'cancel' },
-        {
-          text: 'Send',
-          handler: (data) => {
-            if (!data.title) return false;
-            // Dispatch via reminder service (assignToFriend)
-            console.log('Sending reminder to', friend._id, data);
-            return true;
-          },
-        },
-      ],
-    });
-    await alert.present();
+    // TODO: integrate with reminder service
+    console.log('Sending reminder to', friend._id);
   }
 
-  openChat(friend: Friend)  { console.log('Open chat with', friend.name); }
+  openChat(friend: Friend)   { console.log('Open chat with', friend.name); }
   callFriend(friend: Friend) { console.log('Call', friend.name); }
 
   getInitials(name: string): string {

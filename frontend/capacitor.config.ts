@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId:   'com.remindmebuddy.app',
-  appName: 'RemindMe Buddy',
+  appName: 'RemindMe',
   webDir:  'www',
 
   server: {
@@ -22,8 +22,9 @@ const config: CapacitorConfig = {
       showSpinner:           false,
     },
     StatusBar: {
-      style:           'DARK',
-      backgroundColor: '#7C3AED',
+      style:            'LIGHT',   // light icons on purple — overridden dynamically per theme
+      backgroundColor:  '#7C3AED',
+      overlaysWebView:  false,     // push content below the status bar
     },
     Keyboard: {
       resize:          'body',

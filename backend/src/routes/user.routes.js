@@ -20,6 +20,7 @@ router.patch('/me/password',
   ctrl.changePassword
 );
 router.put('/me/notif-prefs',   ctrl.updateNotifPrefs);
+router.patch('/me/fcm-token',   ctrl.updateFcmToken);
 router.get('/me/insights',      ctrl.getInsights);
 router.get('/me/insights/achievements', ctrl.getAchievements);
 router.delete('/me',            ctrl.deleteAccount);
