@@ -48,7 +48,7 @@ ion-header {
 }
 
 ion-toolbar {
-  --background: white;
+  --background: var(--rm-card);
   --color:      var(--rm-text-primary);
   --border-width: 0;
   --padding-start: 0;
@@ -71,7 +71,7 @@ ion-item {
 }
 
 ion-searchbar {
-  --background:        white;
+  --background:        var(--rm-surface);
   --border-radius:     14px;
   --box-shadow:        var(--rm-shadow-sm);
   --color:             var(--rm-text-primary);
@@ -82,21 +82,21 @@ ion-searchbar {
 }
 
 ion-segment {
-  --background: #F3F4F6;
+  --background: var(--rm-surface);
 }
 
 ion-segment-button {
   --border-radius:   10px;
   --color:           var(--rm-text-muted);
   --color-checked:   var(--rm-purple);
-  --background-checked: white;
+  --background-checked: var(--rm-card);
   --indicator-color: var(--rm-purple);
   font-size: 13px;
   font-weight: 600;
 }
 
 ion-chip {
-  --background: #F3F4F6;
+  --background: var(--rm-surface);
   --color:      var(--rm-text-muted);
   font-size:    12px;
   font-weight:  600;
@@ -144,7 +144,7 @@ ion-alert {
 .bg-purple-light{ background: var(--rm-purple-light) !important; }
 
 .rm-card {
-  background:    white;
+  background:    var(--rm-card);
   border-radius: var(--rm-radius-lg);
   box-shadow:    var(--rm-shadow-sm);
   padding:       16px;
@@ -168,10 +168,17 @@ ion-alert {
 
 /* ─── Dark mode ──────────────────────────────────────────────────────────── */
 .dark-theme {
-  ion-content { --background: var(--rm-bg); }
-  ion-toolbar  { --background: var(--rm-card); }
+  ion-content  { --background: var(--rm-bg); }
+  ion-toolbar  { --background: var(--rm-card); --color: var(--rm-text-primary); }
   ion-card     { --background: var(--rm-card); }
-  ion-item     { --background: transparent; }
+  ion-item     { --background: transparent; --color: var(--rm-text-primary); }
+  ion-segment  { --background: var(--rm-surface); }
+  ion-segment-button { --background-checked: var(--rm-card); --color: var(--rm-text-muted); --color-checked: var(--rm-purple); }
+  ion-chip     { --background: var(--rm-surface); --color: var(--rm-text-muted); }
+
+  /* auth pages: replace light gradient with dark bg */
+  app-login ion-content,
+  app-register ion-content { --background: var(--rm-bg); }
 
   .rm-card,
   .home-header,

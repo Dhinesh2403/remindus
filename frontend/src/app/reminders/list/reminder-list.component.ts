@@ -138,7 +138,7 @@ const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; bg: st
                     </span>
                     <span
                       class="tag"
-                      [style.background]="meta(reminder.type).bg"
+                      [style.background]="meta(reminder.type).color + '20'"
                       [style.color]="meta(reminder.type).color"
                     >{{ meta(reminder.type).label }}</span>
                   </div>
@@ -181,12 +181,12 @@ const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; bg: st
   `,
   styles: [`
     .reminder-content { --background: var(--rm-bg); }
-    ion-toolbar { --background: white; --color: var(--rm-text-primary); font-weight: 800; }
+    ion-toolbar { --background: var(--rm-card); --color: var(--rm-text-primary); font-weight: 800; }
     .filter-row { display: flex; gap: 8px; padding: 8px 16px; overflow-x: auto; scrollbar-width: none; }
     .filter-row::-webkit-scrollbar { display: none; }
     .reminder-item { --padding-start: 0; --inner-padding-end: 0; --background: transparent; }
     .reminder-list { padding: 8px 16px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 100px; }
-    .reminder-card { background: white; border-radius: 18px; padding: 16px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid #E5E7EB; width: 100%; cursor: pointer; }
+    .reminder-card { background: var(--rm-card); border-radius: 18px; padding: 16px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid var(--rm-border); width: 100%; cursor: pointer; }
     .reminder-card:active { opacity: 0.9; }
     .reminder-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
     .reminder-emoji { font-size: 24px; flex-shrink: 0; }
@@ -200,10 +200,10 @@ const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; bg: st
     .meta-time ion-icon { font-size: 13px; }
     .tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     .reminder-actions { display: flex; gap: 8px; }
-    .btn-done { padding: 8px 16px; background: #ECFDF5; color: #10B981; border: 1.5px solid rgba(16,185,129,0.2); border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; }
-    .btn-snooze { padding: 8px 16px; background: #EFF6FF; color: #3B82F6; border: 1.5px solid rgba(59,130,246,0.2); border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; }
+    .btn-done { padding: 8px 16px; background: rgba(16,185,129,0.12); color: #10B981; border: 1.5px solid rgba(16,185,129,0.25); border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; }
+    .btn-snooze { padding: 8px 16px; background: rgba(59,130,246,0.12); color: #3B82F6; border: 1.5px solid rgba(59,130,246,0.25); border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; }
     .btn-done ion-icon, .btn-snooze ion-icon { font-size: 13px; }
-    .reminder-card-skeleton { display: flex; align-items: center; padding: 16px; background: white; border-radius: 18px; margin: 8px 16px; }
+    .reminder-card-skeleton { display: flex; align-items: center; padding: 16px; background: var(--rm-card); border-radius: 18px; margin: 8px 16px; }
     .empty-state { text-align: center; padding: 80px 32px; }
     .empty-emoji { font-size: 64px; margin-bottom: 16px; }
     .empty-state h3 { font-size: 18px; font-weight: 700; color: var(--rm-text-primary); margin-bottom: 8px; }

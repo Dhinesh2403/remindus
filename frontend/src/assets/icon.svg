@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#9333EA"/>
+    </linearGradient>
+    <linearGradient id="bellFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#EDE9FE"/>
+    </linearGradient>
+    <linearGradient id="innerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App icon background (squircle) -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Subtle inner glow ring -->
+  <rect x="16" y="16" width="480" height="480" rx="100"
+    fill="none" stroke="white" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- Bell body -->
+  <path d="
+    M256 92
+    C193 92 152 135 152 198
+    L152 298
+    L120 340
+    L392 340
+    L360 298
+    L360 198
+    C360 135 319 92 256 92 Z"
+    fill="url(#bellFill)"/>
+
+  <!-- Bell clapper / base dome -->
+  <path d="M208 340 C208 366.5 229.5 388 256 388 C282.5 388 304 366.5 304 340 Z"
+    fill="url(#bellFill)"/>
+
+  <!-- Stem / crown -->
+  <rect x="240" y="68" width="32" height="38" rx="16" fill="url(#bellFill)"/>
+
+  <!-- Inner bell shadow detail -->
+  <path d="M256 120 C215 120 192 150 192 198 L192 288 L172 315 L340 315 L320 288 L320 198 C320 150 297 120 256 120 Z"
+    fill="url(#innerBg)" opacity="0.15"/>
+
+  <!-- Notification badge -->
+  <circle cx="368" cy="130" r="72" fill="#EC4899"/>
+  <circle cx="368" cy="130" r="55" fill="#F472B6" opacity="0.4"/>
+
+  <!-- Badge exclamation mark -->
+  <rect x="361" y="96" width="14" height="52" rx="7" fill="white"/>
+  <circle cx="368" cy="164" r="8" fill="white"/>
+</svg>

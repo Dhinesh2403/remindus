@@ -136,22 +136,22 @@ const CAT_EMOJI: Record<string, string> = {
   `,
   styles: [`
     .cal-content { --background: var(--rm-bg); }
-    ion-toolbar { --background: white; }
+    ion-toolbar { --background: var(--rm-card); }
     .cal-header-inner { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 16px 16px; }
     .cal-title { font-size: 28px; font-weight: 900; color: var(--rm-text-primary); }
     .cal-subtitle { font-size: 14px; color: var(--rm-text-muted); margin-top: 2px; }
     .btn-today { padding: 8px 18px; background: var(--rm-purple-light); color: var(--rm-purple); border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
 
     /* Month nav */
-    .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: white; }
+    .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--rm-card); }
     .month-label { font-size: 17px; font-weight: 800; color: var(--rm-text-primary); }
     .nav-btn { width: 36px; height: 36px; border: 1.5px solid var(--rm-border); border-radius: 10px; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--rm-text-secondary); }
     .nav-btn ion-icon { font-size: 16px; }
 
     /* Day grid */
-    .dow-row { display: grid; grid-template-columns: repeat(7,1fr); padding: 8px 12px 0; background: white; }
+    .dow-row { display: grid; grid-template-columns: repeat(7,1fr); padding: 8px 12px 0; background: var(--rm-card); }
     .dow-cell { text-align: center; font-size: 11px; color: var(--rm-text-muted); font-weight: 700; padding: 4px 0; }
-    .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; padding: 4px 12px 16px; background: white; border-radius: 0 0 24px 24px; box-shadow: var(--rm-shadow-md); }
+    .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; padding: 4px 12px 16px; background: var(--rm-card); border-radius: 0 0 24px 24px; box-shadow: var(--rm-shadow-md); }
     .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--rm-border); position: relative; transition: all .15s; }
     .day-cell:active { transform: scale(0.92); }
     .day-cell.other-month { border-color: transparent; }
@@ -172,7 +172,7 @@ const CAT_EMOJI: Record<string, string> = {
     .no-events-emoji { font-size: 40px; display: block; margin-bottom: 8px; }
     .no-events p { font-size: 14px; color: var(--rm-text-muted); }
     .events-list { display: flex; flex-direction: column; gap: 10px; }
-    .event-card { background: white; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid #E5E7EB; }
+    .event-card { background: var(--rm-card); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid var(--rm-border); }
     .event-emoji { font-size: 22px; flex-shrink: 0; }
     .event-info { flex: 1; }
     .event-title { font-size: 14px; font-weight: 700; color: var(--rm-text-primary); }

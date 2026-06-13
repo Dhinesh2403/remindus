@@ -167,7 +167,7 @@ import { InsightsService, InsightsSummary, Achievement } from '../core/services/
     ion-segment-button { --color: var(--rm-text-muted); --color-checked: var(--rm-purple); font-size: 12px; font-weight: 600; }
 
     /* Chart */
-    .chart-wrap { background: white; margin: 0 16px 8px; border-radius: 20px; padding: 16px; box-shadow: var(--rm-shadow-sm); }
+    .chart-wrap { background: var(--rm-card); margin: 0 16px 8px; border-radius: 20px; padding: 16px; box-shadow: var(--rm-shadow-sm); }
     .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding-bottom: 4px; }
     .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
     .bar-label-top { font-size: 10px; color: var(--rm-text-muted); font-weight: 600; min-height: 14px; }
@@ -190,8 +190,8 @@ import { InsightsService, InsightsSummary, Achievement } from '../core/services/
 
     /* Achievements */
     .achievements-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
-    .ach-card { background: white; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 14px; box-shadow: var(--rm-shadow-sm); position: relative; }
-    .ach-card.earned { border: 2px solid #F59E0B; background: #FFFDF5; }
+    .ach-card { background: var(--rm-card); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 14px; box-shadow: var(--rm-shadow-sm); position: relative; }
+    .ach-card.earned { border: 2px solid #F59E0B; background: var(--rm-card); }
     .ach-card.locked { opacity: 0.7; }
     .ach-emoji { font-size: 32px; flex-shrink: 0; }
     .ach-body { flex: 1; }

@@ -8,8 +8,6 @@ export const environment = {
   apiUrl: 'https://remindme-buddy-api.up.railway.app/api',
   socketUrl: 'https://remindme-buddy-api.up.railway.app',
 
-  googleClientId: 'YOUR_GOOGLE_PROD_CLIENT_ID.apps.googleusercontent.com',
-
   firebase: {
     apiKey: 'YOUR_FIREBASE_PROD_KEY',
     authDomain: 'remindme-buddy.firebaseapp.com',

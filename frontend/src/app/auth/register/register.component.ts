@@ -18,8 +18,8 @@ import { AuthService } from '../../core/services/auth.service';
     <ion-content class="login-content">
       <div class="login-bg">
         <div class="login-card">
-          <div class="login-logo">
-            <ion-icon name="notifications" style="font-size:32px;color:white"></ion-icon>
+          <div class="login-logo-wrap">
+            <img src="assets/logo.svg" alt="RemindMe Buddy" class="login-logo-img" />
           </div>
           <h1 class="login-title">Create Account</h1>
           <p class="login-sub">Start holding yourself accountable</p>
@@ -71,16 +71,17 @@ import { AuthService } from '../../core/services/auth.service';
   styles: [`
     .login-content { --background: linear-gradient(160deg,#F0ECFF 0%,#E8F0FF 100%); }
     .login-bg { min-height:100%; display:flex; align-items:center; justify-content:center; padding:32px 20px; }
-    .login-card { background:white; border-radius:28px; padding:36px 24px; width:100%; max-width:340px; box-shadow:0 4px 16px rgba(124,58,237,0.1); }
-    .login-logo { width:64px; height:64px; background:var(--rm-purple); border-radius:20px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; box-shadow:0 8px 24px rgba(124,58,237,0.3); }
+    .login-card { background:var(--rm-card); border-radius:28px; padding:36px 24px; width:100%; max-width:340px; box-shadow:0 4px 16px rgba(124,58,237,0.1); }
+    .login-logo-wrap { display:flex; justify-content:center; margin:0 auto 20px; }
+    .login-logo-img { width:200px; height:auto; }
     .login-title { font-size:26px; font-weight:800; color:var(--rm-purple); text-align:center; margin-bottom:6px; }
     .login-sub { color:var(--rm-text-secondary); text-align:center; font-size:14px; margin-bottom:28px; }
     .form-group { margin-bottom:16px; }
-    .form-label { font-size:13px; font-weight:600; display:block; margin-bottom:6px; }
+    .form-label { font-size:13px; font-weight:600; color:var(--rm-text-primary); display:block; margin-bottom:6px; }
     .input-wrap { position:relative; }
     .input-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:18px; color:var(--rm-text-muted); }
-    .form-input { width:100%; padding:14px 16px 14px 44px; border:1.5px solid var(--rm-border); border-radius:14px; font-size:14px; outline:none; background:#F9FAFB; font-family:inherit; }
-    .form-input:focus { border-color:var(--rm-purple); background:white; }
+    .form-input { width:100%; padding:14px 16px 14px 44px; border:1.5px solid var(--rm-border); border-radius:14px; font-size:14px; outline:none; background:var(--rm-surface); color:var(--rm-text-primary); font-family:inherit; }
+    .form-input:focus { border-color:var(--rm-purple); background:var(--rm-surface); }
     .password-toggle { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--rm-text-muted); font-size:18px; }
     .field-error { font-size:12px; color:var(--rm-danger); margin-top:4px; display:block; }
     .btn-primary { width:100%; padding:16px; background:linear-gradient(135deg,var(--rm-purple),#9333EA); color:white; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; box-shadow:0 4px 16px rgba(124,58,237,0.35); margin-bottom:16px; }

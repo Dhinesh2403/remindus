@@ -66,24 +66,39 @@
 // ─── Dark mode overrides ─────────────────────────────────────────────────────
 @media (prefers-color-scheme: dark) {
   :root {
-    --rm-bg:           #0F0F1A;
-    --rm-card:         #1A1A2E;
-    --rm-surface:      #16213E;
-    --rm-text-primary: #F9FAFB;
+    --rm-bg:            #0F0F1A;
+    --rm-card:          #1A1A2E;
+    --rm-surface:       #16213E;
+    --rm-text-primary:  #F9FAFB;
     --rm-text-secondary:#9CA3AF;
-    --rm-text-muted:   #6B7280;
-    --rm-border:       #374151;
-    --rm-shadow-md:    0 4px 16px rgba(0,0,0,0.4);
+    --rm-text-muted:    #6B7280;
+    --rm-border:        #374151;
+    --rm-shadow-md:     0 4px 16px rgba(0,0,0,0.4);
+    --rm-purple-light:  rgba(124,58,237,0.2);
+    --rm-birthday-bg:   rgba(236,72,153,0.15);
+    --rm-work-bg:       rgba(245,158,11,0.15);
+    --rm-medicine-bg:   rgba(239,68,68,0.15);
+    --rm-bill-bg:       rgba(59,130,246,0.15);
+    --rm-study-bg:      rgba(16,185,129,0.15);
+    --rm-wedding-bg:    rgba(139,92,246,0.15);
   }
 }
 
 .dark-theme {
-  --rm-bg:           #0F0F1A;
-  --rm-card:         #1A1A2E;
-  --rm-surface:      #16213E;
-  --rm-text-primary: #F9FAFB;
+  --rm-bg:            #0F0F1A;
+  --rm-card:          #1A1A2E;
+  --rm-surface:       #16213E;
+  --rm-text-primary:  #F9FAFB;
   --rm-text-secondary:#9CA3AF;
-  --rm-border:       #374151;
+  --rm-text-muted:    #6B7280;
+  --rm-border:        #374151;
+  --rm-purple-light:  rgba(124,58,237,0.2);
+  --rm-birthday-bg:   rgba(236,72,153,0.15);
+  --rm-work-bg:       rgba(245,158,11,0.15);
+  --rm-medicine-bg:   rgba(239,68,68,0.15);
+  --rm-bill-bg:       rgba(59,130,246,0.15);
+  --rm-study-bg:      rgba(16,185,129,0.15);
+  --rm-wedding-bg:    rgba(139,92,246,0.15);
 }
 
 // ─── Ionic variable overrides ─────────────────────────────────────────────────

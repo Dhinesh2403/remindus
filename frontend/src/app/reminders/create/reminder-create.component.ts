@@ -83,11 +83,11 @@ interface PriorityOption { value: Priority; label: string; color: string }
                 class="cat-chip"
                 [class.active]="f['type'].value === cat.type"
                 [style.border-color]="f['type'].value === cat.type ? cat.color : 'transparent'"
-                [style.background]="f['type'].value === cat.type ? cat.color + '18' : '#F3F4F6'"
+                [style.background]="f['type'].value === cat.type ? cat.color + '18' : 'var(--rm-surface)'"
                 (click)="form.get('type')?.setValue(cat.type)"
               >
                 <span class="cat-emoji">{{ cat.emoji }}</span>
-                <span class="cat-label" [style.color]="f['type'].value === cat.type ? cat.color : '#6B7280'">
+                <span class="cat-label" [style.color]="f['type'].value === cat.type ? cat.color : 'var(--rm-text-secondary)'">
                   {{ cat.label }}
                 </span>
               </div>
@@ -115,9 +115,9 @@ interface PriorityOption { value: Priority; label: string; color: string }
               <div
                 class="priority-chip"
                 [class.active]="f['priority'].value === p.value"
-                [style.border-color]="f['priority'].value === p.value ? p.color : '#E5E7EB'"
-                [style.background]="f['priority'].value === p.value ? p.color + '18' : 'white'"
-                [style.color]="f['priority'].value === p.value ? p.color : '#6B7280'"
+                [style.border-color]="f['priority'].value === p.value ? p.color : 'var(--rm-border)'"
+                [style.background]="f['priority'].value === p.value ? p.color + '18' : 'var(--rm-surface)'"
+                [style.color]="f['priority'].value === p.value ? p.color : 'var(--rm-text-secondary)'"
                 (click)="form.get('priority')?.setValue(p.value)"
               >{{ p.label }}</div>
             }
@@ -186,13 +186,13 @@ interface PriorityOption { value: Priority; label: string; color: string }
   `,
   styles: [`
     .create-content { --background: var(--rm-bg); }
-    ion-toolbar { --background: white; }
+    ion-toolbar { --background: var(--rm-card); }
     .create-form { padding: 16px; padding-bottom: 48px; }
     .form-section { margin-bottom: 20px; }
     .form-row { display: flex; gap: 12px; }
     .form-section.half { flex: 1; margin-bottom: 20px; }
     .form-label { font-size: 13px; font-weight: 600; color: var(--rm-text-primary); display: block; margin-bottom: 8px; }
-    .form-input { width: 100%; padding: 13px 14px; border: 1.5px solid var(--rm-border); border-radius: var(--rm-radius-md); font-size: 14px; outline: none; background: white; transition: border-color 0.2s; font-family: inherit; color: var(--rm-text-primary); }
+    .form-input { width: 100%; padding: 13px 14px; border: 1.5px solid var(--rm-border); border-radius: var(--rm-radius-md); font-size: 14px; outline: none; background: var(--rm-surface); transition: border-color 0.2s; font-family: inherit; color: var(--rm-text-primary); }
     .form-input:focus { border-color: var(--rm-purple); }
     .form-textarea { resize: none; line-height: 1.5; }
     .form-select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
@@ -203,9 +203,9 @@ interface PriorityOption { value: Priority; label: string; color: string }
     .cat-emoji { font-size: 22px; }
     .cat-label { font-size: 11px; font-weight: 600; text-align: center; }
     .priority-row { display: flex; gap: 8px; }
-    .priority-chip { flex: 1; padding: 10px 4px; border: 2px solid #E5E7EB; border-radius: 12px; cursor: pointer; text-align: center; font-size: 13px; font-weight: 600; transition: all 0.15s; }
+    .priority-chip { flex: 1; padding: 10px 4px; border: 2px solid var(--rm-border); border-radius: 12px; cursor: pointer; text-align: center; font-size: 13px; font-weight: 600; transition: all 0.15s; }
     .notif-row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .notif-chip { padding: 10px 14px; border: 2px solid #E5E7EB; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--rm-text-muted); background: white; transition: all 0.15s; }
+    .notif-chip { padding: 10px 14px; border: 2px solid var(--rm-border); border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--rm-text-secondary); background: var(--rm-surface); transition: all 0.15s; }
     .notif-chip.active { border-color: var(--rm-purple); color: var(--rm-purple); background: var(--rm-purple-light); }
     .premium-pill { background: #F59E0B; color: white; border-radius: 20px; padding: 2px 6px; font-size: 10px; font-weight: 700; }
     .btn-save { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--rm-purple), #9333EA); color: white; border: none; border-radius: var(--rm-radius-md); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; font-family: inherit; box-shadow: 0 4px 16px rgba(124,58,237,0.35); }

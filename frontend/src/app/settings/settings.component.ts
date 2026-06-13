@@ -113,7 +113,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row">
-          <div class="row-icon" style="background:#EFF6FF;color:#3B82F6">
+          <div class="row-icon" style="background:rgba(59,130,246,0.12);color:#3B82F6">
             <ion-icon name="mail-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -128,7 +128,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row">
-          <div class="row-icon" style="background:#EDE9FE;color:#7C3AED">
+          <div class="row-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
             <ion-icon name="phone-portrait-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -143,7 +143,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row premium-row">
-          <div class="row-icon" style="background:#DCFCE7;color:#16A34A">
+          <div class="row-icon" style="background:rgba(22,163,74,0.12);color:#16A34A">
             <ion-icon name="logo-whatsapp"></ion-icon>
           </div>
           <div class="row-text">
@@ -168,7 +168,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row" (click)="changePassword()">
-          <div class="row-icon" style="background:#FEF2F2;color:#EF4444">
+          <div class="row-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
             <ion-icon name="lock-closed-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -179,7 +179,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row">
-          <div class="row-icon" style="background:#FFFBEB;color:#F59E0B">
+          <div class="row-icon" style="background:rgba(245,158,11,0.12);color:#F59E0B">
             <ion-icon name="shield-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -197,7 +197,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       <!-- Danger zone -->
       <div class="settings-section danger-section">
         <div class="settings-row" (click)="logout()">
-          <div class="row-icon" style="background:#FEF2F2;color:#EF4444">
+          <div class="row-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
             <ion-icon name="log-out-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -207,7 +207,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row" (click)="deleteAccount()">
-          <div class="row-icon" style="background:#FEF2F2;color:#EF4444">
+          <div class="row-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
             <ion-icon name="trash-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -231,7 +231,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
     .settings-title { font-size: 28px; font-weight: 900; color: var(--rm-text-primary); }
     .settings-sub { font-size: 13px; color: var(--rm-text-secondary); margin-top: 4px; }
 
-    .settings-section { background: white; border-radius: 20px; margin: 12px 16px 0; box-shadow: var(--rm-shadow-sm); overflow: hidden; }
+    .settings-section { background: var(--rm-card); border-radius: 20px; margin: 12px 16px 0; box-shadow: var(--rm-shadow-sm); overflow: hidden; }
     .section-label { font-size: 14px; font-weight: 800; color: var(--rm-text-secondary); padding: 16px 16px 8px; display: flex; align-items: center; gap: 8px; }
     .section-label ion-icon { font-size: 17px; color: var(--rm-purple); }
 
@@ -247,12 +247,12 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
     /* Appearance */
     .theme-options { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 8px 16px 16px; }
-    .theme-btn { padding: 14px 8px; border-radius: 14px; border: 2px solid var(--rm-border); background: var(--rm-surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--rm-text-muted); font-weight: 600; transition: all .2s; font-family: inherit; }
+    .theme-btn { padding: 14px 8px; border-radius: 14px; border: 2px solid var(--rm-border); background: var(--rm-surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--rm-text-secondary); font-weight: 600; transition: all .2s; font-family: inherit; }
     .theme-btn ion-icon { font-size: 22px; }
     .theme-btn.active { border-color: var(--rm-purple); color: var(--rm-purple); background: var(--rm-purple-light); }
 
     /* Rows */
-    .settings-row { display: flex; align-items: center; padding: 14px 16px; border-top: 1px solid #F9FAFB; gap: 12px; cursor: pointer; }
+    .settings-row { display: flex; align-items: center; padding: 14px 16px; border-top: 1px solid var(--rm-border); gap: 12px; cursor: pointer; }
     .row-icon { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .row-icon ion-icon { font-size: 18px; }
     .row-text { flex: 1; }
@@ -268,7 +268,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
     .toggle:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Premium row */
-    .premium-row { background: #F0FDF4; }
+    .premium-row { background: rgba(22,163,74,0.08); }
     .premium-badge { padding: 4px 10px; background: #F59E0B; color: white; border-radius: 20px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 
     /* Danger */

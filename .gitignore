@@ -13,6 +13,9 @@ yarn-error.log*
 *.env
 !.env.example
 
+environment.staging.ts
+environment.prod.ts
+
 # ─── Build outputs ────────────────────────────────────────────────────────────
 www/
 dist/

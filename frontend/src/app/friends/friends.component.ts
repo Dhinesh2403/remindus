@@ -116,23 +116,23 @@ import { FriendService, Friend } from '../core/services/friend.service';
 
               <!-- Stats row -->
               <div class="friend-stats">
-                <div class="fstat" style="background:#EFF6FF">
+                <div class="fstat" style="background:rgba(59,130,246,0.12)">
                   <div class="fstat-num" style="color:#3B82F6">
                     {{ friend.responseRate }}%
                   </div>
                   <div class="fstat-label">Response</div>
                 </div>
-                <div class="fstat" style="background:#EDE9FE">
+                <div class="fstat" style="background:rgba(124,58,237,0.12)">
                   <div class="fstat-num" style="color:#7C3AED">
                     {{ friend.sharedCount }}
                   </div>
                   <div class="fstat-label">Shared</div>
                 </div>
                 <div class="fstat"
-                  [style.background]="friend.pendingCount > 0 ? '#FFF7ED' : '#F3F4F6'"
+                  [style.background]="friend.pendingCount > 0 ? 'rgba(234,88,12,0.12)' : 'var(--rm-surface)'"
                 >
                   <div class="fstat-num"
-                    [style.color]="friend.pendingCount > 0 ? '#EA580C' : '#9CA3AF'"
+                    [style.color]="friend.pendingCount > 0 ? '#EA580C' : 'var(--rm-text-muted)'"
                   >{{ friend.pendingCount }}</div>
                   <div class="fstat-label">Pending</div>
                 </div>
@@ -160,29 +160,29 @@ import { FriendService, Friend } from '../core/services/friend.service';
   `,
   styles: [`
     .friends-content { --background: var(--rm-bg); }
-    ion-toolbar { --background: white; --padding-start: 0; --padding-end: 0; --padding-top: 0; --padding-bottom: 0; }
+    ion-toolbar { --background: var(--rm-card); --padding-start: 0; --padding-end: 0; --padding-top: 0; --padding-bottom: 0; }
     .friends-header-row { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px 16px; }
     .page-title { font-size: 22px; font-weight: 800; color: var(--rm-text-primary); }
     .page-sub { font-size: 13px; color: var(--rm-text-secondary); margin-top: 2px; }
     .btn-add-friend { display: flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--rm-purple); color: white; border: none; border-radius: 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
     .btn-add-friend ion-icon { font-size: 16px; }
     .search-wrap { padding: 8px 12px 0; }
-    .custom-searchbar { --background: white; --border-radius: 14px; --box-shadow: var(--rm-shadow-sm); --placeholder-color: var(--rm-text-muted); padding: 0; }
+    .custom-searchbar { --background: var(--rm-surface); --border-radius: 14px; --box-shadow: var(--rm-shadow-sm); --color: var(--rm-text-primary); --placeholder-color: var(--rm-text-muted); padding: 0; }
 
     /* Pending requests */
-    .requests-banner { margin: 12px 16px; background: #FFF7ED; border-radius: 16px; padding: 14px; border: 1.5px solid #FED7AA; }
+    .requests-banner { margin: 12px 16px; background: rgba(234,88,12,0.08); border-radius: 16px; padding: 14px; border: 1.5px solid rgba(234,88,12,0.2); }
     .requests-title { font-size: 13px; font-weight: 700; color: #C2410C; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
     .request-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .req-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--rm-purple-light); color: var(--rm-purple); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .req-name { flex: 1; font-size: 14px; font-weight: 600; }
     .btn-accept { padding: 6px 12px; background: var(--rm-green); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .btn-reject { padding: 6px 12px; background: #F3F4F6; color: var(--rm-text-muted); border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-reject { padding: 6px 12px; background: var(--rm-surface); color: var(--rm-text-secondary); border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
 
     /* Skeleton */
-    .friend-card-skeleton { display: flex; align-items: center; padding: 16px; background: white; border-radius: 20px; margin: 8px 16px; box-shadow: var(--rm-shadow-sm); }
-    .skeleton-avatar { width: 52px; height: 52px; border-radius: 50%; background: #E5E7EB; flex-shrink: 0; animation: pulse 1.5s ease-in-out infinite; }
+    .friend-card-skeleton { display: flex; align-items: center; padding: 16px; background: var(--rm-card); border-radius: 20px; margin: 8px 16px; box-shadow: var(--rm-shadow-sm); }
+    .skeleton-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--rm-surface); flex-shrink: 0; animation: pulse 1.5s ease-in-out infinite; }
     .skeleton-lines { flex: 1; padding-left: 12px; }
-    .skeleton-line { height: 12px; border-radius: 6px; background: #E5E7EB; margin-bottom: 8px; animation: pulse 1.5s ease-in-out infinite; }
+    .skeleton-line { height: 12px; border-radius: 6px; background: var(--rm-surface); margin-bottom: 8px; animation: pulse 1.5s ease-in-out infinite; }
     .w70 { width: 70%; }
     .w40 { width: 40%; }
     @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.5 } }
@@ -196,11 +196,11 @@ import { FriendService, Friend } from '../core/services/friend.service';
 
     /* Friend cards */
     .friends-list { padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px; }
-    .friend-card { background: white; border-radius: 20px; padding: 18px; box-shadow: var(--rm-shadow-sm); }
+    .friend-card { background: var(--rm-card); border-radius: 20px; padding: 18px; box-shadow: var(--rm-shadow-sm); }
     .friend-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
     .friend-avatar-wrap { position: relative; flex-shrink: 0; }
     .friend-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--rm-purple-light); color: var(--rm-purple); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-    .status-dot { width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid white; position: absolute; bottom: 1px; right: 1px; background: #D1D5DB; }
+    .status-dot { width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid var(--rm-card); position: absolute; bottom: 1px; right: 1px; background: var(--rm-border); }
     .status-dot.online { background: #10B981; }
     .friend-name { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); }
     .friend-username { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; }
@@ -211,7 +211,7 @@ import { FriendService, Friend } from '../core/services/friend.service';
     .friend-actions { display: flex; align-items: center; gap: 8px; }
     .btn-send-reminder { flex: 1; padding: 11px; background: var(--rm-purple-light); color: var(--rm-purple); border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .15s; }
     .btn-send-reminder:active { opacity: .8; }
-    .btn-icon { width: 42px; height: 42px; border: 1.5px solid var(--rm-border); border-radius: 12px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--rm-text-secondary); }
+    .btn-icon { width: 42px; height: 42px; border: 1.5px solid var(--rm-border); border-radius: 12px; background: var(--rm-surface); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--rm-text-secondary); }
     .btn-icon ion-icon { font-size: 18px; }
   `],
 })

@@ -26,12 +26,6 @@ router.post('/login',
   ctrl.login
 );
 
-router.post('/google',
-  [body('idToken').notEmpty()],
-  validate,
-  ctrl.googleLogin
-);
-
 router.post('/refresh',
   [body('refreshToken').notEmpty()],
   validate,

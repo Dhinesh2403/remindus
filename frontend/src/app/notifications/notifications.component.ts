@@ -52,7 +52,7 @@ import { NotificationService, AppNotification } from '../core/services/notificat
     </ion-content>`,
   styles: [`
     .notif-content { --background:var(--rm-bg); }
-    ion-toolbar { --background:white; }
+    ion-toolbar { --background:var(--rm-card); }
     .notif-header-row { display:flex; align-items:center; justify-content:space-between; padding:20px 16px 16px; }
     .page-title { font-size:22px; font-weight:800; color:var(--rm-text-primary); }
     .btn-mark-all { display:flex; align-items:center; gap:4px; padding:8px 12px; background:var(--rm-purple-light); color:var(--rm-purple); border:none; border-radius:12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
@@ -60,8 +60,8 @@ import { NotificationService, AppNotification } from '../core/services/notificat
     .empty-state h3 { font-size:18px; font-weight:700; margin-bottom:8px; }
     .empty-state p { color:var(--rm-text-muted); }
     .notif-list { padding:8px 16px 24px; display:flex; flex-direction:column; gap:8px; }
-    .notif-card { background:white; border-radius:16px; padding:14px; display:flex; align-items:flex-start; gap:12px; box-shadow:var(--rm-shadow-sm); cursor:pointer; position:relative; }
-    .notif-card.unread { background:#FAFBFF; border-left:3px solid var(--rm-purple); }
+    .notif-card { background:var(--rm-card); border-radius:16px; padding:14px; display:flex; align-items:flex-start; gap:12px; box-shadow:var(--rm-shadow-sm); cursor:pointer; position:relative; }
+    .notif-card.unread { background:rgba(124,58,237,0.08); border-left:3px solid var(--rm-purple); }
     .notif-icon { font-size:28px; flex-shrink:0; }
     .notif-body { flex:1; }
     .notif-title { font-size:14px; font-weight:700; color:var(--rm-text-primary); margin-bottom:3px; }

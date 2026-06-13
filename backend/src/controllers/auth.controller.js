@@ -2,14 +2,11 @@
 'use strict';
 
 const jwt           = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
 const { totp }      = require('otplib');
 const User          = require('../models/User');
 const emailService  = require('../services/email.service');
 const logger        = require('../utils/logger');
 const { asyncHandler, AppError } = require('../utils/helpers');
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ── Token factories ────────────────────────────────────────────────────────
 function signAccess(userId) {
@@ -70,33 +67,6 @@ exports.login = asyncHandler(async (req, res) => {
   await user.save();
 
   logger.info(`User logged in: ${email} [${process.env.NODE_ENV}]`);
-  res.json({ success: true, user, tokens });
-});
-
-// ── POST /api/auth/google ──────────────────────────────────────────────────
-exports.googleLogin = asyncHandler(async (req, res) => {
-  const { idToken } = req.body;
-
-  const ticket = await googleClient.verifyIdToken({
-    idToken,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
-  const { sub: googleId, email, name, picture } = ticket.getPayload();
-
-  let user = await User.findOne({ $or: [{ googleId }, { email }] }).select('+refreshTokens');
-  if (!user) {
-    user = await User.create({ name, email, googleId, avatar: picture, isEmailVerified: true });
-  } else if (!user.googleId) {
-    user.googleId = googleId;
-    if (!user.avatar && picture) user.avatar = picture;
-    await user.save();
-  }
-
-  const tokens = issueTokens(user._id);
-  user.refreshTokens = [...(user.refreshTokens || []).slice(-4), tokens.refreshToken];
-  user.lastActiveAt  = new Date();
-  await user.save();
-
   res.json({ success: true, user, tokens });
 });
 

@@ -42,6 +42,11 @@ import { ReminderService } from '../core/services/reminder.service';
 
       <!-- Header -->
       <div class="home-header">
+        <!-- Brand logo strip -->
+        <div class="header-brand">
+          <img src="assets/icon.svg" alt="RemindMe" class="header-brand-icon" />
+          <span class="header-brand-name">RemindMe</span>
+        </div>
         <div class="header-row">
           <div>
             <h1 class="greeting">{{ greeting }}, {{ firstName() }} 👋</h1>
@@ -58,28 +63,28 @@ import { ReminderService } from '../core/services/reminder.service';
       <!-- Stats Grid -->
       <div class="stats-grid">
         <div class="stat-card" (click)="goToReminders('today')">
-          <div class="stat-icon" style="background:#EFF6FF;color:#3B82F6">
+          <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#3B82F6">
             <ion-icon name="time-outline"></ion-icon>
           </div>
           <div class="stat-num" style="color:#3B82F6">{{ todayCount() }}</div>
           <div class="stat-label">Today</div>
         </div>
         <div class="stat-card" (click)="goToReminders('upcoming')">
-          <div class="stat-icon" style="background:#EDE9FE;color:#7C3AED">
+          <div class="stat-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
             <ion-icon name="notifications-outline"></ion-icon>
           </div>
           <div class="stat-num" style="color:#7C3AED">{{ upcomingCount() }}</div>
           <div class="stat-label">Upcoming</div>
         </div>
         <div class="stat-card" (click)="goToReminders('missed')">
-          <div class="stat-icon" style="background:#FEF2F2;color:#EF4444">
+          <div class="stat-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
             <ion-icon name="alert-circle-outline"></ion-icon>
           </div>
           <div class="stat-num" style="color:#EF4444">{{ missedCount() }}</div>
           <div class="stat-label">Missed</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background:#ECFDF5;color:#10B981">
+          <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:#10B981">
             <ion-icon name="trending-up-outline"></ion-icon>
           </div>
           <div class="stat-num" style="color:#10B981">{{ completionRate() }}%</div>
@@ -115,13 +120,16 @@ import { ReminderService } from '../core/services/reminder.service';
   `,
   styles: [`
     .dashboard-content { --background: var(--rm-bg); }
-    .home-header { padding: 20px 16px 16px; background: white; border-radius: 0 0 24px 24px; margin-bottom: 16px; box-shadow: var(--rm-shadow-md); }
+    .home-header { padding: 12px 16px 16px; background: var(--rm-card); border-radius: 0 0 24px 24px; margin-bottom: 16px; box-shadow: var(--rm-shadow-md); }
+    .header-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .header-brand-icon { width: 30px; height: 30px; border-radius: 8px; }
+    .header-brand-name { font-size: 15px; font-weight: 800; color: var(--rm-purple); letter-spacing: -0.3px; font-family: 'Nunito', sans-serif; }
     .header-row { display: flex; align-items: center; justify-content: space-between; }
     .greeting { font-size: 20px; font-weight: 800; color: var(--rm-text-primary); margin: 0; }
     .greeting-sub { font-size: 13px; color: var(--rm-text-secondary); margin: 4px 0 0; }
     .avatar-btn { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--rm-purple), #9333EA); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; margin-bottom: 16px; }
-    .stat-card { background: white; border-radius: 18px; padding: 16px; box-shadow: var(--rm-shadow-sm); cursor: pointer; transition: transform 0.15s; }
+    .stat-card { background: var(--rm-card); border-radius: 18px; padding: 16px; box-shadow: var(--rm-shadow-sm); cursor: pointer; transition: transform 0.15s; }
     .stat-card:active { transform: scale(0.97); }
     .stat-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
     .stat-num { font-size: 28px; font-weight: 900; line-height: 1; }

@@ -8,9 +8,6 @@ export const environment = {
   apiUrl: 'http://localhost:5000/api',
   socketUrl: 'http://localhost:5000',
 
-  // Google OAuth (use dev credentials)
-  googleClientId: 'YOUR_GOOGLE_DEV_CLIENT_ID.apps.googleusercontent.com',
-
   // Firebase (optional, for push notifications)
   firebase: {
     apiKey: 'YOUR_FIREBASE_DEV_KEY',

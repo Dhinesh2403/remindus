@@ -62,10 +62,10 @@ const CAT_EMOJI: Record<string, string> = {
     </ion-content>`,
   styles: [`
     .detail-content { --background:var(--rm-bg); }
-    ion-toolbar { --background:white; }
+    ion-toolbar { --background:var(--rm-card); }
     .icon-btn { background:none; border:none; padding:8px; cursor:pointer; font-size:20px; }
     .loading-wrap { display:flex; justify-content:center; padding:80px; }
-    .detail-card { background:white; margin:16px; border-radius:20px; padding:24px; box-shadow:var(--rm-shadow-sm); border-top:4px solid #7C3AED; text-align:center; }
+    .detail-card { background:var(--rm-card); margin:16px; border-radius:20px; padding:24px; box-shadow:var(--rm-shadow-sm); border-top:4px solid #7C3AED; text-align:center; }
     .detail-emoji { font-size:56px; margin-bottom:12px; }
     .detail-title { font-size:22px; font-weight:800; color:var(--rm-text-primary); margin-bottom:8px; }
     .detail-desc { font-size:14px; color:var(--rm-text-muted); margin-bottom:16px; }
@@ -73,13 +73,13 @@ const CAT_EMOJI: Record<string, string> = {
     .meta-item { background:var(--rm-surface); padding:10px 12px; border-radius:12px; font-size:13px; color:var(--rm-text-secondary); display:flex; align-items:center; gap:6px; }
     .meta-icon { font-size:16px; }
     .status-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; }
-    .status-pending { background:#EFF6FF; color:#3B82F6; }
-    .status-done    { background:#ECFDF5; color:#10B981; }
-    .status-missed  { background:#FEF2F2; color:#EF4444; }
-    .status-snoozed { background:#FFFBEB; color:#F59E0B; }
+    .status-pending { background:rgba(59,130,246,0.12); color:#3B82F6; }
+    .status-done    { background:rgba(16,185,129,0.12); color:#10B981; }
+    .status-missed  { background:rgba(239,68,68,0.12);  color:#EF4444; }
+    .status-snoozed { background:rgba(245,158,11,0.12); color:#F59E0B; }
     .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; }
-    .btn-done-full { padding:16px; background:#ECFDF5; color:#10B981; border:1.5px solid rgba(16,185,129,.2); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
-    .btn-snooze-full { padding:16px; background:#EFF6FF; color:#3B82F6; border:1.5px solid rgba(59,130,246,.2); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
+    .btn-done-full { padding:16px; background:rgba(16,185,129,0.12); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
+    .btn-snooze-full { padding:16px; background:rgba(59,130,246,0.12); color:#3B82F6; border:1.5px solid rgba(59,130,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
     ion-icon { font-size:20px; }
   `],
 })
