@@ -38,4 +38,18 @@ router.patch('/:id/assign',
   ctrl.assign
 );
 
+router.patch('/:id/shared-status',
+  [body('status').isIn(['sent','received','acknowledged','processing','skipped','completed'])],
+  validate,
+  ctrl.updateSharedStatus
+);
+
+router.patch('/:id/snooze-assigned',
+  [body('minutes').isInt({ min: 1, max: 1440 }).withMessage('Minutes must be 1-1440')],
+  validate,
+  ctrl.snoozeAssigned
+);
+
+router.get('/shared/:friendId', ctrl.getSharedWithFriend);
+
 module.exports = router;

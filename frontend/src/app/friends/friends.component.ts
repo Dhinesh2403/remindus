@@ -1,6 +1,7 @@
 // src/app/friends/friends.component.ts
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonToolbar,
   IonIcon, IonRefresher, IonRefresherContent,
@@ -9,19 +10,20 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  personAddOutline, chatbubbleOutline, callOutline,
-  ellipseOutline, checkmarkCircle, closeOutline, searchOutline,
+  personAddOutline, closeOutline, searchOutline,
+  addCircleOutline, chevronDownOutline, chevronUpOutline,
 } from 'ionicons/icons';
 import { Subject, EMPTY, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, filter } from 'rxjs/operators';
-import { FriendService, Friend, UserSearchResult } from '../core/services/friend.service';
+import { FriendService, Friend, UserSearchResult, SharedReminder, SharedStatus } from '../core/services/friend.service';
 import { SocketService } from '../core/services/socket.service';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-friends',
   standalone: true,
   imports: [
-    CommonModule,
+    CommonModule, FormsModule,
     IonContent, IonHeader, IonToolbar,
     IonIcon, IonRefresher, IonRefresherContent,
     IonSearchbar, IonSkeletonText,
@@ -141,6 +143,8 @@ import { SocketService } from '../core/services/socket.service';
         <div class="friends-list">
           @for (friend of filtered(); track friend._id) {
             <div class="friend-card">
+
+              <!-- Top row -->
               <div class="friend-top">
                 <div class="friend-avatar-wrap">
                   <div class="friend-avatar">{{ getInitials(friend.name) }}</div>
@@ -151,6 +155,8 @@ import { SocketService } from '../core/services/socket.service';
                   <div class="friend-username">&#64;{{ friend.username }}</div>
                 </div>
               </div>
+
+              <!-- Stats -->
               <div class="friend-stats">
                 <div class="fstat" style="background:rgba(59,130,246,0.12)">
                   <div class="fstat-num" style="color:#3B82F6">{{ friend.responseRate }}%</div>
@@ -165,15 +171,85 @@ import { SocketService } from '../core/services/socket.service';
                   <div class="fstat-label">Pending</div>
                 </div>
               </div>
-              <div class="friend-actions">
-                <button class="btn-send-reminder" (click)="sendReminder(friend)">Send Reminder</button>
-                <button class="btn-icon" (click)="openChat(friend)">
-                  <ion-icon name="chatbubble-outline"></ion-icon>
-                </button>
-                <button class="btn-icon" (click)="callFriend(friend)">
-                  <ion-icon name="call-outline"></ion-icon>
-                </button>
-              </div>
+
+              <!-- Send Reminder button -->
+              <button class="btn-send-reminder" (click)="toggleReminderForm(friend._id)">
+                <ion-icon name="add-circle-outline"></ion-icon>
+                Send Reminder
+                <ion-icon [name]="openFormId() === friend._id ? 'chevron-up-outline' : 'chevron-down-outline'" class="chevron"></ion-icon>
+              </button>
+
+              <!-- Inline reminder form -->
+              @if (openFormId() === friend._id) {
+                <div class="reminder-form">
+                  <input class="rf-input" type="text" placeholder="Reminder title..."
+                    [(ngModel)]="reminderForm.title" />
+                  <div class="rf-row">
+                    <input class="rf-input rf-half" type="date" [(ngModel)]="reminderForm.date" />
+                    <input class="rf-input rf-half" type="time" [(ngModel)]="reminderForm.time" />
+                  </div>
+                  <div class="rf-priority-row">
+                    @for (p of priorities; track p.value) {
+                      <button class="rf-priority"
+                        [class.active]="reminderForm.priority === p.value"
+                        (click)="reminderForm.priority = p.value">
+                        {{ p.label }}
+                      </button>
+                    }
+                  </div>
+                  <button class="btn-rf-send" [disabled]="sendingReminder()"
+                    (click)="submitReminder(friend)">
+                    {{ sendingReminder() ? 'Sending...' : 'Send to ' + friend.name.split(' ')[0] }}
+                  </button>
+                </div>
+              }
+
+              <!-- Shared reminders with status -->
+              @if (sharedReminders()[friend._id]?.length) {
+                <div class="shared-list">
+                  <div class="shared-list-title">Shared Reminders</div>
+                  @for (r of sharedReminders()[friend._id]; track r._id) {
+                    <div class="shared-item">
+                      <div class="shared-row">
+                        <div class="shared-info">
+                          <div class="shared-title">{{ r.title }}</div>
+                          <div class="shared-date">{{ r.date | date:'MMM d' }} · {{ r.time }}</div>
+                        </div>
+                        <span class="status-badge" [class]="'status-' + (r.sharedStatus || 'sent')">
+                          {{ statusLabel(r.sharedStatus) }}
+                        </span>
+                      </div>
+
+                      <!-- Action buttons — only for the recipient, only when not done/skipped -->
+                      @if (r.assignedTo === currentUserId() && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
+                        <div class="action-row">
+                          <button class="act-btn act-start"
+                            (click)="onStatusChange(r, 'processing')">
+                            ▶ Start
+                          </button>
+                          <button class="act-btn act-done"
+                            (click)="onStatusChange(r, 'completed')">
+                            ✅ Done
+                          </button>
+                          <button class="act-btn act-snooze"
+                            (click)="snooze(r, 10)">
+                            ⏰ 10 min
+                          </button>
+                          <button class="act-btn act-snooze"
+                            (click)="snooze(r, 60)">
+                            ⏰ 1 hr
+                          </button>
+                          <button class="act-btn act-skip"
+                            (click)="onStatusChange(r, 'skipped')">
+                            ⏭ Skip
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
             </div>
           }
         </div>
@@ -244,16 +320,46 @@ import { SocketService } from '../core/services/socket.service';
     .fstat{text-align:center;padding:10px 4px;border-radius:12px}
     .fstat-num{font-size:18px;font-weight:800;line-height:1}
     .fstat-label{font-size:10px;color:var(--rm-text-muted);margin-top:3px;font-weight:500}
-    .friend-actions{display:flex;align-items:center;gap:8px}
-    .btn-send-reminder{flex:1;padding:11px;background:var(--rm-purple-light);color:var(--rm-purple);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-    .btn-icon{width:42px;height:42px;border:1.5px solid var(--rm-border);border-radius:12px;background:var(--rm-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--rm-text-secondary)}
-    .btn-icon ion-icon{font-size:18px}
+    .btn-send-reminder{width:100%;padding:11px 14px;background:var(--rm-purple-light);color:var(--rm-purple);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
+    .btn-send-reminder ion-icon{font-size:16px}
+    .chevron{margin-left:auto;font-size:14px}
+    .reminder-form{margin-top:12px;display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-border)}
+    .rf-input{width:100%;padding:10px 12px;border:1.5px solid var(--rm-border);border-radius:10px;background:var(--rm-card);color:var(--rm-text-primary);font-size:14px;font-family:inherit;outline:none;box-sizing:border-box}
+    .rf-input:focus{border-color:var(--rm-purple)}
+    .rf-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .rf-half{}
+    .rf-priority-row{display:flex;gap:6px;flex-wrap:wrap}
+    .rf-priority{padding:6px 12px;border:1.5px solid var(--rm-border);border-radius:8px;background:var(--rm-card);color:var(--rm-text-secondary);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+    .rf-priority.active{border-color:var(--rm-purple);background:var(--rm-purple-light);color:var(--rm-purple)}
+    .btn-rf-send{padding:12px;background:var(--rm-purple);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+    .btn-rf-send:disabled{opacity:0.6;cursor:default}
+    .shared-list{margin-top:12px;border-top:1px solid var(--rm-border);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+    .shared-list-title{font-size:11px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+    .shared-item{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--rm-surface);border-radius:12px}
+    .shared-row{display:flex;align-items:center;gap:8px}
+    .shared-info{flex:1;min-width:0}
+    .shared-title{font-size:13px;font-weight:600;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .shared-date{font-size:11px;color:var(--rm-text-muted);margin-top:1px}
+    .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
+    .status-sent{background:rgba(234,179,8,0.15);color:#B45309}
+    .status-received{background:rgba(59,130,246,0.15);color:#1D4ED8}
+    .status-acknowledged{background:rgba(124,58,237,0.15);color:var(--rm-purple)}
+    .status-processing{background:rgba(234,88,12,0.15);color:#C2410C}
+    .status-skipped{background:rgba(107,114,128,0.15);color:#6B7280}
+    .status-completed{background:rgba(16,185,129,0.15);color:#047857}
+    .action-row{display:flex;gap:6px;flex-wrap:wrap}
+    .act-btn{padding:6px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+    .act-start{background:rgba(124,58,237,0.12);color:var(--rm-purple)}
+    .act-done{background:rgba(16,185,129,0.12);color:#047857}
+    .act-snooze{background:rgba(234,179,8,0.12);color:#B45309}
+    .act-skip{background:rgba(107,114,128,0.12);color:#6B7280}
   `],
 })
 export class FriendsComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
   private socketService = inject(SocketService);
-  private toastCtrl    = inject(ToastController);
+  private authService   = inject(AuthService);
+  private toastCtrl     = inject(ToastController);
 
   isLoading       = signal(true);
   searchQuery     = signal('');
@@ -265,6 +371,19 @@ export class FriendsComponent implements OnInit, OnDestroy {
   searchResults = signal<UserSearchResult[]>([]);
   isSearching   = signal(false);
   sending       = signal<string | null>(null);
+
+  // Send reminder
+  openFormId      = signal<string | null>(null);
+  sendingReminder = signal(false);
+  sharedReminders = signal<Record<string, SharedReminder[]>>({});
+  currentUserId   = signal<string>('');
+  reminderForm    = { title: '', date: new Date().toISOString().split('T')[0], time: '09:00', priority: 'medium' };
+  priorities      = [
+    { value: 'low', label: '🟢 Low' },
+    { value: 'medium', label: '🟡 Medium' },
+    { value: 'high', label: '🔴 High' },
+    { value: 'urgent', label: '🚨 Urgent' },
+  ];
 
   private search$   = new Subject<string>();
   private searchSub: Subscription | undefined;
@@ -278,11 +397,13 @@ export class FriendsComponent implements OnInit, OnDestroy {
   };
 
   constructor() {
-    addIcons({ personAddOutline, chatbubbleOutline, callOutline,
-               ellipseOutline, checkmarkCircle, closeOutline, searchOutline });
+    addIcons({ personAddOutline, closeOutline, searchOutline,
+               addCircleOutline, chevronDownOutline, chevronUpOutline });
   }
 
   ngOnInit() {
+    const uid = this.authService.currentUser()?._id;
+    if (uid) this.currentUserId.set(uid);
     this.load();
 
     // Reload when a new friend request arrives while this tab is open
@@ -394,9 +515,85 @@ export class FriendsComponent implements OnInit, OnDestroy {
   accept(id: string) { this.friendService.accept(id).subscribe(() => this.load()); }
   reject(id: string) { this.friendService.reject(id).subscribe(() => this.load()); }
 
-  async sendReminder(friend: Friend) { console.log('Remind', friend._id); }
-  openChat(friend: Friend)   { console.log('Chat', friend.name); }
-  callFriend(friend: Friend) { console.log('Call', friend.name); }
+  toggleReminderForm(friendId: string): void {
+    if (this.openFormId() === friendId) {
+      this.openFormId.set(null);
+    } else {
+      this.openFormId.set(friendId);
+      this.reminderForm = { title: '', date: this.todayStr(), time: this.nowTimeStr(), priority: 'medium' };
+      if (!this.sharedReminders()[friendId]) this.loadSharedReminders(friendId);
+    }
+  }
+
+  private loadSharedReminders(friendId: string): void {
+    this.friendService.getSharedReminders(friendId).subscribe({
+      next: ({ data }) => {
+        this.sharedReminders.update(prev => ({ ...prev, [friendId]: data }));
+      },
+    });
+  }
+
+  async submitReminder(friend: Friend): Promise<void> {
+    if (!this.reminderForm.title.trim()) {
+      const t = await this.toastCtrl.create({ message: 'Please enter a title', duration: 2000, color: 'warning', position: 'top' });
+      t.present(); return;
+    }
+    this.sendingReminder.set(true);
+    this.friendService.sendReminder(friend._id, this.reminderForm).subscribe({
+      next: async () => {
+        this.sendingReminder.set(false);
+        this.openFormId.set(null);
+        this.loadSharedReminders(friend._id);
+        this.load();
+        const t = await this.toastCtrl.create({ message: `Reminder sent to ${friend.name}!`, duration: 2500, color: 'success', position: 'top' });
+        t.present();
+      },
+      error: async () => {
+        this.sendingReminder.set(false);
+        const t = await this.toastCtrl.create({ message: 'Failed to send reminder', duration: 2500, color: 'danger', position: 'top' });
+        t.present();
+      },
+    });
+  }
+
+  onStatusChange(reminder: SharedReminder, status: SharedStatus): void {
+    this.friendService.updateSharedStatus(reminder._id, status).subscribe({
+      next: () => { reminder.sharedStatus = status; },
+    });
+  }
+
+  snooze(reminder: SharedReminder, minutes: number): void {
+    this.friendService.snoozeAssigned(reminder._id, minutes).subscribe({
+      next: async () => {
+        const label = minutes < 60 ? `${minutes} min` : `${minutes / 60} hr`;
+        const t = await this.toastCtrl.create({
+          message: `Snoozed for ${label}`, duration: 2000, color: 'warning', position: 'top',
+        });
+        t.present();
+      },
+    });
+  }
+
+  statusLabel(status: SharedStatus | null): string {
+    const map: Record<string, string> = {
+      sent:         '📤 Sent',
+      received:     '📬 Received',
+      acknowledged: '👀 Acknowledged',
+      processing:   '🔄 In Progress',
+      skipped:      '⏭ Skipped',
+      completed:    '✅ Completed',
+    };
+    return map[status ?? 'sent'] ?? '📤 Sent';
+  }
+
+  private todayStr(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private nowTimeStr(): string {
+    const d = new Date(); d.setHours(d.getHours() + 1, 0);
+    return `${String(d.getHours()).padStart(2,'0')}:00`;
+  }
 
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();

@@ -31,6 +31,20 @@ export interface UserSearchResult {
   email: string;
 }
 
+export type SharedStatus = 'sent' | 'received' | 'acknowledged' | 'processing' | 'skipped' | 'completed';
+
+export interface SharedReminder {
+  _id:          string;
+  title:        string;
+  date:         string;
+  time:         string;
+  status:       string;
+  sharedStatus: SharedStatus | null;
+  assignedTo:   string;
+  assignedBy:   string;
+  userId:       string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FriendService {
   private http   = inject(HttpClient);
@@ -75,5 +89,21 @@ export class FriendService {
 
   remove(friendshipId: string): Observable<void> {
     return this.http.delete<void>(`${this.API}/${friendshipId}`);
+  }
+
+  sendReminder(friendId: string, payload: { title: string; date: string; time: string; priority: string }): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/reminders`, { ...payload, assignedTo: friendId });
+  }
+
+  getSharedReminders(friendId: string): Observable<{ data: SharedReminder[] }> {
+    return this.http.get<{ data: SharedReminder[] }>(`${environment.apiUrl}/reminders/shared/${friendId}`);
+  }
+
+  updateSharedStatus(reminderId: string, status: SharedStatus): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/reminders/${reminderId}/shared-status`, { status });
+  }
+
+  snoozeAssigned(reminderId: string, minutes: number): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/reminders/${reminderId}/snooze-assigned`, { minutes });
   }
 }
