@@ -8,18 +8,28 @@ const Notification = require('../models/Notification');
 const { emitToUser }  = require('../sockets');
 const logger      = require('../utils/logger');
 
-// ── Configure web-push ────────────────────────────────────────────────────
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+// ── Configure web-push (only if valid VAPID keys are present) ────────────
+const vapidReady = process.env.VAPID_PUBLIC_KEY &&
+                   process.env.VAPID_PRIVATE_KEY &&
+                   process.env.VAPID_EMAIL;
+if (vapidReady) {
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+  } catch (err) {
+    logger.warn('Web push VAPID configuration failed — push notifications disabled:', err.message);
+  }
+} else {
+  logger.warn('VAPID keys not configured — web push notifications disabled.');
+}
 
 // ── Configure Twilio ──────────────────────────────────────────────────────
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+const twilioClient = (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
+  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  : null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 /**
