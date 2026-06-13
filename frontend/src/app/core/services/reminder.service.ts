@@ -26,6 +26,19 @@ export interface AssignedUser {
   avatar?: string;
 }
 
+export interface ReceivedReminder {
+  _id: string;
+  title: string;
+  description?: string;
+  date: string;
+  time: string;
+  type: ReminderType;
+  priority: Priority;
+  status: ReminderStatus;
+  sharedStatus?: string | null;
+  userId: { _id: string; name: string; avatar?: string }; // populated sender
+}
+
 export interface Reminder {
   _id: string;
   title: string;
@@ -60,6 +73,7 @@ export interface CreateReminderDto {
   reminderWindowMinutes?: number;
   notificationTypes?: NotificationType[];
   assignedTo?: string;
+  nextFireAt?: string; // UTC ISO — computed from user's local date+time on the frontend
 }
 
 export interface ReminderFilters {
@@ -86,15 +100,17 @@ export class ReminderService {
   private readonly API = `${environment.apiUrl}/reminders`;
 
   // ─── Reactive state via Signals ──────────────────────────────────────────
-  private _reminders = signal<Reminder[]>([]);
-  private _todayCount = signal(0);
-  private _upcomingCount = signal(0);
-  private _missedCount = signal(0);
+  private _reminders         = signal<Reminder[]>([]);
+  private _receivedReminders = signal<ReceivedReminder[]>([]);
+  private _todayCount        = signal(0);
+  private _upcomingCount     = signal(0);
+  private _missedCount       = signal(0);
 
-  readonly reminders = this._reminders.asReadonly();
-  readonly todayCount = this._todayCount.asReadonly();
-  readonly upcomingCount = this._upcomingCount.asReadonly();
-  readonly missedCount = this._missedCount.asReadonly();
+  readonly reminders         = this._reminders.asReadonly();
+  readonly receivedReminders = this._receivedReminders.asReadonly();
+  readonly todayCount        = this._todayCount.asReadonly();
+  readonly upcomingCount     = this._upcomingCount.asReadonly();
+  readonly missedCount       = this._missedCount.asReadonly();
 
   readonly completionRate = computed(() => {
     const all = this._reminders();
@@ -161,6 +177,13 @@ export class ReminderService {
     return this.http
       .patch<Reminder>(`${this.API}/${id}/snooze`, { minutes })
       .pipe(tap((updated) => this.updateInList(updated)));
+  }
+
+  // ─── Reminders assigned to current user by friends ───────────────────────
+  getReceived(): Observable<{ data: ReceivedReminder[] }> {
+    return this.http
+      .get<{ data: ReceivedReminder[] }>(`${this.API}/received`)
+      .pipe(tap(({ data }) => this._receivedReminders.set(data)));
   }
 
   // ─── Assign to friend ─────────────────────────────────────────────────────

@@ -138,12 +138,13 @@ interface PriorityOption { value: Priority; label: string; color: string }
         <div class="form-section">
           <label class="form-label">Remind me before</label>
           <select formControlName="reminderWindowMinutes" class="form-input form-select">
-            <option [value]="5">5 minutes</option>
-            <option [value]="10">10 minutes</option>
-            <option [value]="15">15 minutes</option>
-            <option [value]="30">30 minutes</option>
-            <option [value]="60">1 hour</option>
-            <option [value]="1440">1 day</option>
+            <option [value]="0">At the scheduled time</option>
+            <option [value]="5">5 minutes before</option>
+            <option [value]="10">10 minutes before</option>
+            <option [value]="15">15 minutes before</option>
+            <option [value]="30">30 minutes before</option>
+            <option [value]="60">1 hour before</option>
+            <option [value]="1440">1 day before</option>
           </select>
         </div>
 
@@ -260,10 +261,10 @@ export class ReminderCreateComponent {
     description:            [''],
     type:                   ['general' as ReminderType],
     date:                   [this.todayStr(), Validators.required],
-    time:                   ['09:00', Validators.required],
+    time:                   [this.defaultTimeStr(), Validators.required],
     repeatType:             ['none' as RepeatType],
     priority:               ['medium' as Priority],
-    reminderWindowMinutes:  [30],
+    reminderWindowMinutes:  [0],
   });
 
   get f() { return this.form.controls; }
@@ -286,8 +287,19 @@ export class ReminderCreateComponent {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
     this.saving.set(true);
+    const { date, time, reminderWindowMinutes, ...rest } = this.form.value as any;
+
+    // Combine user's local date+time and subtract the reminder window to get the exact fire moment
+    const localFireDt = new Date(`${date}T${time}`);
+    const window = Number(reminderWindowMinutes) || 0;
+    const nextFireAt = new Date(localFireDt.getTime() - window * 60_000);
+
     const dto: CreateReminderDto = {
-      ...this.form.value as CreateReminderDto,
+      ...rest,
+      date,
+      time,
+      reminderWindowMinutes: window,
+      nextFireAt: nextFireAt.toISOString(),
       notificationTypes: this.selectedNotifs(),
     };
 
@@ -317,6 +329,13 @@ export class ReminderCreateComponent {
   }
 
   private todayStr(): string {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    // Use local date (not UTC) so IST users see today's date, not yesterday
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private defaultTimeStr(): string {
+    const d = new Date(Date.now() + 5 * 60_000); // now + 5 minutes
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
 }

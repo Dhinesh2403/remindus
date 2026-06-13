@@ -84,9 +84,10 @@ exports.create = asyncHandler(async (req, res) => {
 
   const reminder = await Reminder.create({
     ...body,
-    userId: req.user._id,
-    assignedTo: assignedTo || null,
-    assignedBy: assignedTo ? req.user._id : null,
+    userId:       req.user._id,
+    assignedTo:   assignedTo || null,
+    assignedBy:   assignedTo ? req.user._id : null,
+    sharedStatus: assignedTo ? 'sent' : null,
   });
 
   // If assigned to a friend, notify them via Socket.IO + DB notification
@@ -268,6 +269,18 @@ exports.snoozeAssigned = asyncHandler(async (req, res) => {
   }
 
   res.json({ success: true, data: reminder });
+});
+
+// ── GET /api/reminders/received ──────────────────────────────────────────
+// Returns all reminders assigned TO the current user by any friend
+exports.getReceived = asyncHandler(async (req, res) => {
+  const uid = req.user._id;
+  const reminders = await Reminder.find({ assignedTo: uid })
+    .populate('userId', 'name avatar')
+    .sort({ date: 1, time: 1 })
+    .limit(100)
+    .lean();
+  res.json({ success: true, data: reminders });
 });
 
 // ── GET /api/reminders/shared/:friendId ──────────────────────────────────

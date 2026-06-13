@@ -92,7 +92,13 @@ export class FriendService {
   }
 
   sendReminder(friendId: string, payload: { title: string; date: string; time: string; priority: string }): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/reminders`, { ...payload, assignedTo: friendId });
+    // Compute nextFireAt from user's local date+time so the server schedules correctly
+    const nextFireAt = new Date(`${payload.date}T${payload.time}`).toISOString();
+    return this.http.post(`${environment.apiUrl}/reminders`, {
+      ...payload,
+      assignedTo: friendId,
+      nextFireAt,
+    });
   }
 
   getSharedReminders(friendId: string): Observable<{ data: SharedReminder[] }> {

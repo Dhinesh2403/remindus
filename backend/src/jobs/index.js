@@ -16,14 +16,26 @@ function startJobs() {
   cron.schedule('* * * * *', async () => {
     try {
       const now = new Date();
+      // Use findOneAndUpdate to atomically claim each reminder before firing,
+      // setting nextFireAt far in future to prevent re-firing on the next tick
+      const maxDate = new Date('9999-12-31T23:59:59.000Z');
+
       const dueReminders = await Reminder.find({
         status:     { $in: ['pending', 'snoozed'] },
-        nextFireAt: { $lte: now },
+        nextFireAt: { $gt: new Date(0), $lte: now },
       })
         .populate('userId', 'name email phone notifPrefs pushSubscription fcmToken')
         .populate('assignedTo', 'name fcmToken pushSubscription');
 
       for (const reminder of dueReminders) {
+        // Atomically claim it to prevent duplicate firing on concurrent ticks
+        const claimed = await Reminder.findOneAndUpdate(
+          { _id: reminder._id, nextFireAt: { $lte: now } },
+          { $set: { nextFireAt: maxDate } },
+          { new: false },
+        );
+        if (!claimed) continue; // already claimed by a concurrent tick
+
         await fireReminder(reminder);
       }
 
@@ -58,7 +70,7 @@ function startJobs() {
           type:    'reminder_pre_alert',
           title:   '⏰ Reminder in 2 minutes',
           message: `"${reminder.title}" set by ${reminder.userId?.name} is due soon`,
-          data:    { reminderId: String(reminder._id), type: 'friend_request' },
+          data:    { reminderId: String(reminder._id), type: 'reminder_assigned' },
         });
 
         reminder.preAlertSent = true;
@@ -77,10 +89,11 @@ function startJobs() {
   cron.schedule('*/5 * * * *', async () => {
     try {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const safeMax = new Date('2100-01-01'); // reminders with nextFireAt beyond this were already fired
       const result = await Reminder.updateMany(
         {
           status:     'pending',
-          nextFireAt: { $lt: fiveMinutesAgo },
+          nextFireAt: { $gt: new Date(0), $lt: fiveMinutesAgo, $lte: safeMax },
         },
         { $set: { status: 'missed' } }
       );

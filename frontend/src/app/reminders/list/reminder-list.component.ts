@@ -13,9 +13,12 @@ import {
 import { addIcons } from 'ionicons';
 import {
   addOutline, checkmarkCircleOutline, timeOutline,
-  trashOutline, personOutline,
+  trashOutline, personOutline, arrowDownOutline,
 } from 'ionicons/icons';
-import { ReminderService, Reminder, ReminderType, AssignedUser } from '../../core/services/reminder.service';
+import {
+  ReminderService, Reminder, ReceivedReminder,
+  ReminderType, AssignedUser,
+} from '../../core/services/reminder.service';
 
 const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; label: string }> = {
   birthday: { emoji: '🎂', color: '#EC4899', label: 'Birthday' },
@@ -28,7 +31,14 @@ const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; label:
   custom:   { emoji: '✨', color: '#7C3AED', label: 'Custom' },
 };
 
-const STATUS_META: Record<string, { label: string; color: string }> = {
+const REMINDER_STATUS_META: Record<string, { label: string; color: string }> = {
+  pending:  { label: 'Pending',  color: '#F59E0B' },
+  done:     { label: 'Done',     color: '#10B981' },
+  snoozed:  { label: 'Snoozed',  color: '#3B82F6' },
+  missed:   { label: 'Missed',   color: '#EF4444' },
+};
+
+const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
   sent:         { label: 'Sent',         color: '#3B82F6' },
   received:     { label: 'Received',     color: '#F59E0B' },
   acknowledged: { label: 'Acknowledged', color: '#06B6D4' },
@@ -71,14 +81,18 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
           >
             <span class="cal-weekday">{{ day.weekday }}</span>
             <span class="cal-num">{{ day.num }}</span>
-            @if (day.hasReminders) {
-              <span class="cal-dot"></span>
+            @if (day.hasMissed) {
+              <span class="cal-dot dot-missed"></span>
+            } @else if (day.hasPending) {
+              <span class="cal-dot dot-pending"></span>
+            } @else if (day.hasDone) {
+              <span class="cal-dot dot-done"></span>
             }
           </div>
         }
       </div>
 
-      <!-- Skeleton -->
+      <!-- Skeleton — only on very first load -->
       @if (isLoading()) {
         <div class="list-body">
           @for (i of [1,2,3,4]; track i) {
@@ -94,7 +108,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
       } @else {
         <div class="list-body">
 
-          <!-- Mine section -->
+          <!-- ── Mine section ── -->
           @if (mine().length > 0) {
             <div class="section-label">Mine</div>
             @for (r of mine(); track r._id) {
@@ -110,6 +124,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
                   <div
                     class="rem-card"
                     [class.done-card]="r.status === 'done'"
+                    [class.missed-card]="r.status === 'missed'"
                     [style.border-left-color]="meta(r.type).color"
                     (click)="openDetail(r._id)"
                   >
@@ -130,7 +145,11 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
                           <span class="date-num">{{ dateNum(r.date) }}</span>
                           <span class="date-mon">{{ dateMon(r.date) }}</span>
                         </div>
-                        <div class="priority-dot" [style.background]="priorityColor(r.priority)"></div>
+                        <div
+                          class="status-badge"
+                          [style.background]="reminderStatusMeta(r.status).color + '22'"
+                          [style.color]="reminderStatusMeta(r.status).color"
+                        >{{ reminderStatusMeta(r.status).label }}</div>
                       </div>
                     </div>
                   </div>
@@ -146,9 +165,11 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
             }
           }
 
-          <!-- Sent to Friends section -->
+          <!-- ── Sent to Friends section ── -->
           @if (sentToFriends().length > 0) {
-            <div class="section-label" style="margin-top:20px">Sent to Friends</div>
+            <div class="section-label" [style.margin-top]="mine().length > 0 ? '20px' : '0'">
+              Sent to Friends
+            </div>
             @for (r of sentToFriends(); track r._id) {
               <ion-item-sliding>
 
@@ -163,7 +184,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
                       <div class="card-mid">
                         <div class="card-title">{{ r.title }}</div>
                         <div class="friend-row">
-                          <ion-icon name="person-outline" style="font-size:12px;margin-right:3px"></ion-icon>
+                          <ion-icon name="person-outline"></ion-icon>
                           <span class="friend-name">{{ assignedName(r) }}</span>
                         </div>
                         <div class="card-meta">
@@ -176,15 +197,11 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
                           <span class="date-num">{{ dateNum(r.date) }}</span>
                           <span class="date-mon">{{ dateMon(r.date) }}</span>
                         </div>
-                        @if (r.sharedStatus) {
-                          <div
-                            class="status-badge"
-                            [style.background]="statusMeta(r.sharedStatus).color + '20'"
-                            [style.color]="statusMeta(r.sharedStatus).color"
-                          >{{ statusMeta(r.sharedStatus).label }}</div>
-                        } @else {
-                          <div class="status-badge" style="background:#3B82F620;color:#3B82F6">Sent</div>
-                        }
+                        <div
+                          class="status-badge"
+                          [style.background]="sharedStatusMeta(r.sharedStatus).color + '22'"
+                          [style.color]="sharedStatusMeta(r.sharedStatus).color"
+                        >{{ sharedStatusMeta(r.sharedStatus).label }}</div>
                       </div>
                     </div>
                   </div>
@@ -200,8 +217,55 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
             }
           }
 
+          <!-- ── From Friends section ── -->
+          @if (fromFriends().length > 0) {
+            <div class="section-label from-label"
+              [style.margin-top]="(mine().length > 0 || sentToFriends().length > 0) ? '20px' : '0'">
+              <ion-icon name="arrow-down-outline" style="font-size:11px;margin-right:4px;vertical-align:middle"></ion-icon>
+              From Friends
+            </div>
+            @for (r of fromFriends(); track r._id) {
+              <ion-item lines="none" class="slide-item">
+                <div
+                  class="rem-card from-card"
+                  [class.done-card]="r.status === 'done'"
+                  [style.border-left-color]="meta(r.type).color"
+                >
+                  <div class="card-row">
+                    <span class="card-emoji">{{ meta(r.type).emoji }}</span>
+                    <div class="card-mid">
+                      <div class="card-title" [class.done-text]="r.status === 'done'">{{ r.title }}</div>
+                      <div class="friend-row from-friend-row">
+                        <ion-icon name="person-outline"></ion-icon>
+                        <span class="friend-name">{{ r.userId.name }}</span>
+                      </div>
+                      @if (r.description) {
+                        <div class="card-desc">{{ r.description }}</div>
+                      }
+                      <div class="card-meta">
+                        <ion-icon name="time-outline"></ion-icon>
+                        {{ r.time }}
+                      </div>
+                    </div>
+                    <div class="card-right">
+                      <div class="date-pill">
+                        <span class="date-num">{{ dateNum(r.date) }}</span>
+                        <span class="date-mon">{{ dateMon(r.date) }}</span>
+                      </div>
+                      <div
+                        class="status-badge"
+                        [style.background]="sharedStatusMeta(r.sharedStatus).color + '22'"
+                        [style.color]="sharedStatusMeta(r.sharedStatus).color"
+                      >{{ sharedStatusMeta(r.sharedStatus).label }}</div>
+                    </div>
+                  </div>
+                </div>
+              </ion-item>
+            }
+          }
+
           <!-- Empty state -->
-          @if (mine().length === 0 && sentToFriends().length === 0) {
+          @if (mine().length === 0 && sentToFriends().length === 0 && fromFriends().length === 0) {
             <div class="empty-state">
               <div class="empty-emoji">🔔</div>
               <h3>{{ selectedDate() ? 'No reminders on this day' : 'No reminders yet' }}</h3>
@@ -228,7 +292,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
     .cal-strip {
       display: flex;
       gap: 6px;
-      padding: 14px 16px 8px;
+      padding: 14px 16px 10px;
       overflow-x: auto;
       scrollbar-width: none;
       background: var(--rm-card);
@@ -239,38 +303,40 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: 44px;
-      padding: 8px 4px 6px;
+      min-width: 46px;
+      padding: 8px 6px 6px;
       border-radius: 14px;
       cursor: pointer;
       gap: 3px;
-      position: relative;
+      transition: background 0.15s;
     }
     .cal-weekday { font-size: 10px; font-weight: 600; color: var(--rm-text-muted); text-transform: uppercase; }
-    .cal-num { font-size: 17px; font-weight: 700; color: var(--rm-text-primary); }
+    .cal-num { font-size: 18px; font-weight: 800; color: var(--rm-text-primary); line-height: 1.1; }
     .cal-today .cal-num { color: var(--rm-purple); }
+    .cal-today .cal-weekday { color: var(--rm-purple); }
     .cal-selected { background: var(--rm-purple); }
-    .cal-selected .cal-weekday, .cal-selected .cal-num { color: #fff; }
-    .cal-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--rm-purple);
-    }
-    .cal-selected .cal-dot { background: rgba(255,255,255,0.7); }
+    .cal-selected .cal-weekday, .cal-selected .cal-num { color: #fff !important; }
+    .cal-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dot-missed  { background: #EF4444; }
+    .dot-pending { background: #F97316; }
+    .dot-done    { background: #10B981; }
+    .cal-selected .cal-dot { opacity: 0.85; }
 
     /* ── List body ── */
     .list-body { padding: 12px 16px 110px; display: flex; flex-direction: column; gap: 8px; }
     .section-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--rm-text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      padding: 4px 0 6px;
+      letter-spacing: 1px;
+      padding: 4px 2px 6px;
+      display: flex;
+      align-items: center;
     }
+    .from-label { color: #10B981; }
 
-    /* ── Reminder card ── */
+    /* ── Cards ── */
     .slide-item { --padding-start: 0; --inner-padding-end: 0; --background: transparent; }
     .rem-card {
       background: var(--rm-card);
@@ -280,22 +346,28 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
       border-left: 4px solid var(--rm-border);
       width: 100%;
       cursor: pointer;
+      transition: opacity 0.2s;
     }
-    .rem-card:active { opacity: 0.9; }
-    .done-card { opacity: 0.6; }
+    .rem-card:active { opacity: 0.85; }
+    .done-card   { opacity: 0.55; }
+    .missed-card { opacity: 0.7; }
     .friend-card { border-left-style: dashed; }
+    .from-card   { border-left-style: dotted; border-left-width: 4px; }
+
     .card-row { display: flex; align-items: flex-start; gap: 10px; }
     .card-emoji { font-size: 26px; flex-shrink: 0; }
     .card-mid { flex: 1; min-width: 0; }
     .card-title { font-size: 15px; font-weight: 700; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .done-text { text-decoration: line-through; color: var(--rm-text-muted); }
     .card-desc { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .friend-row { display: flex; align-items: center; margin-top: 2px; color: var(--rm-purple); }
+    .friend-row { display: flex; align-items: center; gap: 3px; margin-top: 3px; color: var(--rm-purple); }
+    .from-friend-row { color: #10B981; }
     .friend-name { font-size: 12px; font-weight: 600; }
+    .friend-row ion-icon { font-size: 12px; }
     .card-meta { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--rm-text-muted); margin-top: 4px; }
     .card-meta ion-icon { font-size: 13px; }
 
-    /* ── Right column: date pill + priority/status ── */
+    /* ── Right column ── */
     .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
     .date-pill {
       display: flex;
@@ -304,17 +376,17 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
       background: var(--rm-purple-light);
       border-radius: 10px;
       padding: 4px 8px;
-      min-width: 36px;
+      min-width: 38px;
     }
-    .date-num { font-size: 15px; font-weight: 800; color: var(--rm-purple); line-height: 1; }
+    .date-num { font-size: 16px; font-weight: 800; color: var(--rm-purple); line-height: 1; }
     .date-mon { font-size: 10px; font-weight: 600; color: var(--rm-purple); text-transform: uppercase; }
-    .priority-dot { width: 8px; height: 8px; border-radius: 50%; }
     .status-badge {
       font-size: 10px;
       font-weight: 700;
-      padding: 3px 7px;
+      padding: 3px 8px;
       border-radius: 10px;
       white-space: nowrap;
+      text-align: center;
     }
 
     /* ── Skeleton ── */
@@ -338,60 +410,81 @@ export class ReminderListComponent implements OnInit {
   isLoading = signal(true);
   selectedDate = signal<string>('');
 
-  readonly reminders = this.reminderService.reminders;
+  readonly reminders         = this.reminderService.reminders;
+  readonly receivedReminders = this.reminderService.receivedReminders;
 
   readonly calendarDays = computed(() => {
-    const all = this.reminders();
-    const today = new Date();
+    const own      = this.reminders();
+    const received = this.receivedReminders();
+    const today    = new Date();
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
       d.setDate(today.getDate() - 3 + i);
       const dateStr = this.localDateStr(d);
+      const dayOwn      = own.filter(r => this.localDateStr(new Date(r.date)) === dateStr);
+      const dayReceived = received.filter(r => this.localDateStr(new Date(r.date)) === dateStr);
+      const all         = [...dayOwn, ...dayReceived];
       return {
         dateStr,
-        num: d.getDate(),
-        weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
-        isToday: i === 3,
-        hasReminders: all.some(r => this.localDateStr(new Date(r.date)) === dateStr),
+        num:        d.getDate(),
+        weekday:    d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
+        isToday:    i === 3,
+        hasMissed:  all.some(r => r.status === 'missed'),
+        hasPending: all.some(r => r.status === 'pending' || r.status === 'snoozed'),
+        hasDone:    all.some(r => r.status === 'done'),
       };
     });
   });
 
-  private readonly filteredByDate = computed(() => {
+  private readonly filteredOwn = computed(() => {
     const sel = this.selectedDate();
     const all = this.reminders();
     if (!sel) return all;
     return all.filter(r => this.localDateStr(new Date(r.date)) === sel);
   });
 
+  private readonly filteredReceived = computed(() => {
+    const sel = this.selectedDate();
+    const all = this.receivedReminders();
+    if (!sel) return all;
+    return all.filter(r => this.localDateStr(new Date(r.date)) === sel);
+  });
+
   readonly mine = computed(() =>
-    this.filteredByDate().filter(r => !r.assignedTo || typeof r.assignedTo !== 'object')
+    this.filteredOwn().filter(r => !r.assignedTo || typeof r.assignedTo !== 'object')
   );
 
   readonly sentToFriends = computed(() =>
-    this.filteredByDate().filter(r => r.assignedTo && typeof r.assignedTo === 'object')
+    this.filteredOwn().filter(r => r.assignedTo && typeof r.assignedTo === 'object')
   );
 
+  readonly fromFriends = computed(() => this.filteredReceived());
+
   constructor() {
-    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline });
+    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline });
   }
 
   ngOnInit(): void {
-    this.load();
+    this.isLoading.set(true);
+    Promise.all([
+      this.reminderService.getAll({ limit: 100 }).toPromise(),
+      this.reminderService.getReceived().toPromise(),
+    ]).finally(() => this.isLoading.set(false));
   }
 
-  private load(): void {
-    this.isLoading.set(true);
-    this.reminderService.getAll({ limit: 100 }).subscribe({
-      complete: () => this.isLoading.set(false),
-      error: () => this.isLoading.set(false),
-    });
+  // Fires every time this tab is entered — silent background refresh
+  ionViewWillEnter(): void {
+    if (!this.isLoading()) {
+      this.reminderService.getAll({ limit: 100 }).subscribe();
+      this.reminderService.getReceived().subscribe();
+    }
   }
 
   doRefresh(event: CustomEvent): void {
-    this.reminderService.getAll({ limit: 100 }).subscribe({
-      complete: () => (event.target as HTMLIonRefresherElement).complete(),
-    });
+    Promise.all([
+      this.reminderService.getAll({ limit: 100 }).toPromise(),
+      this.reminderService.getReceived().toPromise(),
+    ]).finally(() => (event.target as HTMLIonRefresherElement).complete());
   }
 
   toggleDay(dateStr: string): void {
@@ -434,10 +527,13 @@ export class ReminderListComponent implements OnInit {
 
   meta(type: ReminderType) { return CATEGORY_META[type] ?? CATEGORY_META.general; }
 
-  statusMeta(status: string) { return STATUS_META[status] ?? { label: status, color: '#9CA3AF' }; }
+  reminderStatusMeta(status: string) {
+    return REMINDER_STATUS_META[status] ?? { label: status, color: '#9CA3AF' };
+  }
 
-  priorityColor(p: string): string {
-    return ({ low: '#10B981', medium: '#F59E0B', high: '#F97316', urgent: '#EF4444' } as Record<string,string>)[p] ?? '#9CA3AF';
+  sharedStatusMeta(status?: string | null) {
+    if (!status) return SHARED_STATUS_META['sent'];
+    return SHARED_STATUS_META[status] ?? { label: status, color: '#9CA3AF' };
   }
 
   assignedName(r: Reminder): string {

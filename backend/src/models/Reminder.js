@@ -61,11 +61,16 @@ reminderSchema.index({ userId: 1, status: 1, date: 1 });
 reminderSchema.index({ nextFireAt: 1, status: 1 });
 
 reminderSchema.pre('save', function (next) {
+  // If frontend provided nextFireAt (timezone-aware), trust it on new docs
+  if (this.isNew && this.nextFireAt) {
+    return next();
+  }
   if (this.isModified('date') || this.isModified('time') || this.isModified('reminderWindowMinutes')) {
     const [h, m] = this.time.split(':').map(Number);
-    const fireAt = new Date(this.date);
-    fireAt.setHours(h, m, 0, 0);
-    fireAt.setMinutes(fireAt.getMinutes() - this.reminderWindowMinutes);
+    const d = new Date(this.date);
+    // Always use UTC so server timezone never shifts the fire time
+    const fireAt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h, m, 0, 0));
+    fireAt.setUTCMinutes(fireAt.getUTCMinutes() - (this.reminderWindowMinutes || 0));
     this.nextFireAt = fireAt;
   }
   next();

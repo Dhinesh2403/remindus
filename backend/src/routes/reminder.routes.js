@@ -11,6 +11,7 @@ router.use(authenticate);
 
 router.get('/',              ctrl.getAll);
 router.get('/stats/summary', ctrl.getStats);
+router.get('/received',      ctrl.getReceived);
 router.get('/:id',           ctrl.getById);
 
 router.post('/',
