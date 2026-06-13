@@ -62,17 +62,20 @@ exports.getFriends = asyncHandler(async (req, res) => {
 // ── GET /api/friends/search?q=name ───────────────────────────────────────
 exports.searchUsers = asyncHandler(async (req, res) => {
   const { q } = req.query;
-  if (!q || q.trim().length < 3) {
+  if (!q || q.trim().length < 2) {
     return res.json({ success: true, users: [] });
   }
 
   const uid = req.user._id;
 
-  // Find users whose name matches (case-insensitive), excluding self
+  // Find users whose name or email matches (case-insensitive), excluding self
   const users = await User.find({
-    _id:  { $ne: uid },
-    name: { $regex: q.trim(), $options: 'i' },
-  }).select('name email').limit(15);
+    _id: { $ne: uid },
+    $or: [
+      { name:  { $regex: q.trim(), $options: 'i' } },
+      { email: { $regex: q.trim(), $options: 'i' } },
+    ],
+  }).select('name email avatar').limit(15);
 
   // Exclude users already connected (any friendship status)
   const existingFriendships = await Friendship.find({
