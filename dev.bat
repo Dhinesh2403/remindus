@@ -6,6 +6,7 @@ set ROOT=%~dp0
 set FRONTEND=%ROOT%frontend
 set BACKEND=%ROOT%backend
 set ANDROID=%FRONTEND%\android
+set APK_OUT=%ROOT%build-apk
 
 :MENU
 cls
@@ -18,7 +19,7 @@ echo   [2]  Run Frontend only  (dev config)
 echo   [3]  Run Backend only   (dev config)
 echo.
 echo   [4]  Build APK  ^>  DEV     (debug)
-echo   [5]  Build APK  ^>  STAGING (release)
+echo   [5]  Build APK  ^>  STAGING
 echo   [6]  Build APK  ^>  PROD    (release)
 echo.
 echo   [7]  Cap Sync (build web + sync to Capacitor)
@@ -44,6 +45,42 @@ echo.
 echo   Invalid option. Try again.
 pause
 goto MENU
+
+:: ============================================================
+::  Helper: copy APK to build-apk folder and open it
+::  Usage: call :DELIVER_APK <src_apk_path> <type_label>
+:: ============================================================
+:DELIVER_APK
+set _SRC=%~1
+set _TYPE=%~2
+set _DEST=%APK_OUT%\%_TYPE%
+
+if not exist "%_DEST%" mkdir "%_DEST%"
+
+:: Read versionName from build.gradle, then auto-increment minor if file already exists
+:: e.g. v1.0 exists → use v1.1, v1.1 exists → v1.2, etc.
+set _VER=1.0
+for /f "delims=" %%V in ('powershell -NoProfile -Command "(gc '%ANDROID%\app\build.gradle' | where{$_ -match '^ *versionName ' -and $_ -notmatch 'Suffix'}).Trim().Split([char]34)[1]"') do set _VER=%%V
+
+:: Auto-increment: if RemindMe-<type>-v<ver>.apk already exists, bump minor version
+for /f "delims=" %%F in ('powershell -NoProfile -Command ^
+  "$v='!_VER!'.Split('.'); $maj=[int]$v[0]; $min=[int]$v[1]; $t='%_TYPE%'; $d='%_DEST%'; while(Test-Path \"$d\RemindMe-$t-v$maj.$min.apk\"){$min++}; \"$maj.$min\""') do set _VER=%%F
+
+set _FNAME=RemindMe-%_TYPE%-v!_VER!.apk
+
+:: Copy versioned file
+copy /Y "%_SRC%" "%_DEST%\%_FNAME%" >nul
+:: Always overwrite latest.apk (this is what git tracks)
+copy /Y "%_SRC%" "%_DEST%\latest.apk" >nul
+
+echo.
+echo   ✓  %_FNAME%
+echo   ✓  latest.apk  (git-tracked)
+echo      ^> %_DEST%
+echo.
+echo   Opening build-apk folder...
+explorer "%_DEST%"
+goto :EOF
 
 :: ============================================================
 ::  [1] Run Dev — Frontend + Backend in separate windows
@@ -89,7 +126,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [4] Build DEV APK  (debug)
+::  [4] Build DEV APK  (debug — package ID: com.remindmebuddy.app.debug)
 :: ============================================================
 :BUILD_DEV_APK
 echo.
@@ -104,20 +141,19 @@ call npx cap sync android
 if errorlevel 1 ( echo   BUILD FAILED at Cap Sync step. & pause & goto MENU )
 
 echo.
-echo   [3/3] Assembling DEBUG APK with Gradle...
+echo   [3/3] Assembling DEV (debug) APK with Gradle...
 cd /d %ANDROID%
 call gradlew.bat assembleDebug
 if errorlevel 1 ( echo   BUILD FAILED at Gradle step. & pause & goto MENU )
 
-echo.
-echo   ✓  DEV APK ready:
-echo      %ANDROID%\app\build\outputs\apk\debug\app-debug.apk
-echo.
+call :DELIVER_APK "%ANDROID%\app\build\outputs\apk\debug\app-debug.apk" "dev"
 pause
 goto MENU
 
 :: ============================================================
-::  [5] Build STAGING APK  (release)
+::  [5] Build STAGING APK
+::      Same package ID as prod, debug-signed.
+::      Installing over production triggers "package appears to be invalid".
 :: ============================================================
 :BUILD_STAGING_APK
 echo.
@@ -132,20 +168,17 @@ call npx cap sync android
 if errorlevel 1 ( echo   BUILD FAILED at Cap Sync step. & pause & goto MENU )
 
 echo.
-echo   [3/3] Assembling RELEASE APK with Gradle...
+echo   [3/3] Assembling STAGING APK with Gradle...
 cd /d %ANDROID%
-call gradlew.bat assembleRelease
+call gradlew.bat assembleStaging
 if errorlevel 1 ( echo   BUILD FAILED at Gradle step. & pause & goto MENU )
 
-echo.
-echo   ✓  STAGING APK ready:
-echo      %ANDROID%\app\build\outputs\apk\release\app-release.apk
-echo.
+call :DELIVER_APK "%ANDROID%\app\build\outputs\apk\staging\app-staging.apk" "staging"
 pause
 goto MENU
 
 :: ============================================================
-::  [6] Build PROD APK  (release)
+::  [6] Build PROD APK  (release — package ID: com.remindmebuddy.app)
 :: ============================================================
 :BUILD_PROD_APK
 echo.
@@ -160,15 +193,12 @@ call npx cap sync android
 if errorlevel 1 ( echo   BUILD FAILED at Cap Sync step. & pause & goto MENU )
 
 echo.
-echo   [3/3] Assembling RELEASE APK with Gradle...
+echo   [3/3] Assembling PROD (release) APK with Gradle...
 cd /d %ANDROID%
 call gradlew.bat assembleRelease
 if errorlevel 1 ( echo   BUILD FAILED at Gradle step. & pause & goto MENU )
 
-echo.
-echo   ✓  PROD APK ready:
-echo      %ANDROID%\app\build\outputs\apk\release\app-release.apk
-echo.
+call :DELIVER_APK "%ANDROID%\app\build\outputs\apk\release\app-release-unsigned.apk" "prod"
 pause
 goto MENU
 

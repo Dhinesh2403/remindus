@@ -46,9 +46,13 @@ app.use(helmet({
 // CORS — whitelist frontend URLs per environment
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  'http://localhost:8100',       // Ionic dev
-  'http://localhost:4200',       // Angular dev
-  'capacitor://localhost',       // Capacitor iOS/Android
+  'http://localhost:8100',        // Ionic dev (HTTP)
+  'https://localhost:8100',       // Ionic dev (HTTPS)
+  'http://localhost:4200',        // Angular dev (HTTP)
+  'https://localhost:4200',       // Angular dev (HTTPS)
+  'https://localhost',            // Chrome DevTools remote debug
+  'http://localhost',
+  'capacitor://localhost',        // Capacitor iOS/Android
   'ionic://localhost',
 ].filter(Boolean);
 

@@ -56,4 +56,13 @@ coverage/
 .railway/
 README.md
 
-build-apk/
+# ─── Environment files (contain secrets) ─────────────────────────────────────
+frontend/src/environments/environment.ts
+frontend/src/environments/environment.staging.ts
+frontend/src/environments/environment.production.ts
+
+# ─── APK build output — ignore versioned files, track only latest per type ────
+build-apk/**
+!build-apk/
+!build-apk/*/
+!build-apk/*/latest.apk
