@@ -126,12 +126,17 @@ app.use(errorHandler);
 // ── Startup ────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-(async () => {
-  await connectDB();
-  startJobs();
-  server.listen(PORT, () => {
-    logger.info(`🚀 Server running in [${process.env.NODE_ENV}] mode on port ${PORT}`);
+// Start listening immediately so Railway's healthcheck can reach /api/health
+// while the DB connection is still being established.
+server.listen(PORT, () => {
+  logger.info(`🚀 Server running in [${process.env.NODE_ENV}] mode on port ${PORT}`);
+  // Connect DB and start jobs after the HTTP server is up
+  connectDB().then(() => {
+    startJobs();
+  }).catch((err) => {
+    logger.error('Fatal DB connection error:', err.message);
+    process.exit(1);
   });
-})();
+});
 
 module.exports = { app, server }; // for testing
