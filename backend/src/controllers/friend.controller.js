@@ -61,39 +61,34 @@ exports.getFriends = asyncHandler(async (req, res) => {
 
 // ── GET /api/friends/search?q=name ───────────────────────────────────────
 exports.searchUsers = asyncHandler(async (req, res) => {
-  const { q } = req.query;
-  if (!q || q.trim().length < 2) {
-    return res.json({ success: true, users: [] });
-  }
+  const raw = String(req.query.q ?? '').trim();
+  if (raw.length < 2) return res.json({ success: true, users: [] });
 
-  const uid = req.user._id;
+  const uid = String(req.user._id);
 
-  // Find users whose name or email matches (case-insensitive), excluding self
-  const users = await User.find({
-    _id: { $ne: uid },
-    $or: [
-      { name:  { $regex: q.trim(), $options: 'i' } },
-      { email: { $regex: q.trim(), $options: 'i' } },
-    ],
-  }).select('name email avatar').limit(15);
+  // Escape special regex characters so user input is always treated as plain text
+  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex   = new RegExp(escaped, 'i');
 
-  // Exclude users with active/pending connections, but allow rejected to re-appear
-  const existingFriendships = await Friendship.find({
+  // Build exclusion set: self + anyone already pending/accepted
+  const friendships = await Friendship.find({
     $or: [{ requester: uid }, { recipient: uid }],
     status: { $in: ['pending', 'accepted'] },
-  }).select('requester recipient');
+  }).select('requester recipient').lean();
 
-  const connectedIds = new Set(
-    existingFriendships.map(f =>
-      String(f.requester) === String(uid)
-        ? String(f.recipient)
-        : String(f.requester)
-    )
-  );
+  const exclude = new Set([uid]);
+  friendships.forEach(f => {
+    exclude.add(String(f.requester) === uid ? String(f.recipient) : String(f.requester));
+  });
 
-  const filtered = users.filter(u => !connectedIds.has(String(u._id)));
+  const users = await User.find({
+    $or: [{ name: regex }, { email: regex }],
+  }).select('name email avatar').limit(20).lean();
 
-  res.json({ success: true, users: filtered });
+  res.json({
+    success: true,
+    users: users.filter(u => !exclude.has(String(u._id))),
+  });
 });
 
 // ── POST /api/friends/request ─────────────────────────────────────────────
