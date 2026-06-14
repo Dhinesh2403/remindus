@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 export type SocketEvent =
   | 'reminder:due'
   | 'reminder:assigned'
+  | 'reminder:received'
   | 'reminder:response'
   | 'reminder:sharedStatus'
   | 'friend:request'
@@ -51,6 +52,7 @@ export class SocketService {
     const events: SocketEvent[] = [
       'reminder:due',
       'reminder:assigned',
+      'reminder:received',
       'reminder:response',
       'reminder:sharedStatus',
       'friend:request',

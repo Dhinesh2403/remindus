@@ -96,8 +96,25 @@ exports.create = asyncHandler(async (req, res) => {
     sharedStatus: assignedTo ? 'sent' : null,
   });
 
-  // If assigned to a friend, notify them via Socket.IO + DB notification
+  // If assigned to a friend, emit socket + push notification
   if (assignedTo) {
+    // Real-time: add reminder to friend's "From Friends" list immediately
+    emitToUser(String(assignedTo), 'reminder:received', {
+      _id:          String(reminder._id),
+      title:        reminder.title,
+      description:  reminder.description,
+      date:         reminder.date,
+      time:         reminder.time,
+      type:         reminder.type,
+      priority:     reminder.priority,
+      status:       reminder.status,
+      sharedStatus: reminder.sharedStatus,
+      userId: {
+        _id:    String(req.user._id),
+        name:   req.user.name,
+        avatar: req.user.avatar,
+      },
+    });
     await notifService.createAndPush({
       userId:  assignedTo,
       type:    'reminder_assigned',

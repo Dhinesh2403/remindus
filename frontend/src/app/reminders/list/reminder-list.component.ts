@@ -276,13 +276,19 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                           }
                         </div>
                         <div
-                          class="status-badge status-badge-tap"
+                          class="status-badge"
                           [style.background]="sharedStatusMeta(r.sharedStatus).color + '22'"
                           [style.color]="sharedStatusMeta(r.sharedStatus).color"
-                          (click)="changeReceivedStatus(r)"
-                        >{{ sharedStatusMeta(r.sharedStatus).label }} ›</div>
+                        >{{ sharedStatusMeta(r.sharedStatus).label }}</div>
                       </div>
                     </div>
+                    @if (r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
+                      <div class="from-action-strip" (click)="$event.stopPropagation()">
+                        <button class="fas-btn fas-done"   (click)="completeReceived(r)">✅ Done</button>
+                        <button class="fas-btn fas-update" (click)="changeReceivedStatus(r)">🔄 Status</button>
+                        <button class="fas-btn fas-skip"   (click)="skipReceived(r)">⏭️ Skip</button>
+                      </div>
+                    }
                   </div>
                 </ion-item>
 
@@ -422,8 +428,11 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
       white-space: nowrap;
       text-align: center;
     }
-    .status-badge-tap { cursor: pointer; border: 1px dashed currentColor; opacity: 0.9; }
-    .status-badge-tap:active { opacity: 0.6; }
+    .from-action-strip { display:flex; gap:6px; margin-top:10px; border-top:1px solid var(--rm-border); padding-top:8px; }
+    .fas-btn { flex:1; padding:6px 4px; border:none; border-radius:10px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .fas-done   { background:rgba(16,185,129,0.12); color:#10B981; }
+    .fas-update { background:rgba(139,92,246,0.12); color:#8B5CF6; }
+    .fas-skip   { background:rgba(156,163,175,0.12); color:#6B7280; }
 
     /* ── Skeleton ── */
     .skeleton-card { display: flex; align-items: center; padding: 14px; background: var(--rm-card); border-radius: 18px; }
@@ -493,7 +502,7 @@ export class ReminderListComponent implements OnInit {
     return this.localDateStr(new Date(dateStr)) === this.todayDateStr;
   }
 
-  // pending-today → pending-future → missed → done  (within each group: earliest first)
+  // pending-today → pending-future → missed → done  (within each group: newest createdAt first)
   private sortOwn(items: Reminder[]): Reminder[] {
     return [...items].sort((a, b) => {
       const rank = (r: Reminder) => {
@@ -505,7 +514,8 @@ export class ReminderListComponent implements OnInit {
       };
       const ra = rank(a), rb = rank(b);
       if (ra !== rb) return ra - rb;
-      return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
+      // Most recently created shows first within each group
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }
 

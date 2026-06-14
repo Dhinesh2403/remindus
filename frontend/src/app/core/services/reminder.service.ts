@@ -237,18 +237,23 @@ export class ReminderService {
       this.updateInList(reminder);
     });
 
+    // A friend assigned a reminder TO me → add to my received list immediately
     this.socketService
-      .on<Reminder>('reminder:assigned')
+      .on<ReceivedReminder>('reminder:received')
       .subscribe((reminder) => {
-        this._reminders.update((prev) => [reminder, ...prev]);
+        this._receivedReminders.update((prev) => [reminder, ...prev]);
       });
 
-    // Friend updated the sharedStatus on a reminder I sent them → update in place
+    // Friend updated the sharedStatus on a reminder I sent them → update sender's list in place
     this.socketService
       .on<{ _id: string; sharedStatus: string; status: string }>('reminder:sharedStatus')
       .subscribe(({ _id, sharedStatus, status }) => {
         this._reminders.update(prev =>
-          prev.map(r => r._id === _id ? { ...r, sharedStatus, ...(status ? { status } : {}) } : r)
+          prev.map(r => r._id === _id ? { ...r, sharedStatus, ...(status ? { status: status as ReminderStatus } : {}) } : r)
+        );
+        // Also update received list in case both sides use the same event
+        this._receivedReminders.update(prev =>
+          prev.map(r => r._id === _id ? { ...r, sharedStatus, ...(status ? { status: status as ReminderStatus } : {}) } : r)
         );
       });
   }

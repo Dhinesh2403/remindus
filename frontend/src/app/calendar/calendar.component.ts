@@ -7,7 +7,19 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronBackOutline, chevronForwardOutline } from 'ionicons/icons';
-import { ReminderService, Reminder } from '../core/services/reminder.service';
+import { ReminderService, Reminder, ReceivedReminder, ReminderType } from '../core/services/reminder.service';
+
+interface CalReminder {
+  _id:          string;
+  title:        string;
+  date:         string;
+  time:         string;
+  type:         ReminderType;
+  status:       string;
+  sharedStatus: string | null | undefined;
+  isReceived:   boolean;
+  fromName?:    string;
+}
 
 interface CalendarDay {
   date:        Date;
@@ -15,7 +27,7 @@ interface CalendarDay {
   isToday:     boolean;
   isSelected:  boolean;
   isOtherMonth:boolean;
-  reminders:   Reminder[];
+  reminders:   CalReminder[];
 }
 
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -31,6 +43,17 @@ const CAT_EMOJI: Record<string, string> = {
   birthday: '🎂', wedding: '💍', medicine: '💊',
   bill: '💰', study: '📚', work: '💼',
   general: '📌', custom: '✨',
+};
+const SHARED_COLOR: Record<string, string> = {
+  sent: '#3B82F6', received: '#F59E0B', acknowledged: '#06B6D4',
+  processing: '#8B5CF6', skipped: '#9CA3AF', completed: '#10B981',
+};
+const SHARED_LABEL: Record<string, string> = {
+  sent: 'Sent', received: 'Received', acknowledged: 'Acknowledged',
+  processing: 'In Progress', skipped: 'Skipped', completed: 'Completed',
+};
+const STATUS_COLOR: Record<string, string> = {
+  pending: '#F59E0B', done: '#10B981', snoozed: '#3B82F6', missed: '#EF4444',
 };
 
 @Component({
@@ -116,17 +139,30 @@ const CAT_EMOJI: Record<string, string> = {
         } @else {
           <div class="events-list">
             @for (r of selectedDayReminders(); track r._id) {
-              <div class="event-card" [style.border-left-color]="getCatColor(r.type)">
+              <div class="event-card" [style.border-left-color]="getCatColor(r.type)" [class.event-done]="r.status === 'done'">
                 <span class="event-emoji">{{ getCatEmoji(r.type) }}</span>
                 <div class="event-info">
                   <div class="event-title">{{ r.title }}</div>
-                  <div class="event-time">{{ r.time | timeAmPm }}</div>
+                  <div class="event-time">
+                    {{ r.time | timeAmPm }}
+                    @if (r.isReceived && r.fromName) {
+                      <span class="event-from"> · from {{ r.fromName }}</span>
+                    }
+                  </div>
                 </div>
-                <span
-                  class="event-tag"
-                  [style.background]="getCatColor(r.type) + '18'"
-                  [style.color]="getCatColor(r.type)"
-                >{{ r.type }}</span>
+                <div class="event-right">
+                  @if (r.sharedStatus) {
+                    <span class="event-status-chip"
+                      [style.background]="getSharedColor(r.sharedStatus) + '22'"
+                      [style.color]="getSharedColor(r.sharedStatus)"
+                    >{{ getSharedLabel(r.sharedStatus) }}</span>
+                  } @else {
+                    <span class="event-status-chip"
+                      [style.background]="getStatusColor(r.status) + '22'"
+                      [style.color]="getStatusColor(r.status)"
+                    >{{ r.status }}</span>
+                  }
+                </div>
               </div>
             }
           </div>
@@ -174,11 +210,14 @@ const CAT_EMOJI: Record<string, string> = {
     .no-events p { font-size: 14px; color: var(--rm-text-muted); }
     .events-list { display: flex; flex-direction: column; gap: 10px; }
     .event-card { background: var(--rm-card); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid var(--rm-border); }
+    .event-card.event-done { opacity: 0.6; }
     .event-emoji { font-size: 22px; flex-shrink: 0; }
-    .event-info { flex: 1; }
-    .event-title { font-size: 14px; font-weight: 700; color: var(--rm-text-primary); }
+    .event-info { flex: 1; min-width: 0; }
+    .event-title { font-size: 14px; font-weight: 700; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .event-time { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; }
-    .event-tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: capitalize; flex-shrink: 0; }
+    .event-from { font-style: italic; }
+    .event-right { flex-shrink: 0; }
+    .event-status-chip { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
   `],
 })
 export class CalendarComponent implements OnInit {
@@ -188,7 +227,34 @@ export class CalendarComponent implements OnInit {
   today     = new Date();
   viewDate  = signal(new Date());
   selected  = signal(new Date());
-  reminders = this.reminderService.reminders;
+
+  private toCalReminder = (r: Reminder): CalReminder => ({
+    _id:          r._id,
+    title:        r.title,
+    date:         r.date,
+    time:         r.time,
+    type:         r.type,
+    status:       r.status,
+    sharedStatus: r.sharedStatus,
+    isReceived:   false,
+  });
+
+  private toCalReceived = (r: ReceivedReminder): CalReminder => ({
+    _id:          r._id,
+    title:        r.title,
+    date:         r.date,
+    time:         r.time,
+    type:         r.type,
+    status:       r.status,
+    sharedStatus: r.sharedStatus,
+    isReceived:   true,
+    fromName:     (r.userId as { name: string })?.name,
+  });
+
+  readonly allReminders = computed((): CalReminder[] => [
+    ...this.reminderService.reminders().map(r => this.toCalReminder(r)),
+    ...this.reminderService.receivedReminders().map(r => this.toCalReceived(r)),
+  ]);
 
   constructor() {
     addIcons({ chevronBackOutline, chevronForwardOutline });
@@ -196,12 +262,14 @@ export class CalendarComponent implements OnInit {
 
   ngOnInit() {
     this.reminderService.getAll({ limit: 100 }).subscribe();
+    this.reminderService.getReceived().subscribe();
   }
 
   doRefresh(event: CustomEvent) {
-    this.reminderService.getAll({ limit: 100 }).subscribe({
-      complete: () => (event.target as HTMLIonRefresherElement).complete(),
-    });
+    Promise.all([
+      this.reminderService.getAll({ limit: 100 }).toPromise(),
+      this.reminderService.getReceived().toPromise(),
+    ]).finally(() => (event.target as HTMLIonRefresherElement).complete());
   }
 
   readonly currentMonthLabel = computed(() => {
@@ -219,7 +287,7 @@ export class CalendarComponent implements OnInit {
   readonly calDays = computed((): CalendarDay[] => {
     const v   = this.viewDate();
     const sel = this.selected();
-    const rem = this.reminders();
+    const rem = this.allReminders();
     const year  = v.getFullYear();
     const month = v.getMonth();
 
@@ -228,35 +296,27 @@ export class CalendarComponent implements OnInit {
     const prevLast = new Date(year, month, 0).getDate();
 
     const days: CalendarDay[] = [];
-
-    // Prev month padding
     for (let i = firstDay - 1; i >= 0; i--) {
-      const d = new Date(year, month - 1, prevLast - i);
-      days.push(this.buildDay(d, rem, sel, true));
+      days.push(this.buildDay(new Date(year, month - 1, prevLast - i), rem, sel, true));
     }
-    // Current month
     for (let i = 1; i <= lastDate; i++) {
-      const d = new Date(year, month, i);
-      days.push(this.buildDay(d, rem, sel, false));
+      days.push(this.buildDay(new Date(year, month, i), rem, sel, false));
     }
-    // Next month padding
     const remaining = 42 - days.length;
     for (let i = 1; i <= remaining; i++) {
-      const d = new Date(year, month + 1, i);
-      days.push(this.buildDay(d, rem, sel, true));
+      days.push(this.buildDay(new Date(year, month + 1, i), rem, sel, true));
     }
     return days;
   });
 
   readonly selectedDayReminders = computed(() => {
     const sel = this.selected();
-    return this.reminders().filter(r => {
-      const rd = new Date(r.date);
-      return rd.toDateString() === sel.toDateString();
-    }).sort((a, b) => a.time.localeCompare(b.time));
+    return this.allReminders()
+      .filter(r => new Date(r.date).toDateString() === sel.toDateString())
+      .sort((a, b) => a.time.localeCompare(b.time));
   });
 
-  private buildDay(date: Date, reminders: Reminder[], selected: Date, isOtherMonth: boolean): CalendarDay {
+  private buildDay(date: Date, reminders: CalReminder[], selected: Date, isOtherMonth: boolean): CalendarDay {
     return {
       date,
       day: date.getDate(),
@@ -282,4 +342,7 @@ export class CalendarComponent implements OnInit {
 
   getCatColor(type: string): string { return CAT_COLOR[type] ?? '#6B7280'; }
   getCatEmoji(type: string): string { return CAT_EMOJI[type] ?? '📌'; }
+  getSharedColor(s?: string | null): string { return SHARED_COLOR[s ?? ''] ?? '#9CA3AF'; }
+  getSharedLabel(s?: string | null): string { return SHARED_LABEL[s ?? ''] ?? (s ?? ''); }
+  getStatusColor(s?: string | null): string { return STATUS_COLOR[s ?? ''] ?? '#9CA3AF'; }
 }
