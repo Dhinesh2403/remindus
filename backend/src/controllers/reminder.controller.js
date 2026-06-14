@@ -72,7 +72,13 @@ exports.getStats = asyncHandler(async (req, res) => {
 
 // ── GET /api/reminders/:id ────────────────────────────────────────────────
 exports.getById = asyncHandler(async (req, res) => {
-  const reminder = await Reminder.findOne({ _id: req.params.id, userId: req.user._id })
+  const uid = req.user._id;
+  // Allow both the creator (userId) and the recipient (assignedTo) to view
+  const reminder = await Reminder.findOne({
+    _id: req.params.id,
+    $or: [{ userId: uid }, { assignedTo: uid }],
+  })
+    .populate('userId',     'name avatar')
     .populate('assignedTo', 'name avatar email');
   if (!reminder) throw new AppError('Reminder not found', 404);
   res.json(reminder);
@@ -216,7 +222,10 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
   if (!reminder) throw new AppError('Reminder not found', 404);
 
   reminder.sharedStatus = status;
-  if (status === 'completed') reminder.completedAt = new Date();
+  if (status === 'completed') {
+    reminder.completedAt = new Date();
+    reminder.status = 'done';   // sync system status so detail page reflects completion
+  }
   await reminder.save();
 
   if (reminder.assignedBy) {
@@ -224,6 +233,7 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
     emitToUser(String(reminder.assignedBy), 'reminder:sharedStatus', {
       _id:          String(reminder._id),
       sharedStatus: reminder.sharedStatus,
+      status:       reminder.status,
     });
 
     const notifMap = {

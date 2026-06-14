@@ -1,15 +1,19 @@
 // src/app/reminders/detail/reminder-detail.component.ts
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TimeAmPmPipe } from '../../core/pipes/time-ampm.pipe';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonContent, IonHeader, IonToolbar, IonTitle, IonButtons,
-  IonBackButton, IonIcon, IonSpinner, AlertController, ToastController,
+  IonBackButton, IonIcon, IonSpinner, AlertController, ActionSheetController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, timeOutline, trashOutline, createOutline } from 'ionicons/icons';
+import {
+  checkmarkCircleOutline, timeOutline, trashOutline, createOutline,
+  refreshOutline, playSkipForwardOutline,
+} from 'ionicons/icons';
 import { ReminderService, Reminder } from '../../core/services/reminder.service';
+import { AuthService } from '../../core/services/auth.service';
 
 const CAT_COLOR: Record<string, string> = {
   birthday:'#EC4899',wedding:'#8B5CF6',medicine:'#EF4444',
@@ -18,21 +22,38 @@ const CAT_COLOR: Record<string, string> = {
 const CAT_EMOJI: Record<string, string> = {
   birthday:'🎂',wedding:'💍',medicine:'💊',bill:'💰',study:'📚',work:'💼',general:'📌',custom:'✨',
 };
+const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
+  sent:         { label: 'Sent',         color: '#3B82F6' },
+  received:     { label: 'Received',     color: '#F59E0B' },
+  acknowledged: { label: 'Acknowledged', color: '#06B6D4' },
+  processing:   { label: 'In Progress',  color: '#8B5CF6' },
+  skipped:      { label: 'Skipped',      color: '#9CA3AF' },
+  completed:    { label: 'Completed',    color: '#10B981' },
+};
 
 @Component({
   selector: 'app-reminder-detail',
   standalone: true,
-  imports: [CommonModule, TimeAmPmPipe, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonIcon, IonSpinner],
+  imports: [
+    CommonModule, TimeAmPmPipe,
+    IonContent, IonHeader, IonToolbar, IonTitle, IonButtons,
+    IonBackButton, IonIcon, IonSpinner,
+  ],
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar>
         <ion-buttons slot="start"><ion-back-button defaultHref="/app/reminders" text=""></ion-back-button></ion-buttons>
         <ion-title>Reminder</ion-title>
-        <ion-buttons slot="end">
-          <button class="icon-btn" (click)="confirmDelete()"><ion-icon name="trash-outline" style="color:var(--rm-danger)"></ion-icon></button>
-        </ion-buttons>
+        @if (!isRecipient()) {
+          <ion-buttons slot="end">
+            <button class="icon-btn" (click)="confirmDelete()">
+              <ion-icon name="trash-outline" style="color:var(--rm-danger)"></ion-icon>
+            </button>
+          </ion-buttons>
+        }
       </ion-toolbar>
     </ion-header>
+
     <ion-content class="detail-content">
       @if (loading()) {
         <div class="loading-wrap"><ion-spinner name="crescent" color="primary"></ion-spinner></div>
@@ -41,15 +62,58 @@ const CAT_EMOJI: Record<string, string> = {
           <div class="detail-emoji">{{ emoji() }}</div>
           <h1 class="detail-title">{{ reminder()!.title }}</h1>
           @if (reminder()!.description) { <p class="detail-desc">{{ reminder()!.description }}</p> }
+
           <div class="detail-meta">
             <div class="meta-item"><span class="meta-icon">📅</span>{{ reminder()!.date | date:'MMMM d, y' }}</div>
             <div class="meta-item"><span class="meta-icon">⏰</span>{{ reminder()!.time | timeAmPm }}</div>
             <div class="meta-item"><span class="meta-icon">🔁</span>{{ reminder()!.repeatType }}</div>
             <div class="meta-item"><span class="meta-icon">⚡</span>{{ reminder()!.priority }}</div>
           </div>
-          <div class="status-badge" [class]="'status-' + reminder()!.status">{{ reminder()!.status }}</div>
+
+          @if (isRecipient()) {
+            <!-- Recipient view -->
+            <div class="from-row">
+              <span class="meta-icon">👤</span>
+              <span class="from-text">From <strong>{{ senderName() }}</strong></span>
+            </div>
+            <div
+              class="shared-status-chip"
+              [style.background]="sharedStatusColor() + '22'"
+              [style.color]="sharedStatusColor()"
+              [style.border-color]="sharedStatusColor() + '55'"
+            >{{ sharedStatusLabel() }}</div>
+          } @else {
+            <!-- Sender view -->
+            <div class="status-badge" [class]="'status-' + reminder()!.status">{{ reminder()!.status }}</div>
+            @if (reminder()!.sharedStatus) {
+              <div class="friend-status-row">
+                <span class="friend-status-label">Friend's status:</span>
+                <div
+                  class="shared-status-chip small"
+                  [style.background]="sharedStatusColor() + '22'"
+                  [style.color]="sharedStatusColor()"
+                  [style.border-color]="sharedStatusColor() + '55'"
+                >{{ sharedStatusLabel() }}</div>
+              </div>
+            }
+          }
         </div>
-        @if (reminder()!.status === 'pending' || reminder()!.status === 'snoozed') {
+
+        @if (isRecipient() && reminder()!.sharedStatus !== 'completed' && reminder()!.sharedStatus !== 'skipped') {
+          <!-- Recipient actions -->
+          <div class="action-buttons">
+            <button class="btn-done-full" (click)="markComplete()">
+              <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Complete
+            </button>
+            <button class="btn-status-full" (click)="changeStatus()">
+              <ion-icon name="refresh-outline"></ion-icon> Update Status
+            </button>
+            <button class="btn-skip-full" (click)="skipReminder()">
+              <ion-icon name="play-skip-forward-outline"></ion-icon> Skip
+            </button>
+          </div>
+        } @else if (!isRecipient() && (reminder()!.status === 'pending' || reminder()!.status === 'snoozed')) {
+          <!-- Sender / own reminder actions -->
           <div class="action-buttons">
             <button class="btn-done-full" (click)="markDone()">
               <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Done
@@ -66,6 +130,7 @@ const CAT_EMOJI: Record<string, string> = {
     ion-toolbar { --background:var(--rm-card); }
     .icon-btn { background:none; border:none; padding:8px; cursor:pointer; font-size:20px; }
     .loading-wrap { display:flex; justify-content:center; padding:80px; }
+
     .detail-card { background:var(--rm-card); margin:16px; border-radius:20px; padding:24px; box-shadow:var(--rm-shadow-sm); border-top:4px solid #7C3AED; text-align:center; }
     .detail-emoji { font-size:56px; margin-bottom:12px; }
     .detail-title { font-size:22px; font-weight:800; color:var(--rm-text-primary); margin-bottom:8px; }
@@ -73,23 +138,37 @@ const CAT_EMOJI: Record<string, string> = {
     .detail-meta { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; text-align:left; }
     .meta-item { background:var(--rm-surface); padding:10px 12px; border-radius:12px; font-size:13px; color:var(--rm-text-secondary); display:flex; align-items:center; gap:6px; }
     .meta-icon { font-size:16px; }
-    .status-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; }
+
+    .status-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; margin-top:4px; }
     .status-pending { background:rgba(59,130,246,0.12); color:#3B82F6; }
     .status-done    { background:rgba(16,185,129,0.12); color:#10B981; }
     .status-missed  { background:rgba(239,68,68,0.12);  color:#EF4444; }
     .status-snoozed { background:rgba(245,158,11,0.12); color:#F59E0B; }
-    .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; }
+
+    .from-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:13px; color:var(--rm-text-secondary); }
+    .from-text { font-size:13px; color:var(--rm-text-secondary); }
+
+    .shared-status-chip { display:inline-block; padding:6px 18px; border-radius:20px; font-size:13px; font-weight:700; text-transform:capitalize; border:1px solid; margin-top:4px; }
+    .shared-status-chip.small { font-size:11px; padding:3px 10px; }
+
+    .friend-status-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
+    .friend-status-label { font-size:12px; color:var(--rm-text-muted); }
+
+    .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; margin-top:4px; }
     .btn-done-full { padding:16px; background:rgba(16,185,129,0.12); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
     .btn-snooze-full { padding:16px; background:rgba(59,130,246,0.12); color:#3B82F6; border:1.5px solid rgba(59,130,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
+    .btn-status-full { padding:16px; background:rgba(139,92,246,0.12); color:#8B5CF6; border:1.5px solid rgba(139,92,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
+    .btn-skip-full { padding:16px; background:rgba(156,163,175,0.12); color:#9CA3AF; border:1.5px solid rgba(156,163,175,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
     ion-icon { font-size:20px; }
   `],
 })
 export class ReminderDetailComponent implements OnInit {
-  private route           = inject(ActivatedRoute);
-  private router          = inject(Router);
-  private reminderService = inject(ReminderService);
-  private alertCtrl      = inject(AlertController);
-  private toastCtrl      = inject(ToastController);
+  private route            = inject(ActivatedRoute);
+  private router           = inject(Router);
+  private reminderService  = inject(ReminderService);
+  private authService      = inject(AuthService);
+  private alertCtrl        = inject(AlertController);
+  private actionSheetCtrl  = inject(ActionSheetController);
 
   loading  = signal(true);
   reminder = signal<Reminder | null>(null);
@@ -97,7 +176,37 @@ export class ReminderDetailComponent implements OnInit {
   color = () => CAT_COLOR[this.reminder()?.type ?? 'general'] ?? '#7C3AED';
   emoji = () => CAT_EMOJI[this.reminder()?.type ?? 'general'] ?? '📌';
 
-  constructor() { addIcons({ checkmarkCircleOutline, timeOutline, trashOutline, createOutline }); }
+  /** True when the currently logged-in user is the recipient (assignedTo), not the creator */
+  isRecipient = computed(() => {
+    const r = this.reminder();
+    const u = this.authService.currentUser();
+    if (!r || !u) return false;
+    return !!r.assignedBy && r.assignedBy !== u._id;
+  });
+
+  senderName = computed(() => {
+    const r = this.reminder();
+    if (!r) return '';
+    // userId is populated by getById — cast to access name
+    const userId = r.userId as unknown as { _id: string; name: string };
+    return userId?.name ?? 'Friend';
+  });
+
+  sharedStatusLabel = computed(() => {
+    const r = this.reminder();
+    if (!r?.sharedStatus) return '';
+    return SHARED_STATUS_META[r.sharedStatus]?.label ?? r.sharedStatus;
+  });
+
+  sharedStatusColor = computed(() => {
+    const r = this.reminder();
+    if (!r?.sharedStatus) return '#9CA3AF';
+    return SHARED_STATUS_META[r.sharedStatus]?.color ?? '#9CA3AF';
+  });
+
+  constructor() {
+    addIcons({ checkmarkCircleOutline, timeOutline, trashOutline, createOutline, refreshOutline, playSkipForwardOutline });
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
@@ -107,12 +216,46 @@ export class ReminderDetailComponent implements OnInit {
     });
   }
 
+  // ── Own reminder actions ──────────────────────────────────────────────────
   markDone(): void {
     this.reminderService.markDone(this.reminder()!._id).subscribe(r => this.reminder.set(r));
   }
 
   snooze(): void {
     this.reminderService.snooze(this.reminder()!._id, 30).subscribe(r => this.reminder.set(r));
+  }
+
+  // ── Received reminder actions ─────────────────────────────────────────────
+  markComplete(): void {
+    this.reminderService.updateSharedStatus(this.reminder()!._id, 'completed').subscribe(r => {
+      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus, status: r.status } : prev);
+    });
+  }
+
+  skipReminder(): void {
+    this.reminderService.updateSharedStatus(this.reminder()!._id, 'skipped').subscribe(r => {
+      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus, status: r.status } : prev);
+    });
+  }
+
+  async changeStatus(): Promise<void> {
+    const sheet = await this.actionSheetCtrl.create({
+      header: this.reminder()!.title,
+      subHeader: 'Update your progress',
+      buttons: [
+        { text: '👀 Acknowledged', data: 'acknowledged' },
+        { text: '🔄 In Progress',  data: 'processing'   },
+        { text: '✅ Completed',    data: 'completed'    },
+        { text: '⏭️ Skip',        data: 'skipped'      },
+        { text: 'Cancel',          role: 'cancel'       },
+      ],
+    });
+    await sheet.present();
+    const { data } = await sheet.onWillDismiss();
+    if (!data) return;
+    this.reminderService.updateSharedStatus(this.reminder()!._id, data).subscribe(r => {
+      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus, status: r.status } : prev);
+    });
   }
 
   async confirmDelete(): Promise<void> {

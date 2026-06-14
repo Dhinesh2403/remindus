@@ -120,7 +120,7 @@ export class ReminderService {
   });
 
   readonly reminderBadgeCount = computed(() => {
-    const own      = this._reminders().filter(r => r.status === 'pending').length;
+    const own      = this._reminders().filter(r => r.status === 'pending' && !r.assignedTo).length;
     const received = this._receivedReminders().filter(r => r.status === 'pending').length;
     return own + received;
   });
@@ -245,10 +245,10 @@ export class ReminderService {
 
     // Friend updated the sharedStatus on a reminder I sent them → update in place
     this.socketService
-      .on<{ _id: string; sharedStatus: string }>('reminder:sharedStatus')
-      .subscribe(({ _id, sharedStatus }) => {
+      .on<{ _id: string; sharedStatus: string; status: string }>('reminder:sharedStatus')
+      .subscribe(({ _id, sharedStatus, status }) => {
         this._reminders.update(prev =>
-          prev.map(r => r._id === _id ? { ...r, sharedStatus } : r)
+          prev.map(r => r._id === _id ? { ...r, sharedStatus, ...(status ? { status } : {}) } : r)
         );
       });
   }
