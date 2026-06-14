@@ -8,7 +8,7 @@ import {
   IonRefresher, IonRefresherContent,
   IonItemSliding, IonItemOptions, IonItemOption, IonItem,
   IonSkeletonText,
-  AlertController, ToastController,
+  AlertController, ToastController, ActionSheetController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -144,9 +144,13 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                         </div>
                       </div>
                       <div class="card-right">
-                        <div class="date-pill">
-                          <span class="date-num">{{ dateNum(r.date) }}</span>
-                          <span class="date-mon">{{ dateMon(r.date) }}</span>
+                        <div class="date-pill" [class.today-pill]="isToday(r.date) && r.status !== 'done'">
+                          @if (isToday(r.date) && r.status !== 'done') {
+                            <span class="today-label">TODAY</span>
+                          } @else {
+                            <span class="date-num">{{ dateNum(r.date) }}</span>
+                            <span class="date-mon">{{ dateMon(r.date) }}</span>
+                          }
                         </div>
                         <div
                           class="status-badge"
@@ -196,9 +200,13 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                         </div>
                       </div>
                       <div class="card-right">
-                        <div class="date-pill">
-                          <span class="date-num">{{ dateNum(r.date) }}</span>
-                          <span class="date-mon">{{ dateMon(r.date) }}</span>
+                        <div class="date-pill" [class.today-pill]="isToday(r.date) && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped'">
+                          @if (isToday(r.date) && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
+                            <span class="today-label">TODAY</span>
+                          } @else {
+                            <span class="date-num">{{ dateNum(r.date) }}</span>
+                            <span class="date-mon">{{ dateMon(r.date) }}</span>
+                          }
                         </div>
                         <div
                           class="status-badge"
@@ -259,15 +267,20 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                         </div>
                       </div>
                       <div class="card-right">
-                        <div class="date-pill">
-                          <span class="date-num">{{ dateNum(r.date) }}</span>
-                          <span class="date-mon">{{ dateMon(r.date) }}</span>
+                        <div class="date-pill" [class.today-pill]="isToday(r.date) && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped'">
+                          @if (isToday(r.date) && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
+                            <span class="today-label">TODAY</span>
+                          } @else {
+                            <span class="date-num">{{ dateNum(r.date) }}</span>
+                            <span class="date-mon">{{ dateMon(r.date) }}</span>
+                          }
                         </div>
                         <div
-                          class="status-badge"
+                          class="status-badge status-badge-tap"
                           [style.background]="sharedStatusMeta(r.sharedStatus).color + '22'"
                           [style.color]="sharedStatusMeta(r.sharedStatus).color"
-                        >{{ sharedStatusMeta(r.sharedStatus).label }}</div>
+                          (click)="changeReceivedStatus(r)"
+                        >{{ sharedStatusMeta(r.sharedStatus).label }} ›</div>
                       </div>
                     </div>
                   </div>
@@ -399,6 +412,8 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     }
     .date-num { font-size: 16px; font-weight: 800; color: var(--rm-purple); line-height: 1; }
     .date-mon { font-size: 10px; font-weight: 600; color: var(--rm-purple); text-transform: uppercase; }
+    .today-pill { background: rgba(239,68,68,0.1); border: 1.5px solid rgba(239,68,68,0.3); }
+    .today-label { font-size: 10px; font-weight: 800; color: #EF4444; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 0; }
     .status-badge {
       font-size: 10px;
       font-weight: 700;
@@ -407,6 +422,8 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
       white-space: nowrap;
       text-align: center;
     }
+    .status-badge-tap { cursor: pointer; border: 1px dashed currentColor; opacity: 0.9; }
+    .status-badge-tap:active { opacity: 0.6; }
 
     /* ── Skeleton ── */
     .skeleton-card { display: flex; align-items: center; padding: 14px; background: var(--rm-card); border-radius: 18px; }
@@ -422,9 +439,10 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
 })
 export class ReminderListComponent implements OnInit {
   protected router = inject(Router);
-  private reminderService = inject(ReminderService);
-  private alertCtrl = inject(AlertController);
-  private toastCtrl = inject(ToastController);
+  private reminderService     = inject(ReminderService);
+  private alertCtrl           = inject(AlertController);
+  private toastCtrl           = inject(ToastController);
+  private actionSheetCtrl     = inject(ActionSheetController);
 
   isLoading = signal(true);
   selectedDate = signal<string>('');
@@ -469,15 +487,52 @@ export class ReminderListComponent implements OnInit {
     return all.filter(r => this.localDateStr(new Date(r.date)) === sel);
   });
 
+  private readonly todayDateStr = this.localDateStr(new Date());
+
+  isToday(dateStr: string): boolean {
+    return this.localDateStr(new Date(dateStr)) === this.todayDateStr;
+  }
+
+  // pending-today → pending-future → missed → done  (within each group: earliest first)
+  private sortOwn(items: Reminder[]): Reminder[] {
+    return [...items].sort((a, b) => {
+      const rank = (r: Reminder) => {
+        const active = r.status === 'pending' || r.status === 'snoozed';
+        if (active && this.isToday(r.date)) return 0;
+        if (active)                           return 1;
+        if (r.status === 'missed')            return 2;
+        return 3;
+      };
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
+    });
+  }
+
+  // active (not completed/skipped) → completed/skipped  (within each group: today first, then earliest)
+  private sortReceived(items: ReceivedReminder[]): ReceivedReminder[] {
+    const DONE = new Set(['completed', 'skipped']);
+    return [...items].sort((a, b) => {
+      const aDone = DONE.has(a.sharedStatus ?? '');
+      const bDone = DONE.has(b.sharedStatus ?? '');
+      if (aDone !== bDone) return aDone ? 1 : -1;
+      if (!aDone) {
+        const aToday = this.isToday(a.date), bToday = this.isToday(b.date);
+        if (aToday !== bToday) return aToday ? -1 : 1;
+      }
+      return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
+    });
+  }
+
   readonly mine = computed(() =>
-    this.filteredOwn().filter(r => !r.assignedTo || typeof r.assignedTo !== 'object')
+    this.sortOwn(this.filteredOwn().filter(r => !r.assignedTo || typeof r.assignedTo !== 'object'))
   );
 
   readonly sentToFriends = computed(() =>
-    this.filteredOwn().filter(r => r.assignedTo && typeof r.assignedTo === 'object')
+    this.sortOwn(this.filteredOwn().filter(r => r.assignedTo && typeof r.assignedTo === 'object'))
   );
 
-  readonly fromFriends = computed(() => this.filteredReceived());
+  readonly fromFriends = computed(() => this.sortReceived(this.filteredReceived()));
 
   constructor() {
     addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline, playSkipForwardOutline });
@@ -554,6 +609,24 @@ export class ReminderListComponent implements OnInit {
         toast.present();
       },
     });
+  }
+
+  async changeReceivedStatus(r: ReceivedReminder): Promise<void> {
+    const sheet = await this.actionSheetCtrl.create({
+      header: r.title,
+      subHeader: 'Update your status on this reminder',
+      buttons: [
+        { text: '👀 Acknowledged',  data: 'acknowledged' },
+        { text: '🔄 In Progress',   data: 'processing'   },
+        { text: '✅ Completed',     data: 'completed'    },
+        { text: '⏭️ Skip',         data: 'skipped'      },
+        { text: 'Cancel',           role: 'cancel'       },
+      ],
+    });
+    await sheet.present();
+    const { data } = await sheet.onWillDismiss();
+    if (!data) return;
+    this.reminderService.updateSharedStatus(r._id, data).subscribe();
   }
 
   async confirmDelete(r: Reminder): Promise<void> {

@@ -8,6 +8,7 @@ export type SocketEvent =
   | 'reminder:due'
   | 'reminder:assigned'
   | 'reminder:response'
+  | 'reminder:sharedStatus'
   | 'friend:request'
   | 'friend:accepted'
   | 'notification:new';
@@ -51,6 +52,7 @@ export class SocketService {
       'reminder:due',
       'reminder:assigned',
       'reminder:response',
+      'reminder:sharedStatus',
       'friend:request',
       'friend:accepted',
       'notification:new',

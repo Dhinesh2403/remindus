@@ -102,10 +102,10 @@ exports.send = async ({ user, reminder, channels }) => {
  * Create a DB notification + emit real-time socket event
  */
 exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
+  // ── 1. Persist to DB + socket (best-effort — never blocks FCM) ──────────
+  let notif = null;
   try {
-    const notif = await Notification.create({ userId, type, title, message, data });
-
-    // Real-time push via Socket.IO
+    notif = await Notification.create({ userId, type, title, message, data });
     emitToUser(String(userId), 'notification:new', {
       _id:       notif._id,
       type:      notif.type,
@@ -115,12 +115,16 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
       isRead:    false,
       createdAt: notif.createdAt,
     });
+  } catch (err) {
+    logger.error('[Notification] DB/socket error (FCM will still fire):', err.message);
+  }
 
-    // FCM push notification (mobile) — fire and forget
-    if (firebaseAdmin) {
+  // ── 2. FCM push (always runs, even if DB write failed) ──────────────────
+  if (firebaseAdmin) {
+    try {
       const user = await User.findById(userId).select('fcmToken').lean();
       if (user?.fcmToken) {
-        firebaseAdmin.messaging().send({
+        await firebaseAdmin.messaging().send({
           token:        user.fcmToken,
           notification: { title, body: message },
           data:         { type, ...Object.fromEntries(
@@ -130,14 +134,17 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
             priority: 'high',
             notification: { sound: 'default', channelId: 'remindme_default' },
           },
-        }).catch(err => logger.warn('[FCM] Send failed:', err.message));
+        });
+        logger.info(`[FCM] Sent "${type}" to user ${userId}`);
+      } else {
+        logger.warn(`[FCM] No token for user ${userId} — skipping`);
       }
+    } catch (err) {
+      logger.warn(`[FCM] Send failed for user ${userId}:`, err.message);
     }
-
-    return notif;
-  } catch (err) {
-    logger.error('[Notification] createAndPush error:', err.message);
   }
+
+  return notif;
 };
 
 // ── Channel implementations ───────────────────────────────────────────────
