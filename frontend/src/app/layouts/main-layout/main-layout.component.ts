@@ -17,6 +17,7 @@ import {
   settingsOutline, settings,
 } from 'ionicons/icons';
 import { FriendService } from '../../core/services/friend.service';
+import { ReminderService } from '../../core/services/reminder.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -53,6 +54,9 @@ import { FriendService } from '../../core/services/friend.service';
 
         <ion-tab-button tab="reminders" href="/app/reminders">
           <ion-icon name="notifications-outline"></ion-icon>
+          @if (reminderBadgeCount() > 0) {
+            <ion-badge color="danger">{{ reminderBadgeCount() }}</ion-badge>
+          }
           <span class="tab-label">Reminders</span>
         </ion-tab-button>
 
@@ -96,8 +100,11 @@ import { FriendService } from '../../core/services/friend.service';
   `],
 })
 export class MainLayoutComponent implements OnInit {
-  private friendService = inject(FriendService);
-  readonly pendingCount = this.friendService.pendingCount;
+  private friendService   = inject(FriendService);
+  private reminderService = inject(ReminderService);
+
+  readonly pendingCount       = this.friendService.pendingCount;
+  readonly reminderBadgeCount = this.reminderService.reminderBadgeCount;
 
   constructor() {
     addIcons({
@@ -111,5 +118,8 @@ export class MainLayoutComponent implements OnInit {
 
   ngOnInit() {
     this.friendService.getFriends().subscribe();
+    // Pre-load reminder counts so the badge is visible before the Reminders tab is opened
+    this.reminderService.getAll({ limit: 100 }).subscribe();
+    this.reminderService.getReceived().subscribe();
   }
 }

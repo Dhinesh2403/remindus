@@ -19,6 +19,7 @@ import {
   ReminderService, Reminder, ReceivedReminder,
   ReminderType, AssignedUser,
 } from '../../core/services/reminder.service';
+import { TimeAmPmPipe } from '../../core/pipes/time-ampm.pipe';
 
 const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; label: string }> = {
   birthday: { emoji: '🎂', color: '#EC4899', label: 'Birthday' },
@@ -57,6 +58,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     IonRefresher, IonRefresherContent,
     IonItemSliding, IonItemOptions, IonItemOption, IonItem,
     IonSkeletonText,
+    TimeAmPmPipe,
   ],
   template: `
     <ion-header class="ion-no-border">
@@ -137,7 +139,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                         }
                         <div class="card-meta">
                           <ion-icon name="time-outline"></ion-icon>
-                          {{ r.time }}
+                          {{ r.time | timeAmPm }}
                         </div>
                       </div>
                       <div class="card-right">
@@ -189,7 +191,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                         </div>
                         <div class="card-meta">
                           <ion-icon name="time-outline"></ion-icon>
-                          {{ r.time }}
+                          {{ r.time | timeAmPm }}
                         </div>
                       </div>
                       <div class="card-right">
@@ -244,7 +246,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                       }
                       <div class="card-meta">
                         <ion-icon name="time-outline"></ion-icon>
-                        {{ r.time }}
+                        {{ r.time | timeAmPm }}
                       </div>
                     </div>
                     <div class="card-right">
@@ -465,19 +467,19 @@ export class ReminderListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.isLoading.set(true);
+    // Skip skeleton when data was already pre-loaded by the main layout
+    const hasData = this.reminders().length > 0 || this.receivedReminders().length > 0;
+    if (!hasData) this.isLoading.set(true);
     Promise.all([
       this.reminderService.getAll({ limit: 100 }).toPromise(),
       this.reminderService.getReceived().toPromise(),
     ]).finally(() => this.isLoading.set(false));
   }
 
-  // Fires every time this tab is entered — silent background refresh
+  // Fires every time this tab is entered — always do a silent background refresh
   ionViewWillEnter(): void {
-    if (!this.isLoading()) {
-      this.reminderService.getAll({ limit: 100 }).subscribe();
-      this.reminderService.getReceived().subscribe();
-    }
+    this.reminderService.getAll({ limit: 100 }).subscribe();
+    this.reminderService.getReceived().subscribe();
   }
 
   doRefresh(event: CustomEvent): void {

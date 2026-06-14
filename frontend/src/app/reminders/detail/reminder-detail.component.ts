@@ -1,6 +1,7 @@
 // src/app/reminders/detail/reminder-detail.component.ts
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TimeAmPmPipe } from '../../core/pipes/time-ampm.pipe';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonContent, IonHeader, IonToolbar, IonTitle, IonButtons,
@@ -21,7 +22,7 @@ const CAT_EMOJI: Record<string, string> = {
 @Component({
   selector: 'app-reminder-detail',
   standalone: true,
-  imports: [CommonModule, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonIcon, IonSpinner],
+  imports: [CommonModule, TimeAmPmPipe, IonContent, IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton, IonIcon, IonSpinner],
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar>
@@ -42,7 +43,7 @@ const CAT_EMOJI: Record<string, string> = {
           @if (reminder()!.description) { <p class="detail-desc">{{ reminder()!.description }}</p> }
           <div class="detail-meta">
             <div class="meta-item"><span class="meta-icon">📅</span>{{ reminder()!.date | date:'MMMM d, y' }}</div>
-            <div class="meta-item"><span class="meta-icon">⏰</span>{{ reminder()!.time }}</div>
+            <div class="meta-item"><span class="meta-icon">⏰</span>{{ reminder()!.time | timeAmPm }}</div>
             <div class="meta-item"><span class="meta-icon">🔁</span>{{ reminder()!.repeatType }}</div>
             <div class="meta-item"><span class="meta-icon">⚡</span>{{ reminder()!.priority }}</div>
           </div>
