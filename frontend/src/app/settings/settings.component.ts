@@ -112,18 +112,20 @@ type ThemeMode = 'light' | 'dark' | 'system';
           Notification Preferences
         </div>
 
-        <div class="settings-row">
+        <div class="settings-row premium-row">
           <div class="row-icon" style="background:rgba(59,130,246,0.12);color:#3B82F6">
             <ion-icon name="mail-outline"></ion-icon>
           </div>
           <div class="row-text">
             <div class="row-title">Email Notifications</div>
-            <div class="row-sub">Receive reminders via email</div>
+            <div class="row-sub">Premium feature</div>
           </div>
+          <span class="premium-badge">Premium</span>
           <button
             class="toggle"
-            [class.toggle-on]="notifPrefs().email"
-            (click)="toggleNotif('email')"
+            [class.toggle-on]="notifPrefs().email && user()?.isPremium"
+            [disabled]="!user()?.isPremium"
+            (click)="user()?.isPremium && toggleNotif('email')"
           ></button>
         </div>
 
