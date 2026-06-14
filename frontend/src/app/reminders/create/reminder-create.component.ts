@@ -335,7 +335,8 @@ export class ReminderCreateComponent {
   }
 
   private defaultTimeStr(): string {
-    const d = new Date(Date.now() + 5 * 60_000); // now + 5 minutes
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const d = new Date();
+    d.setHours(d.getHours() + 1, 0, 0, 0); // default to next full hour
+    return `${String(d.getHours()).padStart(2, '0')}:00`;
   }
 }

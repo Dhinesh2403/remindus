@@ -1,5 +1,5 @@
 // src/app/reminders/detail/reminder-detail.component.ts
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TimeAmPmPipe } from '../../core/pipes/time-ampm.pipe';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,8 +12,10 @@ import {
   checkmarkCircleOutline, trashOutline, createOutline,
   refreshOutline, playSkipForwardOutline,
 } from 'ionicons/icons';
-import { ReminderService, Reminder } from '../../core/services/reminder.service';
+import { Subscription } from 'rxjs';
+import { ReminderService, Reminder, ReminderStatus } from '../../core/services/reminder.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SocketService } from '../../core/services/socket.service';
 
 const CAT_COLOR: Record<string, string> = {
   birthday:'#EC4899',wedding:'#8B5CF6',medicine:'#EF4444',
@@ -137,13 +139,13 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .icon-btn { background:none; border:none; padding:8px; cursor:pointer; font-size:20px; }
     .loading-wrap { display:flex; justify-content:center; padding:80px; }
 
-    .detail-card { background:var(--rm-card); margin:16px; border-radius:20px; padding:24px; box-shadow:var(--rm-shadow-sm); border-top:4px solid #7C3AED; text-align:center; }
+    .detail-card { background:var(--ion-card-background, var(--rm-card, #1A1A2E)); margin:16px; border-radius:20px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.2); border-top:4px solid #7C3AED; text-align:center; }
     .detail-emoji { font-size:56px; margin-bottom:12px; }
-    .detail-title { font-size:22px; font-weight:800; color:var(--rm-text-primary); margin-bottom:8px; }
-    .detail-desc { font-size:14px; color:var(--rm-text-muted); margin-bottom:16px; }
+    .detail-title { font-size:22px; font-weight:800; color:var(--ion-text-color, #F9FAFB); margin-bottom:8px; }
+    .detail-desc { font-size:14px; color:var(--ion-text-color, #F9FAFB); opacity:0.6; margin-bottom:16px; }
     .detail-meta { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; text-align:left; }
-    .meta-item { background:var(--rm-surface); padding:10px 12px; border-radius:12px; font-size:13px; color:var(--rm-text-secondary); display:flex; align-items:center; gap:6px; }
-    .meta-icon { font-size:16px; }
+    .meta-item { background:rgba(255,255,255,0.07); padding:10px 12px; border-radius:12px; font-size:13px; color:var(--ion-text-color, #F9FAFB); opacity:0.85; display:flex; align-items:center; gap:6px; }
+    .meta-icon { font-size:16px; opacity:1; }
 
     .status-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; margin-top:4px; }
     .status-pending { background:rgba(59,130,246,0.12); color:#3B82F6; }
@@ -151,14 +153,14 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .status-missed  { background:rgba(239,68,68,0.12);  color:#EF4444; }
     .status-snoozed { background:rgba(245,158,11,0.12); color:#F59E0B; }
 
-    .from-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:13px; color:var(--rm-text-secondary); }
-    .from-text { font-size:13px; color:var(--rm-text-secondary); }
+    .from-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:13px; color:var(--ion-text-color, #F9FAFB); opacity:0.7; }
+    .from-text { font-size:13px; color:var(--ion-text-color, #F9FAFB); opacity:0.7; }
 
     .shared-status-chip { display:inline-block; padding:6px 18px; border-radius:20px; font-size:13px; font-weight:700; text-transform:capitalize; border:1px solid; margin-top:4px; }
     .shared-status-chip.small { font-size:11px; padding:3px 10px; }
 
     .friend-status-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
-    .friend-status-label { font-size:12px; color:var(--rm-text-muted); }
+    .friend-status-label { font-size:12px; color:var(--ion-text-color, #F9FAFB); opacity:0.5; }
 
     .done-banner { margin:0 16px; padding:16px; background:rgba(16,185,129,0.1); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; }
     .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; margin-top:4px; }
@@ -168,13 +170,16 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     ion-icon { font-size:20px; }
   `],
 })
-export class ReminderDetailComponent implements OnInit {
+export class ReminderDetailComponent implements OnInit, OnDestroy {
   private route            = inject(ActivatedRoute);
   private router           = inject(Router);
   private reminderService  = inject(ReminderService);
   private authService      = inject(AuthService);
+  private socketService    = inject(SocketService);
   private alertCtrl        = inject(AlertController);
   private actionSheetCtrl  = inject(ActionSheetController);
+
+  private socketSub: Subscription | undefined;
 
   loading  = signal(true);
   reminder = signal<Reminder | null>(null);
@@ -220,6 +225,21 @@ export class ReminderDetailComponent implements OnInit {
       next: r  => { this.reminder.set(r); this.loading.set(false); },
       error: () => { this.loading.set(false); this.router.navigate(['/app/reminders']); },
     });
+
+    this.socketSub = this.socketService
+      .on<{ _id: string; sharedStatus: string; status: string }>('reminder:sharedStatus')
+      .subscribe(({ _id, sharedStatus, status }) => {
+        if (this.reminder()?._id === _id) {
+          this.reminder.update(r => r
+            ? { ...r, sharedStatus: sharedStatus ?? undefined, ...(status ? { status: status as ReminderStatus } : {}) }
+            : r
+          );
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.socketSub?.unsubscribe();
   }
 
   // ── Own reminder actions ──────────────────────────────────────────────────

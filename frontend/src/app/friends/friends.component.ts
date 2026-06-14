@@ -392,9 +392,10 @@ export class FriendsComponent implements OnInit, OnDestroy {
     { value: 'urgent', label: '🚨 Urgent' },
   ];
 
-  private search$   = new Subject<string>();
+  private search$    = new Subject<string>();
   private searchSub: Subscription | undefined;
   private socketSub: Subscription | undefined;
+  private socketSub2: Subscription | undefined;
 
   readonly filtered = () => {
     const q = this.searchQuery().toLowerCase();
@@ -417,6 +418,21 @@ export class FriendsComponent implements OnInit, OnDestroy {
     this.socketSub = this.socketService.on<{ type: string }>('notification:new').pipe(
       filter(n => n.type === 'friend_request' || n.type === 'friend_accepted')
     ).subscribe(() => this.load());
+
+    // Update shared reminder status in real-time when a friend changes it
+    this.socketSub2 = this.socketService
+      .on<{ _id: string; sharedStatus: string }>('reminder:sharedStatus')
+      .subscribe(({ _id, sharedStatus }) => {
+        this.sharedReminders.update(prev => {
+          const next = { ...prev };
+          for (const friendId of Object.keys(next)) {
+            next[friendId] = next[friendId].map(r =>
+              r._id === _id ? { ...r, sharedStatus: sharedStatus as SharedStatus } : r
+            );
+          }
+          return next;
+        });
+      });
 
     this.searchSub = this.search$.pipe(
       debounceTime(300),
@@ -442,6 +458,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.searchSub?.unsubscribe();
     this.socketSub?.unsubscribe();
+    this.socketSub2?.unsubscribe();
   }
 
   private load() {
