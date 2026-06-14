@@ -118,7 +118,7 @@ exports.create = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  assignedTo,
       type:    'reminder_assigned',
-      title:   '📌 New reminder assigned',
+      title:   'New reminder assigned',
       message: `${req.user.name} assigned "${reminder.title}" to you`,
       data:    { reminderId: reminder._id },
     });
@@ -162,7 +162,7 @@ exports.markDone = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_response',
-      title:   '✅ Reminder completed!',
+      title:   'Reminder completed',
       message: `${req.user.name} marked "${reminder.title}" as done`,
       data:    { reminderId: reminder._id },
     });
@@ -196,7 +196,7 @@ exports.snooze = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_response',
-      title:   '⚠️ Reminder keeps being snoozed',
+      title:   'Reminder snoozed multiple times',
       message: `${req.user.name} has snoozed "${reminder.title}" ${reminder.snoozeCount} times`,
       data:    { reminderId: reminder._id },
     });
@@ -222,7 +222,7 @@ exports.assign = asyncHandler(async (req, res) => {
   await notifService.createAndPush({
     userId:  friendId,
     type:    'reminder_assigned',
-    title:   '📌 Reminder assigned to you',
+    title:   'Reminder assigned to you',
     message: `${req.user.name} assigned "${reminder.title}" to you`,
     data:    { reminderId: reminder._id },
   });
@@ -253,18 +253,18 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
       status:       reminder.status,
     });
 
-    const notifMap = {
-      received:     { emoji: '📬', text: 'received your reminder' },
-      acknowledged: { emoji: '👀', text: 'acknowledged your reminder' },
-      processing:   { emoji: '🔄', text: 'started working on your reminder' },
-      completed:    { emoji: '✅', text: 'completed your reminder' },
-      skipped:      { emoji: '⏭️', text: 'skipped your reminder' },
+    const statusText = {
+      received:     'received your reminder',
+      acknowledged: 'acknowledged your reminder',
+      processing:   'started working on your reminder',
+      completed:    'completed your reminder',
+      skipped:      'skipped your reminder',
     };
-    const n = notifMap[status] || { emoji: '🔔', text: 'updated your reminder status' };
+    const text = statusText[status] || 'updated your reminder status';
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_status_update',
-      title:   `${n.emoji} ${req.user.name} ${n.text}`,
+      title:   `${req.user.name} ${text}`,
       message: `"${reminder.title}"`,
       data:    { reminderId: String(reminder._id), sharedStatus: status, type: 'reminder_status_update' },
     });
@@ -295,7 +295,7 @@ exports.snoozeAssigned = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_status_update',
-      title:   `⏰ Reminder snoozed`,
+      title:   'Reminder snoozed',
       message: `${req.user.name} snoozed "${reminder.title}" by ${minutes} min`,
       data:    { reminderId: String(reminder._id), type: 'reminder_status_update' },
     });

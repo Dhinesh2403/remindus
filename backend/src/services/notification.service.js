@@ -150,7 +150,7 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
 // ── Channel implementations ───────────────────────────────────────────────
 async function sendPush(subscription, reminder) {
   const payload = JSON.stringify({
-    title: `⏰ ${reminder.title}`,
+    title: reminder.title,
     body:  reminder.description || 'Your reminder is due!',
     icon:  '/assets/icons/icon-192x192.png',
     badge: '/assets/icons/badge-72x72.png',

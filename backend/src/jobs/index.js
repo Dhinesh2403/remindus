@@ -73,7 +73,7 @@ function startJobs() {
         await notifService.createAndPush({
           userId:  assignedTo._id,
           type:    'reminder_pre_alert',
-          title:   '⏰ Reminder in 2 minutes',
+          title:   'Reminder in 2 minutes',
           message: `"${reminder.title}" set by ${reminder.userId?.name} is due soon`,
           data:    { reminderId: String(reminder._id), type: 'reminder_assigned' },
         });
@@ -163,7 +163,7 @@ async function fireReminder(reminder) {
   await notifService.createAndPush({
     userId:  user._id,
     type:    'reminder_due',
-    title:   `⏰ ${reminder.title}`,
+    title:   reminder.title,
     message: reminder.description || 'Your reminder is due now!',
     data:    { reminderId: String(reminder._id), type: 'reminder_due' },
   });
@@ -173,7 +173,7 @@ async function fireReminder(reminder) {
     await notifService.createAndPush({
       userId:  reminder.assignedTo._id,
       type:    'friend_reminder_due',
-      title:   `⏰ ${reminder.title}`,
+      title:   reminder.title,
       message: `Reminder from ${user.name} is due now! Tap to take action.`,
       data:    {
         reminderId:  String(reminder._id),
