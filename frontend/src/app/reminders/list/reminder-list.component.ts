@@ -14,6 +14,7 @@ import { addIcons } from 'ionicons';
 import {
   addOutline, checkmarkCircleOutline, timeOutline,
   trashOutline, personOutline, arrowDownOutline,
+  playSkipForwardOutline,
 } from 'ionicons/icons';
 import {
   ReminderService, Reminder, ReceivedReminder,
@@ -227,42 +228,58 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
               From Friends
             </div>
             @for (r of fromFriends(); track r._id) {
-              <ion-item lines="none" class="slide-item">
-                <div
-                  class="rem-card from-card"
-                  [class.done-card]="r.status === 'done'"
-                  [style.border-left-color]="meta(r.type).color"
-                >
-                  <div class="card-row">
-                    <span class="card-emoji">{{ meta(r.type).emoji }}</span>
-                    <div class="card-mid">
-                      <div class="card-title" [class.done-text]="r.status === 'done'">{{ r.title }}</div>
-                      <div class="friend-row from-friend-row">
-                        <ion-icon name="person-outline"></ion-icon>
-                        <span class="friend-name">{{ r.userId.name }}</span>
+              <ion-item-sliding>
+
+                <ion-item-options side="start">
+                  <ion-item-option color="success" expandable (click)="completeReceived(r)">
+                    <ion-icon slot="icon-only" name="checkmark-circle-outline"></ion-icon>
+                  </ion-item-option>
+                </ion-item-options>
+
+                <ion-item lines="none" class="slide-item">
+                  <div
+                    class="rem-card from-card"
+                    [class.done-card]="r.sharedStatus === 'completed'"
+                    [style.border-left-color]="meta(r.type).color"
+                  >
+                    <div class="card-row">
+                      <span class="card-emoji">{{ meta(r.type).emoji }}</span>
+                      <div class="card-mid">
+                        <div class="card-title" [class.done-text]="r.sharedStatus === 'completed'">{{ r.title }}</div>
+                        <div class="friend-row from-friend-row">
+                          <ion-icon name="person-outline"></ion-icon>
+                          <span class="friend-name">{{ r.userId.name }}</span>
+                        </div>
+                        @if (r.description) {
+                          <div class="card-desc">{{ r.description }}</div>
+                        }
+                        <div class="card-meta">
+                          <ion-icon name="time-outline"></ion-icon>
+                          {{ r.time | timeAmPm }}
+                        </div>
                       </div>
-                      @if (r.description) {
-                        <div class="card-desc">{{ r.description }}</div>
-                      }
-                      <div class="card-meta">
-                        <ion-icon name="time-outline"></ion-icon>
-                        {{ r.time | timeAmPm }}
+                      <div class="card-right">
+                        <div class="date-pill">
+                          <span class="date-num">{{ dateNum(r.date) }}</span>
+                          <span class="date-mon">{{ dateMon(r.date) }}</span>
+                        </div>
+                        <div
+                          class="status-badge"
+                          [style.background]="sharedStatusMeta(r.sharedStatus).color + '22'"
+                          [style.color]="sharedStatusMeta(r.sharedStatus).color"
+                        >{{ sharedStatusMeta(r.sharedStatus).label }}</div>
                       </div>
-                    </div>
-                    <div class="card-right">
-                      <div class="date-pill">
-                        <span class="date-num">{{ dateNum(r.date) }}</span>
-                        <span class="date-mon">{{ dateMon(r.date) }}</span>
-                      </div>
-                      <div
-                        class="status-badge"
-                        [style.background]="sharedStatusMeta(r.sharedStatus).color + '22'"
-                        [style.color]="sharedStatusMeta(r.sharedStatus).color"
-                      >{{ sharedStatusMeta(r.sharedStatus).label }}</div>
                     </div>
                   </div>
-                </div>
-              </ion-item>
+                </ion-item>
+
+                <ion-item-options side="end">
+                  <ion-item-option color="warning" expandable (click)="skipReceived(r)">
+                    <ion-icon slot="icon-only" name="play-skip-forward-outline"></ion-icon>
+                  </ion-item-option>
+                </ion-item-options>
+
+              </ion-item-sliding>
             }
           }
 
@@ -463,7 +480,7 @@ export class ReminderListComponent implements OnInit {
   readonly fromFriends = computed(() => this.filteredReceived());
 
   constructor() {
-    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline });
+    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline, playSkipForwardOutline });
   }
 
   ngOnInit(): void {
@@ -504,6 +521,34 @@ export class ReminderListComponent implements OnInit {
           message: `✅ "${r.title}" marked as done!`,
           duration: 2000,
           color: 'success',
+          position: 'top',
+        });
+        toast.present();
+      },
+    });
+  }
+
+  completeReceived(r: ReceivedReminder): void {
+    this.reminderService.updateSharedStatus(r._id, 'completed').subscribe({
+      next: async () => {
+        const toast = await this.toastCtrl.create({
+          message: `✅ "${r.title}" marked as completed!`,
+          duration: 2000,
+          color: 'success',
+          position: 'top',
+        });
+        toast.present();
+      },
+    });
+  }
+
+  skipReceived(r: ReceivedReminder): void {
+    this.reminderService.updateSharedStatus(r._id, 'skipped').subscribe({
+      next: async () => {
+        const toast = await this.toastCtrl.create({
+          message: `⏭️ "${r.title}" skipped.`,
+          duration: 2000,
+          color: 'warning',
           position: 'top',
         });
         toast.present();

@@ -6,7 +6,7 @@ const Notification = require('../models/Notification');
 const User          = require('../models/User');
 const notifService  = require('../services/notification.service');
 const { asyncHandler, AppError } = require('../utils/helpers');
-const { getIO }     = require('../sockets');
+const { getIO, emitToUser } = require('../sockets');
 
 // ── GET /api/reminders ────────────────────────────────────────────────────
 exports.getAll = asyncHandler(async (req, res) => {
@@ -220,6 +220,12 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
   await reminder.save();
 
   if (reminder.assignedBy) {
+    // Real-time socket update so the sender's "Sent to Friends" badge refreshes instantly
+    emitToUser(String(reminder.assignedBy), 'reminder:sharedStatus', {
+      _id:          String(reminder._id),
+      sharedStatus: reminder.sharedStatus,
+    });
+
     const notifMap = {
       received:     { emoji: '📬', text: 'received your reminder' },
       acknowledged: { emoji: '👀', text: 'acknowledged your reminder' },

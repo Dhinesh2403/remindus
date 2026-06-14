@@ -1,7 +1,7 @@
 // src/app/core/services/reminder.service.ts
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SocketService } from './socket.service';
 
@@ -192,6 +192,16 @@ export class ReminderService {
       .pipe(tap(({ data }) => this._receivedReminders.set(data)));
   }
 
+  updateSharedStatus(id: string, status: string): Observable<ReceivedReminder> {
+    return this.http
+      .patch<{ success: boolean; data: ReceivedReminder }>(`${this.API}/${id}/shared-status`, { status })
+      .pipe(tap(({ data }) => {
+        this._receivedReminders.update(prev =>
+          prev.map(r => r._id === id ? { ...r, sharedStatus: data.sharedStatus, status: data.status } : r)
+        );
+      }), map(({ data }) => data));
+  }
+
   // ─── Assign to friend ─────────────────────────────────────────────────────
   assignToFriend(
     id: string,
@@ -231,6 +241,15 @@ export class ReminderService {
       .on<Reminder>('reminder:assigned')
       .subscribe((reminder) => {
         this._reminders.update((prev) => [reminder, ...prev]);
+      });
+
+    // Friend updated the sharedStatus on a reminder I sent them → update in place
+    this.socketService
+      .on<{ _id: string; sharedStatus: string }>('reminder:sharedStatus')
+      .subscribe(({ _id, sharedStatus }) => {
+        this._reminders.update(prev =>
+          prev.map(r => r._id === _id ? { ...r, sharedStatus } : r)
+        );
       });
   }
 
