@@ -139,13 +139,24 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .icon-btn { background:none; border:none; padding:8px; cursor:pointer; font-size:20px; }
     .loading-wrap { display:flex; justify-content:center; padding:80px; }
 
-    .detail-card { background:var(--ion-card-background, var(--rm-card, #1A1A2E)); margin:16px; border-radius:20px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.2); border-top:4px solid #7C3AED; text-align:center; }
+    /* Light mode (default) — explicit colors so text never depends on var resolution */
+    .detail-card { background:#FFFFFF; margin:16px; border-radius:20px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.08); border-top:4px solid #7C3AED; text-align:center; }
     .detail-emoji { font-size:56px; margin-bottom:12px; }
-    .detail-title { font-size:22px; font-weight:800; color:var(--ion-text-color, #F9FAFB); margin-bottom:8px; }
-    .detail-desc { font-size:14px; color:var(--ion-text-color, #F9FAFB); opacity:0.6; margin-bottom:16px; }
+    .detail-title { font-size:22px; font-weight:800; color:#1F2937; margin-bottom:8px; }
+    .detail-desc { font-size:14px; color:#6B7280; margin-bottom:16px; }
     .detail-meta { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; text-align:left; }
-    .meta-item { background:rgba(255,255,255,0.07); padding:10px 12px; border-radius:12px; font-size:13px; color:var(--ion-text-color, #F9FAFB); opacity:0.85; display:flex; align-items:center; gap:6px; }
-    .meta-icon { font-size:16px; opacity:1; }
+    .meta-item { background:#F3F4F6; padding:10px 12px; border-radius:12px; font-size:13px; color:#374151; display:flex; align-items:center; gap:6px; text-transform:capitalize; }
+    .meta-icon { font-size:16px; }
+
+    /* Dark mode — via OS preference */
+    @media (prefers-color-scheme: dark) {
+      .detail-card { background:#1A1A2E; box-shadow:0 1px 6px rgba(0,0,0,0.4); }
+      .detail-title { color:#F9FAFB; }
+      .detail-desc { color:#9CA3AF; }
+      .meta-item { background:#16213E; color:#D1D5DB; }
+      .from-row, .from-text { color:#9CA3AF; }
+      .friend-status-label { color:#6B7280; }
+    }
 
     .status-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; margin-top:4px; }
     .status-pending { background:rgba(59,130,246,0.12); color:#3B82F6; }
@@ -153,14 +164,23 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .status-missed  { background:rgba(239,68,68,0.12);  color:#EF4444; }
     .status-snoozed { background:rgba(245,158,11,0.12); color:#F59E0B; }
 
-    .from-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:13px; color:var(--ion-text-color, #F9FAFB); opacity:0.7; }
-    .from-text { font-size:13px; color:var(--ion-text-color, #F9FAFB); opacity:0.7; }
+    .from-row { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:13px; color:#6B7280; }
+    .from-text { font-size:13px; color:#6B7280; }
 
     .shared-status-chip { display:inline-block; padding:6px 18px; border-radius:20px; font-size:13px; font-weight:700; text-transform:capitalize; border:1px solid; margin-top:4px; }
     .shared-status-chip.small { font-size:11px; padding:3px 10px; }
 
     .friend-status-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
-    .friend-status-label { font-size:12px; color:var(--ion-text-color, #F9FAFB); opacity:0.5; }
+    .friend-status-label { font-size:12px; color:#9CA3AF; }
+
+    /* Dark mode — class toggle fallback (in case theme is forced via .dark-theme) */
+    :host-context(.dark-theme) .detail-card { background:#1A1A2E; box-shadow:0 1px 6px rgba(0,0,0,0.4); }
+    :host-context(.dark-theme) .detail-title { color:#F9FAFB; }
+    :host-context(.dark-theme) .detail-desc { color:#9CA3AF; }
+    :host-context(.dark-theme) .meta-item { background:#16213E; color:#D1D5DB; }
+    :host-context(.dark-theme) .from-row,
+    :host-context(.dark-theme) .from-text { color:#9CA3AF; }
+    :host-context(.dark-theme) .friend-status-label { color:#6B7280; }
 
     .done-banner { margin:0 16px; padding:16px; background:rgba(16,185,129,0.1); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; }
     .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; margin-top:4px; }

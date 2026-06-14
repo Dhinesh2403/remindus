@@ -122,18 +122,43 @@ ion-toast {
 }
 
 ion-alert {
+  --background: var(--rm-card);
+
   .alert-wrapper {
+    background: var(--rm-card) !important;
     border-radius: var(--rm-radius-xl) !important;
     padding: 8px 0 !important;
+  }
+  .alert-title,
+  .alert-sub-title,
+  .alert-message {
+    color: var(--rm-text-primary) !important;
   }
   .alert-title {
     font-family: 'Nunito', sans-serif !important;
     font-weight: 800 !important;
   }
-  .alert-button.sc-ion-alert-md {
+  .alert-message { color: var(--rm-text-secondary) !important; }
+  .alert-button {
+    color: var(--rm-purple) !important;
     font-weight: 700;
-    &[aria-label="destructive"] { color: var(--rm-danger) !important; }
+    &[aria-label="destructive"],
+    &.alert-button-role-destructive { color: var(--rm-danger) !important; }
   }
+}
+
+/* ─── Action sheet (status picker, etc.) ─────────────────────────────────── */
+ion-action-sheet {
+  --background: var(--rm-card);
+  --color: var(--rm-text-primary);
+  --button-background: var(--rm-card);
+  --button-color: var(--rm-text-primary);
+
+  .action-sheet-group { background: var(--rm-card) !important; }
+  .action-sheet-title,
+  .action-sheet-sub-title { color: var(--rm-text-secondary) !important; }
+  .action-sheet-button { color: var(--rm-text-primary) !important; }
+  .action-sheet-button.action-sheet-cancel { color: var(--rm-purple) !important; }
 }
 
 /* ─── Utility classes ────────────────────────────────────────────────────── */
