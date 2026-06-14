@@ -119,6 +119,12 @@ export class ReminderService {
     return Math.round((done / all.length) * 100);
   });
 
+  readonly reminderBadgeCount = computed(() => {
+    const own      = this._reminders().filter(r => r.status === 'pending').length;
+    const received = this._receivedReminders().filter(r => r.status === 'pending').length;
+    return own + received;
+  });
+
   constructor() {
     this.listenToSocketEvents();
   }

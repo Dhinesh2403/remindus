@@ -233,7 +233,7 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
       type:    'reminder_status_update',
       title:   `${n.emoji} ${req.user.name} ${n.text}`,
       message: `"${reminder.title}"`,
-      data:    { reminderId: String(reminder._id), sharedStatus: status, type: 'friend_request' },
+      data:    { reminderId: String(reminder._id), sharedStatus: status, type: 'reminder_status_update' },
     });
   }
 
@@ -264,7 +264,7 @@ exports.snoozeAssigned = asyncHandler(async (req, res) => {
       type:    'reminder_status_update',
       title:   `⏰ Reminder snoozed`,
       message: `${req.user.name} snoozed "${reminder.title}" by ${minutes} min`,
-      data:    { reminderId: String(reminder._id), type: 'friend_request' },
+      data:    { reminderId: String(reminder._id), type: 'reminder_status_update' },
     });
   }
 

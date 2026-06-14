@@ -6,16 +6,17 @@ import {
   IonContent, IonHeader, IonToolbar,
   IonIcon, IonRefresher, IonRefresherContent,
   IonSearchbar, IonSkeletonText,
-  ToastController,
+  ToastController, AlertController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  personAddOutline, closeOutline, searchOutline,
+  personAddOutline, personRemoveOutline, closeOutline, searchOutline,
   addCircleOutline, chevronDownOutline, chevronUpOutline,
 } from 'ionicons/icons';
 import { Subject, EMPTY, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, filter } from 'rxjs/operators';
 import { FriendService, Friend, UserSearchResult, SharedReminder, SharedStatus } from '../core/services/friend.service';
+import { TimeAmPmPipe } from '../core/pipes/time-ampm.pipe';
 import { SocketService } from '../core/services/socket.service';
 import { AuthService } from '../core/services/auth.service';
 
@@ -23,7 +24,7 @@ import { AuthService } from '../core/services/auth.service';
   selector: 'app-friends',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
+    CommonModule, FormsModule, TimeAmPmPipe,
     IonContent, IonHeader, IonToolbar,
     IonIcon, IonRefresher, IonRefresherContent,
     IonSearchbar, IonSkeletonText,
@@ -154,6 +155,9 @@ import { AuthService } from '../core/services/auth.service';
                   <div class="friend-name">{{ friend.name }}</div>
                   <div class="friend-username">&#64;{{ friend.username }}</div>
                 </div>
+                <button class="btn-unfriend" (click)="confirmUnfriend(friend)" title="Unfriend">
+                  <ion-icon name="person-remove-outline"></ion-icon>
+                </button>
               </div>
 
               <!-- Stats -->
@@ -213,7 +217,7 @@ import { AuthService } from '../core/services/auth.service';
                       <div class="shared-row">
                         <div class="shared-info">
                           <div class="shared-title">{{ r.title }}</div>
-                          <div class="shared-date">{{ r.date | date:'MMM d' }} · {{ r.time }}</div>
+                          <div class="shared-date">{{ r.date | date:'MMM d' }} · {{ r.time | timeAmPm }}</div>
                         </div>
                         <span class="status-badge" [class]="'status-' + (r.sharedStatus || 'sent')">
                           {{ statusLabel(r.sharedStatus) }}
@@ -316,6 +320,8 @@ import { AuthService } from '../core/services/auth.service';
     .status-dot.online{background:#10B981}
     .friend-name{font-size:16px;font-weight:800;color:var(--rm-text-primary)}
     .friend-username{font-size:12px;color:var(--rm-text-muted);margin-top:2px}
+    .btn-unfriend{margin-left:auto;flex-shrink:0;width:34px;height:34px;border:none;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;padding:0;transition:background 0.15s}
+    .btn-unfriend:active{background:rgba(239,68,68,0.22)}
     .friend-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
     .fstat{text-align:center;padding:10px 4px;border-radius:12px}
     .fstat-num{font-size:18px;font-weight:800;line-height:1}
@@ -360,6 +366,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
   private socketService = inject(SocketService);
   private authService   = inject(AuthService);
   private toastCtrl     = inject(ToastController);
+  private alertCtrl     = inject(AlertController);
 
   isLoading       = signal(true);
   searchQuery     = signal('');
@@ -377,7 +384,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
   sendingReminder = signal(false);
   sharedReminders = signal<Record<string, SharedReminder[]>>({});
   currentUserId   = signal<string>('');
-  reminderForm    = { title: '', date: new Date().toISOString().split('T')[0], time: '09:00', priority: 'medium' };
+  reminderForm    = { title: '', date: this.todayStr(), time: '09:00', priority: 'medium' };
   priorities      = [
     { value: 'low', label: '🟢 Low' },
     { value: 'medium', label: '🟡 Medium' },
@@ -397,7 +404,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
   };
 
   constructor() {
-    addIcons({ personAddOutline, closeOutline, searchOutline,
+    addIcons({ personAddOutline, personRemoveOutline, closeOutline, searchOutline,
                addCircleOutline, chevronDownOutline, chevronUpOutline });
   }
 
@@ -515,6 +522,33 @@ export class FriendsComponent implements OnInit, OnDestroy {
   accept(id: string) { this.friendService.accept(id).subscribe(() => this.load()); }
   reject(id: string) { this.friendService.reject(id).subscribe(() => this.load()); }
 
+  async confirmUnfriend(friend: Friend): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: 'Unfriend',
+      message: `Remove ${friend.name} from your accountability buddies?`,
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Unfriend',
+          role: 'destructive',
+          handler: () => {
+            this.friendService.remove(friend.friendshipId).subscribe({
+              next: async () => {
+                this.load();
+                const toast = await this.toastCtrl.create({
+                  message: `${friend.name} removed from friends`,
+                  duration: 2500, color: 'medium', position: 'top',
+                });
+                toast.present();
+              },
+            });
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
   toggleReminderForm(friendId: string): void {
     if (this.openFormId() === friendId) {
       this.openFormId.set(null);
@@ -587,7 +621,8 @@ export class FriendsComponent implements OnInit, OnDestroy {
   }
 
   private todayStr(): string {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   private nowTimeStr(): string {

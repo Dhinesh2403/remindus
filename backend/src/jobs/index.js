@@ -15,32 +15,37 @@ function startJobs() {
   // ── Fire due reminders (every minute) ─────────────────────────────────
   cron.schedule('* * * * *', async () => {
     try {
-      const now = new Date();
-      // Use findOneAndUpdate to atomically claim each reminder before firing,
-      // setting nextFireAt far in future to prevent re-firing on the next tick
+      const now     = new Date();
       const maxDate = new Date('9999-12-31T23:59:59.000Z');
+      let   fired   = 0;
 
-      const dueReminders = await Reminder.find({
-        status:     { $in: ['pending', 'snoozed'] },
-        nextFireAt: { $gt: new Date(0), $lte: now },
-      })
-        .populate('userId', 'name email phone notifPrefs pushSubscription fcmToken')
-        .populate('assignedTo', 'name fcmToken pushSubscription');
-
-      for (const reminder of dueReminders) {
-        // Atomically claim it to prevent duplicate firing on concurrent ticks
-        const claimed = await Reminder.findOneAndUpdate(
-          { _id: reminder._id, nextFireAt: { $lte: now } },
+      // Atomic claim-and-fire loop: each iteration grabs one unclaimed due
+      // reminder (sets nextFireAt → 9999 so no other tick re-fires it), then
+      // sends the notification.  Loop exits when nothing is left to fire.
+      while (true) {
+        const reminder = await Reminder.findOneAndUpdate(
+          {
+            status:     { $in: ['pending', 'snoozed'] },
+            nextFireAt: { $gt: new Date(0), $lte: now },
+          },
           { $set: { nextFireAt: maxDate } },
-          { new: false },
-        );
-        if (!claimed) continue; // already claimed by a concurrent tick
+          { new: false },            // return the original doc so we know who to notify
+        )
+          .populate('userId',     'name email phone notifPrefs pushSubscription fcmToken')
+          .populate('assignedTo', 'name fcmToken pushSubscription');
 
-        await fireReminder(reminder);
+        if (!reminder) break;       // no more due reminders this tick
+
+        try {
+          await fireReminder(reminder);
+          fired++;
+        } catch (fireErr) {
+          logger.error(`[Cron] fireReminder failed for ${reminder._id}:`, fireErr.message);
+        }
       }
 
-      if (dueReminders.length > 0) {
-        logger.info(`[Cron] Fired ${dueReminders.length} reminder(s)`);
+      if (fired > 0) {
+        logger.info(`[Cron] Fired ${fired} reminder(s)`);
       }
     } catch (err) {
       logger.error('[Cron] reminder-fire error:', err.message);
@@ -172,7 +177,7 @@ async function fireReminder(reminder) {
       message: `Reminder from ${user.name} is due now! Tap to take action.`,
       data:    {
         reminderId:  String(reminder._id),
-        type:        'friend_request',   // routes push tap to friends tab
+        type:        'friend_reminder_due',
         senderName:  user.name,
       },
     });

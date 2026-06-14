@@ -52,16 +52,37 @@ export class PushService {
 
     // Notification tapped (background / killed state)
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      const data = action.notification.data ?? {};
-      const type = data['type'] as string;
+      const data       = action.notification.data ?? {};
+      const type       = String(data['type'] ?? '');
+      const reminderId = data['reminderId'];
 
-      if (type === 'friend_request' || type === 'friend_accepted') {
-        this.router.navigate(['/app/friends']);
-      } else if (type === 'reminder:due' || type === 'reminder:assigned') {
-        const id = data['reminderId'];
-        this.router.navigate(id ? ['/app/reminders', id] : ['/app/home']);
-      } else {
-        this.router.navigate(['/app/home']);
+      switch (type) {
+        // Friend-related → Friends tab
+        case 'friend_request':
+        case 'friend_accepted':
+          this.router.navigate(['/app/friends']);
+          break;
+
+        // Own reminder fired → detail page
+        case 'reminder_due':
+          this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
+          break;
+
+        // Friend assigned a reminder to me / pre-alert / fire-time for assignedTo → Reminders tab
+        case 'reminder_assigned':
+        case 'reminder_pre_alert':
+        case 'friend_reminder_due':
+          this.router.navigate(['/app/reminders']);
+          break;
+
+        // Status update (friend acted on reminder I sent them) → Reminders tab
+        case 'reminder_response':
+        case 'reminder_status_update':
+          this.router.navigate(['/app/reminders']);
+          break;
+
+        default:
+          this.router.navigate(['/app/home']);
       }
     });
   }

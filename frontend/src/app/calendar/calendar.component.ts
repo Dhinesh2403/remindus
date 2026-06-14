@@ -1,6 +1,7 @@
 // src/app/calendar/calendar.component.ts
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TimeAmPmPipe } from '../core/pipes/time-ampm.pipe';
 import {
   IonContent, IonHeader, IonToolbar, IonIcon, IonRefresher, IonRefresherContent,
 } from '@ionic/angular/standalone';
@@ -36,7 +37,7 @@ const CAT_EMOJI: Record<string, string> = {
   selector: 'app-calendar',
   standalone: true,
   imports: [
-    CommonModule,
+    CommonModule, TimeAmPmPipe,
     IonContent, IonHeader, IonToolbar, IonIcon,
     IonRefresher, IonRefresherContent,
   ],
@@ -119,7 +120,7 @@ const CAT_EMOJI: Record<string, string> = {
                 <span class="event-emoji">{{ getCatEmoji(r.type) }}</span>
                 <div class="event-info">
                   <div class="event-title">{{ r.title }}</div>
-                  <div class="event-time">{{ r.time }}</div>
+                  <div class="event-time">{{ r.time | timeAmPm }}</div>
                 </div>
                 <span
                   class="event-tag"
