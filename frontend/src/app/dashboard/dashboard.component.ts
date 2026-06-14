@@ -19,6 +19,7 @@ import {
   peopleOutline,
   statsChartOutline,
   addOutline,
+  person,
 } from 'ionicons/icons';
 import { AuthService } from '../core/services/auth.service';
 import { ReminderService } from '../core/services/reminder.service';
@@ -173,7 +174,7 @@ export class DashboardComponent implements OnInit {
     addIcons({
       timeOutline, notificationsOutline, alertCircleOutline,
       trendingUpOutline, calendarOutline, peopleOutline,
-      statsChartOutline, addOutline,
+      statsChartOutline, addOutline, person,
     });
   }
 

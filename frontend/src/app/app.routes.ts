@@ -2,7 +2,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
-import { premiumGuard } from './core/guards/premium.guard';
 
 export const routes: Routes = [
   {
@@ -125,8 +124,9 @@ export const routes: Routes = [
           ),
       },
       {
+        // The "Go Premium" upgrade page must be reachable by non-premium users —
+        // that's its whole purpose, so no premiumGuard here.
         path: 'premium',
-        canActivate: [premiumGuard],
         loadComponent: () =>
           import('./premium/premium.component').then(
             (m) => m.PremiumComponent

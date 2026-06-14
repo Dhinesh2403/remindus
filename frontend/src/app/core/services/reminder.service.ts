@@ -161,7 +161,8 @@ export class ReminderService {
   }
 
   create(dto: CreateReminderDto): Observable<Reminder> {
-    return this.http.post<Reminder>(this.API, dto).pipe(
+    return this.http.post<{ data: Reminder }>(this.API, dto).pipe(
+      map((res) => res.data),
       tap((reminder) => {
         this._reminders.update((prev) => [reminder, ...prev]);
       })
@@ -169,7 +170,8 @@ export class ReminderService {
   }
 
   update(id: string, dto: Partial<CreateReminderDto>): Observable<Reminder> {
-    return this.http.put<Reminder>(`${this.API}/${id}`, dto).pipe(
+    return this.http.put<{ data: Reminder }>(`${this.API}/${id}`, dto).pipe(
+      map((res) => res.data),
       tap((updated) => {
         this._reminders.update((prev) =>
           prev.map((r) => (r._id === id ? updated : r))
@@ -189,14 +191,14 @@ export class ReminderService {
   // ─── Status actions ───────────────────────────────────────────────────────
   markDone(id: string): Observable<Reminder> {
     return this.http
-      .patch<Reminder>(`${this.API}/${id}/done`, {})
-      .pipe(tap((updated) => this.updateInList(updated)));
+      .patch<{ data: Reminder }>(`${this.API}/${id}/done`, {})
+      .pipe(map((res) => res.data), tap((updated) => this.updateInList(updated)));
   }
 
   snooze(id: string, minutes = 30): Observable<Reminder> {
     return this.http
-      .patch<Reminder>(`${this.API}/${id}/snooze`, { minutes })
-      .pipe(tap((updated) => this.updateInList(updated)));
+      .patch<{ data: Reminder }>(`${this.API}/${id}/snooze`, { minutes })
+      .pipe(map((res) => res.data), tap((updated) => this.updateInList(updated)));
   }
 
   // ─── Reminders assigned to current user by friends ───────────────────────
@@ -222,8 +224,8 @@ export class ReminderService {
     friendId: string
   ): Observable<Reminder> {
     return this.http
-      .patch<Reminder>(`${this.API}/${id}/assign`, { friendId })
-      .pipe(tap((updated) => this.updateInList(updated)));
+      .patch<{ data: Reminder }>(`${this.API}/${id}/assign`, { friendId })
+      .pipe(map((res) => res.data), tap((updated) => this.updateInList(updated)));
   }
 
   // ─── Dashboard stats ──────────────────────────────────────────────────────

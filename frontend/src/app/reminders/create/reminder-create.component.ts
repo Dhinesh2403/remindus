@@ -14,6 +14,7 @@ import {
   ReminderService, CreateReminderDto,
   ReminderType, RepeatType, Priority, NotificationType,
 } from '../../core/services/reminder.service';
+import { AuthService } from '../../core/services/auth.service';
 
 interface CategoryOption { type: ReminderType; emoji: string; label: string; color: string }
 interface RepeatOption   { value: RepeatType; label: string }
@@ -218,6 +219,7 @@ export class ReminderCreateComponent {
   private router = inject(Router);
   private reminderService = inject(ReminderService);
   private toastCtrl = inject(ToastController);
+  private authService = inject(AuthService);
 
   saving = signal(false);
 
@@ -249,7 +251,7 @@ export class ReminderCreateComponent {
 
   notifTypes = [
     { value: 'push' as NotificationType,     emoji: '🔔', label: 'Push',      premium: false },
-    { value: 'email' as NotificationType,    emoji: '📧', label: 'Email',     premium: false },
+    { value: 'email' as NotificationType,    emoji: '📧', label: 'Email',     premium: true  },
     { value: 'sms' as NotificationType,      emoji: '💬', label: 'SMS',       premium: true  },
     { value: 'whatsapp' as NotificationType, emoji: '📱', label: 'WhatsApp',  premium: true  },
   ];
@@ -277,7 +279,20 @@ export class ReminderCreateComponent {
     return this.selectedNotifs().includes(v);
   }
 
-  toggleNotif(v: NotificationType): void {
+  async toggleNotif(v: NotificationType): Promise<void> {
+    const channel = this.notifTypes.find((n) => n.value === v);
+    // Premium-only channels (email, sms, whatsapp) require an active subscription
+    if (channel?.premium && !this.authService.isPremium() && !this.isNotifSelected(v)) {
+      const toast = await this.toastCtrl.create({
+        message: `${channel.label} notifications are a Premium feature`,
+        duration: 2500,
+        color: 'warning',
+        position: 'top',
+        buttons: [{ text: 'Upgrade', handler: () => this.router.navigate(['/app/premium']) }],
+      });
+      toast.present();
+      return;
+    }
     this.selectedNotifs.update((prev) =>
       prev.includes(v) ? prev.filter((n) => n !== v) : [...prev, v]
     );

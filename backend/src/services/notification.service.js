@@ -79,7 +79,7 @@ exports.send = async ({ user, reminder, channels }) => {
   if (channels.includes('push') && user.pushSubscription?.endpoint) {
     tasks.push(sendPush(user.pushSubscription, reminder));
   }
-  if (channels.includes('email') && user.email && user.notifPrefs?.email) {
+  if (channels.includes('email') && user.email && user.notifPrefs?.email && user.isPremium) {
     tasks.push(sendEmail(user, reminder));
   }
   if (channels.includes('sms') && user.phone && user.isPremium) {
