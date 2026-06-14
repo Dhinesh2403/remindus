@@ -99,28 +99,42 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
           }
         </div>
 
-        @if (isRecipient() && reminder()!.sharedStatus !== 'completed' && reminder()!.sharedStatus !== 'skipped') {
-          <!-- Recipient actions -->
-          <div class="action-buttons">
-            <button class="btn-done-full" (click)="markComplete()">
-              <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Complete
-            </button>
-            <button class="btn-status-full" (click)="changeStatus()">
-              <ion-icon name="refresh-outline"></ion-icon> Update Status
-            </button>
-            <button class="btn-skip-full" (click)="skipReminder()">
-              <ion-icon name="play-skip-forward-outline"></ion-icon> Skip
-            </button>
+        @if (isRecipient()) {
+          @if (reminder()!.sharedStatus !== 'completed' && reminder()!.sharedStatus !== 'skipped') {
+            <!-- Recipient actions — still active -->
+            <div class="action-buttons">
+              <button class="btn-done-full" (click)="markComplete()">
+                <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Complete
+              </button>
+              <button class="btn-status-full" (click)="changeStatus()">
+                <ion-icon name="refresh-outline"></ion-icon> Update Status
+              </button>
+              <button class="btn-skip-full" (click)="skipReminder()">
+                <ion-icon name="play-skip-forward-outline"></ion-icon> Skip
+              </button>
+            </div>
+          } @else {
+            <div class="done-banner">
+              <ion-icon name="checkmark-circle-outline"></ion-icon>
+              You {{ reminder()!.sharedStatus === 'skipped' ? 'skipped' : 'completed' }} this reminder
+            </div>
+          }
+        } @else if (reminder()!.status === 'done') {
+          <!-- Own reminder already completed -->
+          <div class="done-banner">
+            <ion-icon name="checkmark-circle-outline"></ion-icon> Reminder completed
           </div>
-        } @else if (!isRecipient() && (reminder()!.status === 'pending' || reminder()!.status === 'snoozed')) {
-          <!-- Sender / own reminder actions -->
+        } @else {
+          <!-- Own reminder: pending, snoozed, or missed -->
           <div class="action-buttons">
             <button class="btn-done-full" (click)="markDone()">
               <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Done
             </button>
-            <button class="btn-snooze-full" (click)="snooze()">
-              <ion-icon name="time-outline"></ion-icon> Snooze 30 min
-            </button>
+            @if (reminder()!.status !== 'missed') {
+              <button class="btn-snooze-full" (click)="snooze()">
+                <ion-icon name="time-outline"></ion-icon> Snooze 30 min
+              </button>
+            }
           </div>
         }
       }
@@ -154,6 +168,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .friend-status-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
     .friend-status-label { font-size:12px; color:var(--rm-text-muted); }
 
+    .done-banner { margin:0 16px; padding:16px; background:rgba(16,185,129,0.1); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; }
     .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; margin-top:4px; }
     .btn-done-full { padding:16px; background:rgba(16,185,129,0.12); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
     .btn-snooze-full { padding:16px; background:rgba(59,130,246,0.12); color:#3B82F6; border:1.5px solid rgba(59,130,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
@@ -228,13 +243,13 @@ export class ReminderDetailComponent implements OnInit {
   // ── Received reminder actions ─────────────────────────────────────────────
   markComplete(): void {
     this.reminderService.updateSharedStatus(this.reminder()!._id, 'completed').subscribe(r => {
-      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus, status: r.status } : prev);
+      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus ?? undefined, status: r.status } : prev);
     });
   }
 
   skipReminder(): void {
     this.reminderService.updateSharedStatus(this.reminder()!._id, 'skipped').subscribe(r => {
-      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus, status: r.status } : prev);
+      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus ?? undefined, status: r.status } : prev);
     });
   }
 
@@ -254,7 +269,7 @@ export class ReminderDetailComponent implements OnInit {
     const { data } = await sheet.onWillDismiss();
     if (!data) return;
     this.reminderService.updateSharedStatus(this.reminder()!._id, data).subscribe(r => {
-      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus, status: r.status } : prev);
+      this.reminder.update(prev => prev ? { ...prev, sharedStatus: r.sharedStatus ?? undefined, status: r.status } : prev);
     });
   }
 

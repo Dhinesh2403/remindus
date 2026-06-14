@@ -209,7 +209,7 @@ import { AuthService } from '../core/services/auth.service';
               }
 
               <!-- Shared reminders with status -->
-              @if (sharedReminders()[friend._id]?.length) {
+              @if ((sharedReminders()[friend._id] ?? []).length) {
                 <div class="shared-list">
                   <div class="shared-list-title">Shared Reminders</div>
                   @for (r of sharedReminders()[friend._id]; track r._id) {
