@@ -14,9 +14,9 @@ export interface Friend {
   username:     string;
   avatar?:      string;
   isOnline:     boolean;
-  responseRate: number;
-  sharedCount:  number;
-  pendingCount: number;
+  completedCount: number;
+  sharedCount:    number;
+  pendingCount:   number;
 }
 
 export interface PendingRequest {

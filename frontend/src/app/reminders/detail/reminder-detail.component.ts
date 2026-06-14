@@ -9,7 +9,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  checkmarkCircleOutline, timeOutline, trashOutline, createOutline,
+  checkmarkCircleOutline, trashOutline, createOutline,
   refreshOutline, playSkipForwardOutline,
 } from 'ionicons/icons';
 import { ReminderService, Reminder } from '../../core/services/reminder.service';
@@ -101,40 +101,32 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
 
         @if (isRecipient()) {
           @if (reminder()!.sharedStatus !== 'completed' && reminder()!.sharedStatus !== 'skipped') {
-            <!-- Recipient actions — still active -->
             <div class="action-buttons">
               <button class="btn-done-full" (click)="markComplete()">
-                <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Complete
+                <ion-icon name="checkmark-circle-outline"></ion-icon><span>Mark as Complete</span>
               </button>
               <button class="btn-status-full" (click)="changeStatus()">
-                <ion-icon name="refresh-outline"></ion-icon> Update Status
+                <ion-icon name="refresh-outline"></ion-icon><span>Update Status</span>
               </button>
               <button class="btn-skip-full" (click)="skipReminder()">
-                <ion-icon name="play-skip-forward-outline"></ion-icon> Skip
+                <ion-icon name="play-skip-forward-outline"></ion-icon><span>Skip</span>
               </button>
             </div>
           } @else {
             <div class="done-banner">
               <ion-icon name="checkmark-circle-outline"></ion-icon>
-              You {{ reminder()!.sharedStatus === 'skipped' ? 'skipped' : 'completed' }} this reminder
+              <span>You {{ reminder()!.sharedStatus === 'skipped' ? 'skipped' : 'completed' }} this reminder</span>
             </div>
           }
         } @else if (reminder()!.status === 'done') {
-          <!-- Own reminder already completed -->
           <div class="done-banner">
-            <ion-icon name="checkmark-circle-outline"></ion-icon> Reminder completed
+            <ion-icon name="checkmark-circle-outline"></ion-icon><span>Reminder completed</span>
           </div>
         } @else {
-          <!-- Own reminder: pending, snoozed, or missed -->
           <div class="action-buttons">
             <button class="btn-done-full" (click)="markDone()">
-              <ion-icon name="checkmark-circle-outline"></ion-icon> Mark as Done
+              <ion-icon name="checkmark-circle-outline"></ion-icon><span>Mark as Done</span>
             </button>
-            @if (reminder()!.status !== 'missed') {
-              <button class="btn-snooze-full" (click)="snooze()">
-                <ion-icon name="time-outline"></ion-icon> Snooze 30 min
-              </button>
-            }
           </div>
         }
       }
@@ -171,8 +163,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .done-banner { margin:0 16px; padding:16px; background:rgba(16,185,129,0.1); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; }
     .action-buttons { padding:0 16px; display:flex; flex-direction:column; gap:10px; margin-top:4px; }
     .btn-done-full { padding:16px; background:rgba(16,185,129,0.12); color:#10B981; border:1.5px solid rgba(16,185,129,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
-    .btn-snooze-full { padding:16px; background:rgba(59,130,246,0.12); color:#3B82F6; border:1.5px solid rgba(59,130,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
-    .btn-status-full { padding:16px; background:rgba(139,92,246,0.12); color:#8B5CF6; border:1.5px solid rgba(139,92,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
+.btn-status-full { padding:16px; background:rgba(139,92,246,0.12); color:#8B5CF6; border:1.5px solid rgba(139,92,246,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
     .btn-skip-full { padding:16px; background:rgba(156,163,175,0.12); color:#9CA3AF; border:1.5px solid rgba(156,163,175,.25); border-radius:16px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
     ion-icon { font-size:20px; }
   `],
@@ -220,7 +211,7 @@ export class ReminderDetailComponent implements OnInit {
   });
 
   constructor() {
-    addIcons({ checkmarkCircleOutline, timeOutline, trashOutline, createOutline, refreshOutline, playSkipForwardOutline });
+    addIcons({ checkmarkCircleOutline, trashOutline, createOutline, refreshOutline, playSkipForwardOutline });
   }
 
   ngOnInit(): void {
@@ -234,10 +225,6 @@ export class ReminderDetailComponent implements OnInit {
   // ── Own reminder actions ──────────────────────────────────────────────────
   markDone(): void {
     this.reminderService.markDone(this.reminder()!._id).subscribe(r => this.reminder.set(r));
-  }
-
-  snooze(): void {
-    this.reminderService.snooze(this.reminder()!._id, 30).subscribe(r => this.reminder.set(r));
   }
 
   // ── Received reminder actions ─────────────────────────────────────────────

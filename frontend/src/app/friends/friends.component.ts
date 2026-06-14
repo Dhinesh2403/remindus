@@ -162,9 +162,9 @@ import { AuthService } from '../core/services/auth.service';
 
               <!-- Stats -->
               <div class="friend-stats">
-                <div class="fstat" style="background:rgba(59,130,246,0.12)">
-                  <div class="fstat-num" style="color:#3B82F6">{{ friend.responseRate }}%</div>
-                  <div class="fstat-label">Response</div>
+                <div class="fstat" style="background:rgba(16,185,129,0.12)">
+                  <div class="fstat-num" style="color:#10B981">{{ friend.completedCount }}</div>
+                  <div class="fstat-label">Completed</div>
                 </div>
                 <div class="fstat" style="background:rgba(124,58,237,0.12)">
                   <div class="fstat-num" style="color:#7C3AED">{{ friend.sharedCount }}</div>

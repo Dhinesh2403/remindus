@@ -7,14 +7,15 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronBackOutline, chevronForwardOutline } from 'ionicons/icons';
-import { ReminderService, Reminder, ReceivedReminder, ReminderType } from '../core/services/reminder.service';
+import { ReminderService, Reminder, ReceivedReminder, ReminderType, RepeatType } from '../core/services/reminder.service';
 
 interface CalReminder {
   _id:          string;
   title:        string;
-  date:         string;
+  date:         string;  // original date (used for repeat origin)
   time:         string;
   type:         ReminderType;
+  repeatType:   RepeatType;
   status:       string;
   sharedStatus: string | null | undefined;
   isReceived:   boolean;
@@ -234,6 +235,7 @@ export class CalendarComponent implements OnInit {
     date:         r.date,
     time:         r.time,
     type:         r.type,
+    repeatType:   r.repeatType ?? 'none',
     status:       r.status,
     sharedStatus: r.sharedStatus,
     isReceived:   false,
@@ -245,6 +247,7 @@ export class CalendarComponent implements OnInit {
     date:         r.date,
     time:         r.time,
     type:         r.type,
+    repeatType:   r.repeatType ?? 'none',
     status:       r.status,
     sharedStatus: r.sharedStatus,
     isReceived:   true,
@@ -312,9 +315,27 @@ export class CalendarComponent implements OnInit {
   readonly selectedDayReminders = computed(() => {
     const sel = this.selected();
     return this.allReminders()
-      .filter(r => new Date(r.date).toDateString() === sel.toDateString())
+      .filter(r => this.reminderOccursOn(r, sel))
       .sort((a, b) => a.time.localeCompare(b.time));
   });
+
+  private reminderOccursOn(r: CalReminder, date: Date): boolean {
+    const origin = new Date(r.date);
+    // Never show before the reminder was originally created
+    if (date < new Date(origin.getFullYear(), origin.getMonth(), origin.getDate())) return false;
+    switch (r.repeatType) {
+      case 'yearly':
+        return date.getMonth() === origin.getMonth() && date.getDate() === origin.getDate();
+      case 'monthly':
+        return date.getDate() === origin.getDate();
+      case 'weekly':
+        return date.getDay() === origin.getDay();
+      case 'daily':
+        return true;
+      default:
+        return date.toDateString() === origin.toDateString();
+    }
+  }
 
   private buildDay(date: Date, reminders: CalReminder[], selected: Date, isOtherMonth: boolean): CalendarDay {
     return {
@@ -323,7 +344,7 @@ export class CalendarComponent implements OnInit {
       isToday:      date.toDateString() === this.today.toDateString(),
       isSelected:   date.toDateString() === selected.toDateString(),
       isOtherMonth,
-      reminders: reminders.filter(r => new Date(r.date).toDateString() === date.toDateString()),
+      reminders: reminders.filter(r => this.reminderOccursOn(r, date)),
     };
   }
 

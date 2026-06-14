@@ -41,7 +41,7 @@ exports.getFriends = asyncHandler(async (req, res) => {
         avatar:       friend.avatar,
         username:     friend.email.split('@')[0],
         isOnline:     false,   // enhanced via Socket.IO room check
-        responseRate: totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 100,
+        completedCount: doneCount,
         sharedCount,
         pendingCount,
       };

@@ -33,6 +33,7 @@ export interface ReceivedReminder {
   date: string;
   time: string;
   type: ReminderType;
+  repeatType: RepeatType;
   priority: Priority;
   status: ReminderStatus;
   sharedStatus?: string | null;
@@ -120,10 +121,23 @@ export class ReminderService {
   });
 
   readonly reminderBadgeCount = computed(() => {
-    const own      = this._reminders().filter(r => r.status === 'pending' && !r.assignedTo).length;
-    const received = this._receivedReminders().filter(r => r.status === 'pending').length;
+    const today = this.todayStr();
+    const own      = this._reminders().filter(r =>
+      r.status === 'pending' && !r.assignedTo && this.localDateStr(new Date(r.date)) === today
+    ).length;
+    const received = this._receivedReminders().filter(r =>
+      r.status === 'pending' && this.localDateStr(new Date(r.date)) === today
+    ).length;
     return own + received;
   });
+
+  private localDateStr(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private todayStr(): string {
+    return this.localDateStr(new Date());
+  }
 
   constructor() {
     this.listenToSocketEvents();
