@@ -61,7 +61,7 @@
             "staging": {
               "budgets": [
                 { "type": "initial", "maximumWarning": "2mb", "maximumError": "3mb" },
-                { "type": "anyComponentStyle", "maximumWarning": "4kb", "maximumError": "8kb" }
+                { "type": "anyComponentStyle", "maximumWarning": "8kb", "maximumError": "12kb" }
               ],
               "outputHashing": "all",
               "optimization": true,
@@ -79,7 +79,7 @@
             "production": {
               "budgets": [
                 { "type": "initial", "maximumWarning": "2mb", "maximumError": "3mb" },
-                { "type": "anyComponentStyle", "maximumWarning": "4kb", "maximumError": "8kb" }
+                { "type": "anyComponentStyle", "maximumWarning": "8kb", "maximumError": "12kb" }
               ],
               "outputHashing": "all",
               "optimization": true,

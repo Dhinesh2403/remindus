@@ -1,9 +1,12 @@
 /* src/global.scss */
 /* ─── Import theme variables ─────────────────────────────────────────────── */
 @import './theme/variables';
+@import './theme/sc-tokens';
 
 /* ─── Google Fonts ───────────────────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap');
+/* Manrope powers the redesigned ("sc") screens */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 /* ─── Ionic CSS Variables ─────────────────────────────────────────────────── */
 @import "@ionic/angular/css/core.css";
@@ -190,6 +193,17 @@ ion-action-sheet {
 
 .animate-fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
 .animate-slide-in   { animation: slideIn  0.25s ease both; }
+
+/* ─── Shared animations for the redesigned ("sc") screens ────────────────── */
+@keyframes scScreenIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes scFadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scSheetUp  { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes scPop      { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes scSpin     { to { transform: rotate(360deg); } }
+
+/* Hide scrollbars on scrollable areas inside the redesigned screens */
+.scScroll::-webkit-scrollbar { width: 0; height: 0; }
+.scScroll { scrollbar-width: none; }
 
 /* ─── Dark mode ──────────────────────────────────────────────────────────── */
 .dark-theme {

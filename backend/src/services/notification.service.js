@@ -2,8 +2,8 @@
 'use strict';
 
 const webpush     = require('web-push');
-const nodemailer  = require('nodemailer');
 const twilio      = require('twilio');
+const emailService = require('./email.service');
 const Notification = require('../models/Notification');
 const User         = require('../models/User');
 const { emitToUser }  = require('../sockets');
@@ -97,11 +97,33 @@ exports.send = async ({ user, reminder, channels }) => {
   });
 };
 
+// ── Map a notification type to its on/off preference category ─────────────
+function categoryForType(type) {
+  if (type === 'friend_request' || type === 'friend_accepted') return 'friendRequests';
+  if (type === 'system') return 'other';
+  if (type?.startsWith('reminder_') || type === 'friend_reminder_due') return 'reminders';
+  return 'other';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 /**
- * Create a DB notification + emit real-time socket event
+ * Create a DB notification + emit real-time socket event.
+ * Respects the recipient's per-category notifTypes switches — a disabled
+ * category is skipped entirely (no DB doc, no socket event, no FCM).
  */
 exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
+  // ── 0. Honour the user's per-category notification switch ───────────────
+  try {
+    const prefUser = await User.findById(userId).select('notifTypes').lean();
+    const category = categoryForType(type);
+    if (prefUser?.notifTypes && prefUser.notifTypes[category] === false) {
+      logger.info(`[Notification] "${type}" suppressed for user ${userId} (${category} off)`);
+      return null;
+    }
+  } catch (err) {
+    logger.warn('[Notification] notifTypes check failed (sending anyway):', err.message);
+  }
+
   // ── 1. Persist to DB + socket (best-effort — never blocks FCM) ──────────
   let notif = null;
   try {
@@ -147,6 +169,41 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
   return notif;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Lightweight FCM push for a new chat message. Does NOT create a Notification
+ * document (chat history lives in the Message collection), so the notifications
+ * list stays clean. Gated on the recipient's notifTypes.chat switch.
+ */
+exports.pushChatMessage = async ({ recipientId, senderName, text, senderId }) => {
+  if (!firebaseAdmin) return;
+
+  const user = await User.findById(recipientId).select('fcmToken notifTypes').lean();
+  if (!user?.fcmToken) return;
+  if (user.notifTypes && user.notifTypes.chat === false) return;
+
+  try {
+    await firebaseAdmin.messaging().send({
+      token: user.fcmToken,
+      notification: {
+        title: senderName,
+        body:  text.length > 120 ? `${text.slice(0, 117)}...` : text,
+      },
+      data: {
+        type:     'chat_message',
+        senderId: String(senderId ?? ''),
+      },
+      android: {
+        priority: 'high',
+        notification: { sound: 'default', channelId: 'remindme_default' },
+      },
+    });
+    logger.info(`[FCM] Sent chat message to user ${recipientId}`);
+  } catch (err) {
+    logger.warn(`[FCM] Chat push failed for user ${recipientId}:`, err.message);
+  }
+};
+
 // ── Channel implementations ───────────────────────────────────────────────
 async function sendPush(subscription, reminder) {
   const payload = JSON.stringify({
@@ -172,14 +229,13 @@ async function sendEmail(user, reminder) {
     hour: '2-digit', minute: '2-digit',
   });
 
-  await transporter.sendMail({
-    from:    `"RemindMe Buddy" <${process.env.EMAIL_FROM}>`,
+  await emailService.deliver({
     to:      user.email,
     subject: `⏰ Reminder: ${reminder.title}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#F8F7FF;border-radius:16px">
         <div style="background:#7C3AED;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
-          <h1 style="color:white;margin:0;font-size:24px">🔔 RemindMe Buddy</h1>
+          <h1 style="color:white;margin:0;font-size:24px">🔔 RemindUs</h1>
         </div>
         <h2 style="color:#1F2937">Hi ${user.name}!</h2>
         <p style="color:#4B5563">Your reminder is due:</p>
@@ -189,7 +245,7 @@ async function sendEmail(user, reminder) {
           <p style="color:#9CA3AF;margin:0;font-size:14px">📅 ${timeStr}</p>
         </div>
         <p style="color:#9CA3AF;font-size:12px;text-align:center;margin-top:24px">
-          RemindMe Buddy · Unsubscribe from emails in app settings
+          RemindUs · Unsubscribe from emails in app settings
         </p>
       </div>
     `,
@@ -198,7 +254,7 @@ async function sendEmail(user, reminder) {
 
 async function sendSms(phone, reminder) {
   await twilioClient.messages.create({
-    body: `⏰ RemindMe: "${reminder.title}"${reminder.description ? ` — ${reminder.description}` : ''}`,
+    body: `⏰ RemindUs: "${reminder.title}"${reminder.description ? ` — ${reminder.description}` : ''}`,
     from: process.env.TWILIO_PHONE_NUMBER,
     to:   phone,
   });
@@ -206,7 +262,7 @@ async function sendSms(phone, reminder) {
 
 async function sendWhatsApp(phone, reminder) {
   await twilioClient.messages.create({
-    body: `🔔 *RemindMe Buddy*\n\n*${reminder.title}*${reminder.description ? `\n${reminder.description}` : ''}\n\nOpen app to mark Done or Snooze.`,
+    body: `🔔 *RemindUs*\n\n*${reminder.title}*${reminder.description ? `\n${reminder.description}` : ''}\n\nOpen app to mark Done or Snooze.`,
     from: process.env.TWILIO_WHATSAPP_FROM,
     to:   `whatsapp:${phone}`,
   });

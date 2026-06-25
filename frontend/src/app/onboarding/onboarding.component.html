@@ -1,0 +1,21 @@
+<div class="scOnboard">
+
+  <h1 class="scOnboardTitle">A reminder app built<br>for people, together.</h1>
+
+  <div class="scOnboardList">
+    @for (item of items; track item.title) {
+      <div class="scOnboardItem">
+        <div class="scOnboardIcon" [innerHTML]="item.icon | safeHtml"></div>
+        <div>
+          <div class="scOnboardItemTitle">{{ item.title }}</div>
+          <div class="scOnboardItemBody">{{ item.body }}</div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="scOnboardSpacer"></div>
+
+  <button class="scOnboardBtn" (click)="enterApp()">Get started</button>
+
+</div>

@@ -10,9 +10,9 @@ const { validate }      = require('../middlewares/validate');
 router.use(authenticate);
 
 router.get('/',                                         ctrl.getFriends);
-router.get('/search',                                   ctrl.searchUsers);
+router.get('/lookup',                                   ctrl.lookupByRefId);
 router.post('/request',
-  [body('query').trim().notEmpty().withMessage('Email or username is required')],
+  [body('refId').trim().notEmpty().withMessage('Friend code is required')],
   validate,
   ctrl.sendRequest
 );

@@ -17,6 +17,13 @@ export const environment = {
     vapidKey: 'YOUR_VAPID_KEY',
   },
 
+  // Google Sign-In — OAuth Web client ID (same value the backend verifies against).
+  googleClientId: '',
+
+  // Play Store listing — used when sharing a friend code. TODO: replace with the
+  // real listing URL once the app is published.
+  playStoreUrl: 'https://play.google.com/store/apps/details?id=com.remindus.app',
+
   features: {
     whatsappIntegration: true,
     aiScheduling: true,

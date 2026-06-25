@@ -18,6 +18,9 @@ export const environment = {
     vapidKey: 'YOUR_PRODUCTION_VAPID_KEY',
   },
 
+  // Google Sign-In — OAuth Web client ID (same value the backend verifies against).
+  googleClientId: 'YOUR_GOOGLE_WEB_CLIENT_ID',
+
   features: {
     whatsappIntegration: true,
     aiScheduling: true,

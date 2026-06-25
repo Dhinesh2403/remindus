@@ -40,13 +40,13 @@
   <!-- Dot center -->
   <circle cx="66" cy="26" r="3.5" fill="white"/>
 
-  <!-- Wordmark: "RemindMe" — single text so "Me" always flows right after "Remind"
+  <!-- Wordmark: "RemindUs" — single text so "Us" always flows right after "Remind"
        regardless of which fallback font the device uses -->
   <text x="108" y="52"
     font-family="'Nunito', 'DM Sans', system-ui, sans-serif"
     font-size="30"
     font-weight="800"
-    letter-spacing="-0.5"><tspan fill="#7C3AED">Remind</tspan><tspan fill="#5B21B6">Me</tspan></text>
+    letter-spacing="-0.5"><tspan fill="#7C3AED">Remind</tspan><tspan fill="#5B21B6">Us</tspan></text>
 
   <!-- Tagline -->
   <text x="108" y="70"

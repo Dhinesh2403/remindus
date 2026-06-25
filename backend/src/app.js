@@ -30,6 +30,7 @@ const friendRoutes       = require('./routes/friend.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const userRoutes         = require('./routes/user.routes');
 const adminRoutes        = require('./routes/admin.routes');
+const chatRoutes         = require('./routes/chat.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -118,6 +119,7 @@ app.use('/api/friends',                   friendRoutes);
 app.use('/api/notifications',             notificationRoutes);
 app.use('/api/users',                     userRoutes);
 app.use('/api/admin',                     adminRoutes);
+app.use('/api/chat',                       chatRoutes);
 
 // ── 404 handler ────────────────────────────────────────────────────────────
 app.use((_req, res) => {

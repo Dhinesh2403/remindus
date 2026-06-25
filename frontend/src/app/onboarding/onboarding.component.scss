@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  font-family: var(--sc-font);
+}
+
+.scOnboard {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(96px + env(safe-area-inset-top)) 30px calc(40px + env(safe-area-inset-bottom));
+  background: var(--sc-screen);
+  animation: scScreenIn .34s ease;
+}
+
+.scOnboardTitle {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -.5px;
+  color: var(--sc-text);
+}
+
+.scOnboardList {
+  margin-top: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.scOnboardItem {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.scOnboardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sc-accent-soft);
+  color: var(--sc-accent);
+}
+
+.scOnboardItemTitle {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--sc-text);
+}
+
+.scOnboardItemBody {
+  margin-top: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--sc-muted);
+}
+
+.scOnboardSpacer {
+  flex: 1;
+  min-height: 30px;
+}
+
+.scOnboardBtn {
+  height: 56px;
+  border: none;
+  border-radius: 16px;
+  background: var(--sc-accent);
+  color: var(--sc-on-accent);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(50, 87, 238, .32);
+}

@@ -2,8 +2,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId:   'com.remindmebuddy.app',
-  appName: 'RemindMe',
+  appId:   'com.remindus.app',
+  appName: 'RemindUs',
   webDir:  'www',
 
   server: {
@@ -30,6 +30,13 @@ const config: CapacitorConfig = {
       resize:          'body',
       style:           'dark',
       resizeOnFullScreen: true,
+    },
+    // Google Sign-In. Fill in your OAuth Web client ID before native builds.
+    // serverClientId must be the *Web* client ID so the ID token verifies on the server.
+    GoogleAuth: {
+      scopes:           ['profile', 'email'],
+      serverClientId:   '812312433271-es68ea2h2jmtol3u5hajn3abmm07fv89.apps.googleusercontent.com',
+      forceCodeForRefreshToken: true,
     },
   },
 };

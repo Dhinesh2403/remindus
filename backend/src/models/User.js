@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema(
     avatar:        { type: String, default: null },
     role:          { type: String, enum: ['user', 'admin'], default: 'user' },
 
+    // Shareable friend code (e.g. "K7P2X9Q4"). Unique, generated on creation.
+    // `sparse` so legacy users without one don't collide on the null value.
+    refId:         { type: String, unique: true, sparse: true, uppercase: true, trim: true },
+
     isPremium:     { type: Boolean, default: false },
     premiumExpiry: { type: Date, default: null },
 
@@ -25,12 +29,21 @@ const userSchema = new mongoose.Schema(
     lastActiveAt:  { type: Date, default: null },
     completedCount:{ type: Number, default: 0 },
 
-    // Notification preferences
+    // Notification preferences — delivery channels
     notifPrefs: {
       push:      { type: Boolean, default: true },
       email:     { type: Boolean, default: true },
       sms:       { type: Boolean, default: false },
       whatsapp:  { type: Boolean, default: false },
+    },
+
+    // Notification preferences — per-category on/off switches. When a category
+    // is off, the server skips all delivery (in-app + push) for that type.
+    notifTypes: {
+      reminders:      { type: Boolean, default: true },
+      chat:           { type: Boolean, default: true },
+      friendRequests: { type: Boolean, default: true },
+      other:          { type: Boolean, default: true },
     },
 
     // Push subscription (Web Push / VAPID)
@@ -68,6 +81,36 @@ const userSchema = new mongoose.Schema(
     },
   }
 );
+
+// Unambiguous alphabet — no 0/O/1/I/L to avoid confusion when typed/shared.
+const REF_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function randomRefId(len = 8) {
+  let code = '';
+  for (let i = 0; i < len; i++) {
+    code += REF_ALPHABET[Math.floor(Math.random() * REF_ALPHABET.length)];
+  }
+  return code;
+}
+
+// Generate a refId that isn't already taken (retries on the rare collision).
+userSchema.statics.generateUniqueRefId = async function () {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const candidate = randomRefId();
+    const exists = await this.exists({ refId: candidate });
+    if (!exists) return candidate;
+  }
+  // Extremely unlikely fallback — widen the space.
+  return randomRefId(10);
+};
+
+// Assign a refId to every new user (covers all signup paths).
+userSchema.pre('save', async function (next) {
+  if (!this.refId) {
+    this.refId = await this.constructor.generateUniqueRefId();
+  }
+  next();
+});
 
 // Hash password before save
 userSchema.pre('save', async function (next) {

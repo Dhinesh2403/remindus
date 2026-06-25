@@ -17,7 +17,6 @@ import {
   trendingUpOutline,
   calendarOutline,
   peopleOutline,
-  statsChartOutline,
   addOutline,
   person,
 } from 'ionicons/icons';
@@ -45,8 +44,8 @@ import { ReminderService } from '../core/services/reminder.service';
       <div class="home-header">
         <!-- Brand logo strip -->
         <div class="header-brand">
-          <img src="assets/icon.svg" alt="RemindMe" class="header-brand-icon" />
-          <span class="header-brand-name">RemindMe</span>
+          <img src="assets/icon.svg" alt="RemindUs" class="header-brand-icon" />
+          <span class="header-brand-name">RemindUs</span>
         </div>
         <div class="header-row">
           <div>
@@ -105,11 +104,6 @@ import { ReminderService } from '../core/services/reminder.service';
           <div class="action-title">Friends</div>
           <div class="action-sub">Manage accountability buddies</div>
         </div>
-        <div class="action-card insights-card" (click)="nav.navigate(['/app/insights'])">
-          <ion-icon name="stats-chart-outline" class="action-icon"></ion-icon>
-          <div class="action-title">Insights</div>
-          <div class="action-sub">Track your productivity</div>
-        </div>
       </div>
 
       <!-- FAB -->
@@ -140,7 +134,6 @@ import { ReminderService } from '../core/services/reminder.service';
     .action-card:active { transform: scale(0.98); }
     .cal-card { background: linear-gradient(135deg, #7C3AED, #9333EA); }
     .friends-card { background: linear-gradient(135deg, #06B6D4, #3B82F6); }
-    .insights-card { background: linear-gradient(135deg, #F97316, #EF4444); }
     .action-icon { font-size: 26px; color: white; }
     .action-title { font-size: 17px; font-weight: 800; color: white; margin-top: 8px; }
     .action-sub { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
@@ -174,7 +167,7 @@ export class DashboardComponent implements OnInit {
     addIcons({
       timeOutline, notificationsOutline, alertCircleOutline,
       trendingUpOutline, calendarOutline, peopleOutline,
-      statsChartOutline, addOutline, person,
+      addOutline, person,
     });
   }
 

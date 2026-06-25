@@ -126,7 +126,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [4] Build DEV APK  (debug — package ID: com.remindmebuddy.app.debug)
+::  [4] Build DEV APK  (debug — package ID: com.remindus.app.debug)
 :: ============================================================
 :BUILD_DEV_APK
 echo.
@@ -178,7 +178,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [6] Build PROD APK  (release — package ID: com.remindmebuddy.app)
+::  [6] Build PROD APK  (release — package ID: com.remindus.app)
 :: ============================================================
 :BUILD_PROD_APK
 echo.
