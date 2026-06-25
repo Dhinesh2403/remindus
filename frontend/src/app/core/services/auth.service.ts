@@ -6,12 +6,14 @@ import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenService } from './token.service';
 import { SocketService } from './socket.service';
+import { GoogleCredential } from './social-auth.service';
 
 export interface User {
   _id: string;
   name: string;
   email: string;
   avatar?: string;
+  refId?: string;
   isPremium: boolean;
   streak: number;
   completionRate: number;
@@ -23,6 +25,17 @@ export interface User {
     sms: boolean;
     whatsapp: boolean;
   };
+  notifTypes?: {
+    reminders: boolean;
+    chat: boolean;
+    friendRequests: boolean;
+    other: boolean;
+  };
+}
+
+export interface NotifPrefsUpdate {
+  notifPrefs?: Partial<{ email: boolean; push: boolean; sms: boolean; whatsapp: boolean }>;
+  notifTypes?: Partial<{ reminders: boolean; chat: boolean; friendRequests: boolean; other: boolean }>;
 }
 
 export interface AuthTokens {
@@ -31,12 +44,6 @@ export interface AuthTokens {
 }
 
 export interface LoginPayload {
-  email: string;
-  password: string;
-}
-
-export interface RegisterPayload {
-  name: string;
   email: string;
   password: string;
 }
@@ -76,15 +83,81 @@ export class AuthService {
       );
   }
 
-  // ─── Register ─────────────────────────────────────────────────────────────
-  register(
-    payload: RegisterPayload
+  // ─── Google OAuth ─────────────────────────────────────────────────────────
+  // Accepts either an ID token (native) or an access token (web/GIS); the
+  // backend verifies whichever is present. First-time Google users are sent to
+  // a one-time set-password screen; returning users go straight to the app.
+  googleLogin(
+    cred: GoogleCredential
+  ): Observable<{ user: User; tokens: AuthTokens; needsPassword?: boolean }> {
+    this._isLoading.set(true);
+    return this.http
+      .post<{ user: User; tokens: AuthTokens; needsPassword?: boolean }>(
+        `${this.API}/google`,
+        cred
+      )
+      .pipe(
+        tap(({ user, tokens, needsPassword }) => {
+          this.applySession(user, tokens);
+          this._isLoading.set(false);
+          this.router.navigate([needsPassword ? '/set-password' : '/app/home']);
+        }),
+        catchError((err) => {
+          this._isLoading.set(false);
+          return throwError(() => err);
+        })
+      );
+  }
+
+  // ─── First-time password setup (Google accounts) ──────────────────────────
+  // Lets a Google user add a password so they can also sign in with email.
+  setInitialPassword(password: string, name?: string): Observable<{ user: User }> {
+    this._isLoading.set(true);
+    return this.http
+      .post<{ user: User }>(`${this.API}/set-password`, { password, name })
+      .pipe(
+        tap(({ user }) => {
+          this._currentUser.set(user);
+          this._isLoading.set(false);
+          this.router.navigate(['/app/home']);
+        }),
+        catchError((err) => {
+          this._isLoading.set(false);
+          return throwError(() => err);
+        })
+      );
+  }
+
+  // ─── Email signup (OTP-first): start → verify → set-password ──────────────
+  signupStart(name: string, email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API}/signup/start`, {
+      name,
+      email,
+    });
+  }
+
+  signupResend(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API}/signup/resend`, {
+      email,
+    });
+  }
+
+  signupVerify(email: string, otp: string): Observable<{ setupToken: string }> {
+    return this.http.post<{ setupToken: string }>(`${this.API}/signup/verify`, {
+      email,
+      otp,
+    });
+  }
+
+  signupSetPassword(
+    setupToken: string,
+    password: string
   ): Observable<{ user: User; tokens: AuthTokens }> {
     this._isLoading.set(true);
     return this.http
       .post<{ user: User; tokens: AuthTokens }>(
-        `${this.API}/register`,
-        payload
+        `${this.API}/signup/set-password`,
+        { setupToken, password }
       )
       .pipe(
         tap(({ user, tokens }) => {
@@ -96,15 +169,6 @@ export class AuthService {
           return throwError(() => err);
         })
       );
-  }
-
-  // ─── Google OAuth ─────────────────────────────────────────────────────────
-  googleLogin(idToken: string): Observable<{ user: User; tokens: AuthTokens }> {
-    return this.http
-      .post<{ user: User; tokens: AuthTokens }>(`${this.API}/google`, {
-        idToken,
-      })
-      .pipe(tap(({ user, tokens }) => this.setSession(user, tokens)));
   }
 
   // ─── Refresh access token ─────────────────────────────────────────────────
@@ -147,6 +211,37 @@ export class AuthService {
     );
   }
 
+  // ─── Upload / change profile photo ────────────────────────────────────────
+  // Sends a base64 data-URI to the backend (which stores it on Cloudinary) and
+  // patches the cached user with the returned URL.
+  uploadAvatar(image: string): Observable<{ avatar: string; user: User }> {
+    return this.http
+      .post<{ avatar: string; user: User }>(
+        `${environment.apiUrl}/users/me/avatar`,
+        { image }
+      )
+      .pipe(
+        tap(({ user }) => this._currentUser.set(user))
+      );
+  }
+
+  // ─── Update notification preferences (channels and/or per-type switches) ───
+  updateNotifPrefs(
+    update: NotifPrefsUpdate
+  ): Observable<{ notifPrefs: User['notifPrefs']; notifTypes: User['notifTypes'] }> {
+    return this.http
+      .put<{ notifPrefs: User['notifPrefs']; notifTypes: User['notifTypes'] }>(
+        `${environment.apiUrl}/users/me/notif-prefs`,
+        update
+      )
+      .pipe(
+        tap(({ notifPrefs, notifTypes }) => {
+          const current = this._currentUser();
+          if (current) this._currentUser.set({ ...current, notifPrefs, notifTypes });
+        })
+      );
+  }
+
   // ─── Logout ───────────────────────────────────────────────────────────────
   logout(): void {
     const refreshToken = this.tokenService.getRefreshToken();
@@ -164,10 +259,17 @@ export class AuthService {
   }
 
   // ─── Internal helpers ─────────────────────────────────────────────────────
-  private setSession(user: User, tokens: AuthTokens): void {
+  // Persist tokens + user and open the socket, without navigating — callers
+  // that need a different destination (e.g. first-time set-password) navigate
+  // themselves.
+  private applySession(user: User, tokens: AuthTokens): void {
     this.tokenService.setTokens(tokens.accessToken, tokens.refreshToken);
     this._currentUser.set(user);
     this.socketService.connect(tokens.accessToken);
+  }
+
+  private setSession(user: User, tokens: AuthTokens): void {
+    this.applySession(user, tokens);
     this.router.navigate(['/app/home']);
   }
 

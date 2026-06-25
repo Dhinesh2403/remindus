@@ -7,16 +7,6 @@ const ctrl    = require('../controllers/auth.controller');
 const { authenticate } = require('../middlewares/auth');
 const { validate }     = require('../middlewares/validate');
 
-router.post('/register',
-  [
-    body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }),
-    body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }).withMessage('Password min 8 chars'),
-  ],
-  validate,
-  ctrl.register
-);
-
 router.post('/login',
   [
     body('email').isEmail().normalizeEmail(),
@@ -24,6 +14,64 @@ router.post('/login',
   ],
   validate,
   ctrl.login
+);
+
+// ── Google sign-in ─────────────────────────────────────────────────────────
+// Accept either an ID token (native apps) or an access token (web / Google
+// Identity Services) — require at least one.
+router.post('/google',
+  [
+    body().custom((_value, { req }) => {
+      if (!req.body.idToken && !req.body.accessToken) {
+        throw new Error('Google credential required');
+      }
+      return true;
+    }),
+  ],
+  validate,
+  ctrl.googleAuth
+);
+
+// One-time password setup for Google (passwordless) accounts — authenticated.
+router.post('/set-password',
+  authenticate,
+  [body('password').isLength({ min: 8 }).withMessage('Password min 8 chars')],
+  validate,
+  ctrl.setPassword
+);
+
+// ── Email signup (OTP-first): start → verify → set-password ────────────────
+router.post('/signup/start',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }),
+    body('email').isEmail().normalizeEmail(),
+  ],
+  validate,
+  ctrl.signupStart
+);
+
+router.post('/signup/resend',
+  [body('email').isEmail().normalizeEmail()],
+  validate,
+  ctrl.signupResend
+);
+
+router.post('/signup/verify',
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('otp').isLength({ min: 6, max: 6 }).withMessage('Enter the 6-digit code'),
+  ],
+  validate,
+  ctrl.signupVerify
+);
+
+router.post('/signup/set-password',
+  [
+    body('setupToken').notEmpty(),
+    body('password').isLength({ min: 8 }).withMessage('Password min 8 chars'),
+  ],
+  validate,
+  ctrl.signupSetPassword
 );
 
 router.post('/refresh',

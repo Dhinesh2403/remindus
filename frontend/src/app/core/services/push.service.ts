@@ -52,13 +52,19 @@ export class PushService {
 
     // Notification tapped (background / killed state)
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      const data       = action.notification.data ?? {};
-      const type       = String(data['type'] ?? '');
-      const reminderId = data['reminderId'];
+      const data         = action.notification.data ?? {};
+      const type         = String(data['type'] ?? '');
+      const reminderId   = data['reminderId'];
+      const friendshipId = data['friendshipId'];
 
       switch (type) {
-        // Friend-related → Friends tab
+        // Incoming request → Friends tab, auto-prompt to accept the sender.
         case 'friend_request':
+          this.router.navigate(['/app/friends'],
+            friendshipId ? { queryParams: { accept: friendshipId } } : undefined);
+          break;
+
+        // Request I sent was accepted → Friends tab.
         case 'friend_accepted':
           this.router.navigate(['/app/friends']);
           break;

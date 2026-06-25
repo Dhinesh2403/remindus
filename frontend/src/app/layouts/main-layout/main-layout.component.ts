@@ -1,5 +1,5 @@
 // src/app/layouts/main-layout/main-layout.component.ts
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonTabs,
@@ -18,6 +18,7 @@ import {
 } from 'ionicons/icons';
 import { FriendService } from '../../core/services/friend.service';
 import { ReminderService } from '../../core/services/reminder.service';
+import { ChatService } from '../../core/services/chat.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -46,8 +47,8 @@ import { ReminderService } from '../../core/services/reminder.service';
 
         <ion-tab-button tab="friends" href="/app/friends">
           <ion-icon name="people-outline"></ion-icon>
-          @if (pendingCount() > 0) {
-            <ion-badge color="danger">{{ pendingCount() }}</ion-badge>
+          @if (friendsBadge() > 0) {
+            <ion-badge color="danger">{{ friendsBadge() }}</ion-badge>
           }
           <span class="tab-label">Friends</span>
         </ion-tab-button>
@@ -102,9 +103,14 @@ import { ReminderService } from '../../core/services/reminder.service';
 export class MainLayoutComponent implements OnInit {
   private friendService   = inject(FriendService);
   private reminderService = inject(ReminderService);
+  private chatService     = inject(ChatService);
 
   readonly pendingCount       = this.friendService.pendingCount;
   readonly reminderBadgeCount = this.reminderService.reminderBadgeCount;
+  // Friends tab badge = pending friend requests + unread chat messages.
+  readonly friendsBadge = computed(() =>
+    this.friendService.pendingCount() + this.chatService.totalUnread()
+  );
 
   constructor() {
     addIcons({

@@ -19,7 +19,7 @@ import {
     <ion-content class="premium-content">
       <div class="hero">
         <div class="hero-emoji">⭐</div>
-        <h1 class="hero-title">RemindMe Buddy Premium</h1>
+        <h1 class="hero-title">RemindUs Premium</h1>
         <p class="hero-sub">Unlock powerful features to never miss a thing</p>
       </div>
 
@@ -84,7 +84,6 @@ export class PremiumComponent {
     { icon: '💬', title: 'SMS Notifications',   desc: 'Never miss reminders even offline' },
     { icon: '🤖', title: 'AI Smart Scheduling', desc: 'Let AI find the perfect time for tasks' },
     { icon: '♾️', title: 'Unlimited Reminders', desc: 'No cap on reminders or friends' },
-    { icon: '📊', title: 'Advanced Analytics',  desc: 'Deep productivity insights & reports' },
     { icon: '🎯', title: 'Priority Support',    desc: '24/7 dedicated premium support' },
   ];
 }

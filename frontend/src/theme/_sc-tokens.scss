@@ -1,0 +1,85 @@
+// src/theme/_sc-tokens.scss
+// ─────────────────────────────────────────────────────────────────────────────
+// "Remind" redesign — design tokens (the `sc` design system)
+//
+// These live alongside the legacy `--rm-*` tokens while we migrate screen by
+// screen. New / redesigned screens use the `--sc-*` tokens and `sc`-prefixed
+// class names (scTitle, scHeader, …). Dark mode is driven by the `.dark-theme`
+// class on <body> (set by ThemeService), mirroring the legacy system.
+// ─────────────────────────────────────────────────────────────────────────────
+
+:root {
+  // Surfaces
+  --sc-screen:        #F4F6FB;
+  --sc-surface:       #FFFFFF;
+  --sc-surface-2:     #F3F5FA;
+
+  // Text
+  --sc-text:          #0F1729;
+  --sc-muted:         #5C6675;
+  --sc-faint:         #9AA3B2;
+
+  // Lines
+  --sc-border:        #E8EBF1;
+
+  // Accent (brand blue)
+  --sc-accent:        #3257EE;
+  --sc-accent-soft:   #EAEEFF;
+  --sc-on-accent:     #FFFFFF;
+
+  // Semantic
+  --sc-success:       #1AA06D;
+  --sc-success-soft:  #E4F6EE;
+  --sc-warn:          #E08A2B;
+  --sc-warn-soft:     #FBF0E2;
+  --sc-danger:        #E2554B;
+  --sc-danger-soft:   #FBEAE8;
+
+  // Elevation
+  --sc-shadow:        0 10px 30px rgba(20, 28, 46, .10);
+  --sc-shadow-sm:     0 2px 10px rgba(20, 28, 46, .06);
+
+  // Chrome
+  --sc-nav-bg:        rgba(255, 255, 255, .85);
+  --sc-bubble-in:     #FFFFFF;
+  --sc-chat-bg:       #ECEFF6;
+
+  // Radii (shared scale for the new screens)
+  --sc-radius-sm:     11px;
+  --sc-radius-md:     15px;
+  --sc-radius-lg:     20px;
+  --sc-radius-xl:     28px;
+
+  // Type
+  --sc-font:          'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.dark-theme {
+  --sc-screen:        #0A0E15;
+  --sc-surface:       #12161F;
+  --sc-surface-2:     #171D29;
+
+  --sc-text:          #EAEEF6;
+  --sc-muted:         #909AAB;
+  --sc-faint:         #5E6675;
+
+  --sc-border:        #222937;
+
+  --sc-accent:        #5B7CFF;
+  --sc-accent-soft:   rgba(91, 124, 255, .16);
+  --sc-on-accent:     #FFFFFF;
+
+  --sc-success:       #2EBE86;
+  --sc-success-soft:  rgba(46, 190, 134, .15);
+  --sc-warn:          #E2982F;
+  --sc-warn-soft:     rgba(226, 152, 47, .15);
+  --sc-danger:        #F0655B;
+  --sc-danger-soft:   rgba(240, 101, 91, .15);
+
+  --sc-shadow:        0 14px 40px rgba(0, 0, 0, .45);
+  --sc-shadow-sm:     0 2px 12px rgba(0, 0, 0, .35);
+
+  --sc-nav-bg:        rgba(18, 22, 31, .85);
+  --sc-bubble-in:     #1B2230;
+  --sc-chat-bg:       #0C1019;
+}

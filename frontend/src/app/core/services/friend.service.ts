@@ -20,15 +20,17 @@ export interface Friend {
 }
 
 export interface PendingRequest {
-  _id:   string;
-  name:  string;
-  email: string;
+  _id:    string;
+  name:   string;
+  email:  string;
+  avatar?: string | null;
 }
 
-export interface UserSearchResult {
-  _id:   string;
-  name:  string;
-  email: string;
+export type FriendRelationship = 'none' | 'friends' | 'request_sent' | 'request_received';
+
+export interface RefIdLookup {
+  user:         { _id: string; name: string; avatar: string | null };
+  relationship: FriendRelationship;
 }
 
 export type SharedStatus = 'sent' | 'received' | 'acknowledged' | 'processing' | 'skipped' | 'completed';
@@ -69,14 +71,15 @@ export class FriendService {
     );
   }
 
-  searchUsers(query: string): Observable<{ users: UserSearchResult[] }> {
-    return this.http.get<{ users: UserSearchResult[] }>(`${this.API}/search`, {
-      params: { q: query },
+  /** Preview who owns a friend code before sending a request. */
+  lookupByRefId(refId: string): Observable<RefIdLookup> {
+    return this.http.get<RefIdLookup>(`${this.API}/lookup`, {
+      params: { refId: refId.trim() },
     });
   }
 
-  sendRequest(query: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.API}/request`, { query });
+  sendRequest(refId: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API}/request`, { refId: refId.trim() });
   }
 
   accept(friendshipId: string): Observable<void> {

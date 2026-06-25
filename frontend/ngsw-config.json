@@ -41,7 +41,7 @@
     },
     {
       "name": "api-performance",
-      "urls": ["/api/friends", "/api/users/me", "/api/users/me/insights"],
+      "urls": ["/api/friends", "/api/users/me"],
       "cacheConfig": {
         "strategy": "performance",
         "maxSize":   20,

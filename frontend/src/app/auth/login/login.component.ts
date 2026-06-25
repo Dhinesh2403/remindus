@@ -8,149 +8,33 @@ import {
   AbstractControl,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import {
-  IonContent,
-  IonSpinner,
-  IonIcon,
-  ToastController,
-} from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import {
-  mailOutline,
-  lockClosedOutline,
-  eyeOutline,
-  eyeOffOutline,
-} from 'ionicons/icons';
+import { ToastController } from '@ionic/angular/standalone';
 import { AuthService } from '../../core/services/auth.service';
+import { SocialAuthService } from '../../core/services/social-auth.service';
+import { SafeHtmlPipe } from '../../core/pipes/safe-html.pipe';
+
+interface LoginBadge { icon: string; label: string; color: string; }
+interface LoginFeature { icon: string; title: string; body: string; color: string; soft: string; }
+interface LoginAvatar { initials: string; color: string; }
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    RouterLink,
-    IonContent,
-    IonSpinner,
-    IonIcon,
-  ],
-  template: `
-    <ion-content class="login-content">
-      <div class="login-bg">
-        <div class="login-card">
-
-          <!-- Logo -->
-          <div class="login-logo-wrap">
-            <img src="assets/logo.svg" alt="RemindMe Buddy" class="login-logo-img" />
-          </div>
-
-          <h1 class="login-title">Welcome Back</h1>
-          <p class="login-sub">Sign in to never miss a reminder</p>
-
-          <!-- Form -->
-          <form [formGroup]="form" (ngSubmit)="onSubmit()">
-
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <div class="input-wrap">
-                <ion-icon name="mail-outline" class="input-icon"></ion-icon>
-                <input
-                  formControlName="email"
-                  type="email"
-                  class="form-input"
-                  placeholder="your@email.com"
-                  autocomplete="email"
-                />
-              </div>
-              @if (email.invalid && email.touched) {
-                <span class="field-error">Enter a valid email</span>
-              }
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Password</label>
-              <div class="input-wrap">
-                <ion-icon name="lock-closed-outline" class="input-icon"></ion-icon>
-                <input
-                  formControlName="password"
-                  [type]="showPassword() ? 'text' : 'password'"
-                  class="form-input"
-                  placeholder="••••••••"
-                  autocomplete="current-password"
-                />
-                <button
-                  type="button"
-                  class="password-toggle"
-                  (click)="togglePassword()"
-                >
-                  <ion-icon
-                    [name]="showPassword() ? 'eye-off-outline' : 'eye-outline'"
-                  ></ion-icon>
-                </button>
-              </div>
-              @if (password.invalid && password.touched) {
-                <span class="field-error">Password must be at least 8 characters</span>
-              }
-            </div>
-
-            <div class="forgot-link">
-              <a routerLink="/auth/forgot-password">Forgot password?</a>
-            </div>
-
-            <button
-              type="submit"
-              class="btn-primary"
-              [disabled]="form.invalid || isLoading()"
-            >
-              @if (isLoading()) {
-                <ion-spinner name="crescent" style="width:18px;height:18px;color:white"></ion-spinner>
-              } @else {
-                Sign In
-              }
-            </button>
-
-          </form>
-
-          <p class="login-footer">
-            Don't have an account?
-            <a routerLink="/auth/register">Sign up</a>
-          </p>
-
-        </div>
-      </div>
-    </ion-content>
-  `,
-  styles: [`
-    .login-content { --background: linear-gradient(160deg, #F0ECFF 0%, #E8F0FF 100%); }
-    .login-bg { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
-    .login-card { background: var(--rm-card); border-radius: var(--rm-radius-xl); padding: 36px 24px; width: 100%; max-width: 340px; box-shadow: var(--rm-shadow-md); }
-    .login-logo-wrap { display: flex; justify-content: center; margin: 0 auto 20px; }
-    .login-logo-img { width: 200px; height: auto; }
-    .login-title { font-size: 26px; font-weight: 800; color: var(--rm-purple); text-align: center; margin-bottom: 6px; }
-    .login-sub { color: var(--rm-text-secondary); text-align: center; font-size: 14px; margin-bottom: 28px; }
-    .form-group { margin-bottom: 16px; }
-    .form-label { font-size: 13px; font-weight: 600; color: var(--rm-text-primary); display: block; margin-bottom: 6px; }
-    .input-wrap { position: relative; }
-    .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--rm-text-muted); z-index: 1; }
-    .form-input { width: 100%; padding: 14px 16px 14px 44px; border: 1.5px solid var(--rm-border); border-radius: var(--rm-radius-md); font-size: 14px; outline: none; background: var(--rm-surface); color: var(--rm-text-primary); transition: border-color 0.2s; font-family: inherit; }
-    .form-input:focus { border-color: var(--rm-purple); background: var(--rm-surface); }
-    .password-toggle { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--rm-text-muted); font-size: 18px; padding: 0; display: flex; }
-    .field-error { font-size: 12px; color: var(--rm-danger); margin-top: 4px; display: block; }
-    .forgot-link { text-align: right; margin-bottom: 16px; }
-    .forgot-link a { font-size: 13px; color: var(--rm-purple); font-weight: 600; text-decoration: none; }
-    .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--rm-purple) 0%, #9333EA 100%); color: white; border: none; border-radius: var(--rm-radius-md); font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(124,58,237,0.35); display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; transition: opacity 0.2s; }
-    .btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
-    .login-footer { text-align: center; font-size: 13px; color: var(--rm-text-secondary); }
-    .login-footer a { color: var(--rm-purple); font-weight: 700; text-decoration: none; }
-  `],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SafeHtmlPipe],
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.scss',
 })
 export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
+  private social = inject(SocialAuthService);
   private toastCtrl = inject(ToastController);
 
   readonly isLoading = this.authService.isLoading;
-  showPassword = signal(false);
+
+  // Hides the marketing block and reveals the email/password form
+  readonly showForm = signal(false);
+  readonly showPassword = signal(false);
 
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -160,31 +44,97 @@ export class LoginComponent {
   get email(): AbstractControl { return this.form.get('email')!; }
   get password(): AbstractControl { return this.form.get('password')!; }
 
-  constructor() {
-    addIcons({ mailOutline, lockClosedOutline, eyeOutline, eyeOffOutline });
+  // ─── Static marketing content (mirrors the design) ────────────────────────
+  readonly badges: LoginBadge[] = [
+    {
+      label: '4.9 rating', color: '#E0A92B',
+      icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.5 5.5L20 9.3l-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.5-.8z"/></svg>`,
+    },
+    {
+      label: 'Private', color: 'var(--sc-accent)',
+      icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>`,
+    },
+    {
+      label: 'Free to start', color: '#1AA06D',
+      icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    },
+  ];
+
+  readonly features: LoginFeature[] = [
+    {
+      title: 'Smart reminders', body: 'Habits, meds & bills — right on time.',
+      color: 'var(--sc-accent)', soft: 'var(--sc-accent-soft)',
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4a5 5 0 015 5c0 4 1.6 5 1.6 5H5.4S7 13 7 9a5 5 0 015-5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10.5 18a1.7 1.7 0 003 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+    },
+    {
+      title: 'Share with friends', body: 'Assign tasks and keep lists in sync.',
+      color: '#1AA06D', soft: 'var(--sc-success-soft)',
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="17" cy="8" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M16 13.5a5 5 0 014.5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+    },
+    {
+      title: 'Plan over chat', body: 'Turn a message into a task instantly.',
+      color: '#E08A2B', soft: 'var(--sc-warn-soft)',
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21 12a8 8 0 01-11.5 7.2L4 20l1-4.5A8 8 0 1121 12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+    },
+  ];
+
+  readonly avatars: LoginAvatar[] = [
+    { initials: 'MI', color: '#E0699B' },
+    { initials: 'DC', color: '#3DA3C9' },
+    { initials: 'SK', color: '#7B61D8' },
+    { initials: '+',  color: '#3257EE' },
+  ];
+
+  revealForm(): void {
+    this.showForm.set(true);
   }
 
   togglePassword(): void {
-    this.showPassword.update(v => !v);
+    this.showPassword.update((v) => !v);
+  }
+
+  // Google sign-in. Web uses Google Identity Services (returns an access token);
+  // native uses the Capacitor plugin (returns an ID token). The backend verifies
+  // either. Requires environment.googleClientId on web.
+  async onGoogle(): Promise<void> {
+    if (!this.social.isConfigured) {
+      this.notify('Google sign-in is not configured yet', 'medium');
+      return;
+    }
+
+    try {
+      const cred = await this.social.signInWithGoogle();
+      this.authService.googleLogin(cred).subscribe({
+        error: (err) =>
+          this.notify(err?.error?.message || 'Google sign-in failed', 'danger'),
+      });
+    } catch {
+      // User cancelled the Google chooser, or sign-in isn't fully set up.
+      this.notify('Google sign-in was cancelled', 'medium');
+    }
   }
 
   onSubmit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.showForm.set(true);
       return;
     }
+
     const { email, password } = this.form.value;
     this.authService.login({ email: email!, password: password! }).subscribe({
-      error: async (err) => {
-        const toast = await this.toastCtrl.create({
-          message: err?.error?.message || 'Login failed. Please try again.',
-          duration: 3000,
-          color: 'danger',
-          position: 'top',
-        });
-        await toast.present();
-      },
+      error: (err) =>
+        this.notify(err?.error?.message || 'Login failed. Please try again.', 'danger'),
     });
   }
 
+  private async notify(message: string, color: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'top',
+    });
+    await toast.present();
+  }
 }

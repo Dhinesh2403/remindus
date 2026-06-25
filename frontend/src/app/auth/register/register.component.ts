@@ -1,125 +1,207 @@
 // src/app/auth/register/register.component.ts
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import {
-  IonContent, IonIcon, IonSpinner, ToastController,
-} from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { personOutline, mailOutline, lockClosedOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
+  ReactiveFormsModule,
+  FormBuilder,
+  Validators,
+  AbstractControl,
+} from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { ToastController } from '@ionic/angular/standalone';
 import { AuthService } from '../../core/services/auth.service';
+import { SocialAuthService } from '../../core/services/social-auth.service';
 
+type Step = 'details' | 'otp' | 'password';
+
+/**
+ * Email signup, OTP-first:
+ *   1. details   — name + email           → backend emails a 6-digit code
+ *   2. otp       — verify the code         → backend returns a setup token
+ *   3. password  — set a password          → account created + logged in
+ *
+ * Google sign-up is offered as a one-tap shortcut at the top of step 1.
+ */
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, IonContent, IonIcon, IonSpinner],
-  template: `
-    <ion-content class="login-content">
-      <div class="login-bg">
-        <div class="login-card">
-          <div class="login-logo-wrap">
-            <img src="assets/logo.svg" alt="RemindMe Buddy" class="login-logo-img" />
-          </div>
-          <h1 class="login-title">Create Account</h1>
-          <p class="login-sub">Start holding yourself accountable</p>
-
-          <form [formGroup]="form" (ngSubmit)="onSubmit()">
-            <div class="form-group">
-              <label class="form-label">Full Name</label>
-              <div class="input-wrap">
-                <ion-icon name="person-outline" class="input-icon"></ion-icon>
-                <input formControlName="name" class="form-input" type="text" placeholder="Alex Johnson" />
-              </div>
-              @if (f['name'].invalid && f['name'].touched) {
-                <span class="field-error">Name is required</span>
-              }
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <div class="input-wrap">
-                <ion-icon name="mail-outline" class="input-icon"></ion-icon>
-                <input formControlName="email" class="form-input" type="email" placeholder="your@email.com" />
-              </div>
-              @if (f['email'].invalid && f['email'].touched) {
-                <span class="field-error">Enter a valid email</span>
-              }
-            </div>
-            <div class="form-group">
-              <label class="form-label">Password</label>
-              <div class="input-wrap">
-                <ion-icon name="lock-closed-outline" class="input-icon"></ion-icon>
-                <input formControlName="password" [type]="showPwd() ? 'text' : 'password'" class="form-input" placeholder="Min 8 characters" />
-                <button type="button" class="password-toggle" (click)="togglePassword()">
-                  <ion-icon [name]="showPwd() ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
-                </button>
-              </div>
-              @if (f['password'].invalid && f['password'].touched) {
-                <span class="field-error">Password must be at least 8 characters</span>
-              }
-            </div>
-            <button type="submit" class="btn-primary" [disabled]="form.invalid || isLoading()">
-              @if (isLoading()) { <ion-spinner name="crescent" style="width:18px;height:18px;color:white"></ion-spinner> }
-              @else { Create Account }
-            </button>
-          </form>
-
-          <p class="login-footer">Already have an account? <a routerLink="/auth/login">Sign in</a></p>
-        </div>
-      </div>
-    </ion-content>`,
-  styles: [`
-    .login-content { --background: linear-gradient(160deg,#F0ECFF 0%,#E8F0FF 100%); }
-    .login-bg { min-height:100%; display:flex; align-items:center; justify-content:center; padding:32px 20px; }
-    .login-card { background:var(--rm-card); border-radius:28px; padding:36px 24px; width:100%; max-width:340px; box-shadow:0 4px 16px rgba(124,58,237,0.1); }
-    .login-logo-wrap { display:flex; justify-content:center; margin:0 auto 20px; }
-    .login-logo-img { width:200px; height:auto; }
-    .login-title { font-size:26px; font-weight:800; color:var(--rm-purple); text-align:center; margin-bottom:6px; }
-    .login-sub { color:var(--rm-text-secondary); text-align:center; font-size:14px; margin-bottom:28px; }
-    .form-group { margin-bottom:16px; }
-    .form-label { font-size:13px; font-weight:600; color:var(--rm-text-primary); display:block; margin-bottom:6px; }
-    .input-wrap { position:relative; }
-    .input-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:18px; color:var(--rm-text-muted); }
-    .form-input { width:100%; padding:14px 16px 14px 44px; border:1.5px solid var(--rm-border); border-radius:14px; font-size:14px; outline:none; background:var(--rm-surface); color:var(--rm-text-primary); font-family:inherit; }
-    .form-input:focus { border-color:var(--rm-purple); background:var(--rm-surface); }
-    .password-toggle { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--rm-text-muted); font-size:18px; }
-    .field-error { font-size:12px; color:var(--rm-danger); margin-top:4px; display:block; }
-    .btn-primary { width:100%; padding:16px; background:linear-gradient(135deg,var(--rm-purple),#9333EA); color:white; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; box-shadow:0 4px 16px rgba(124,58,237,0.35); margin-bottom:16px; }
-    .btn-primary:disabled { opacity:.65; }
-    .login-footer { text-align:center; font-size:13px; color:var(--rm-text-secondary); }
-    .login-footer a { color:var(--rm-purple); font-weight:700; text-decoration:none; }
-  `],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.scss',
 })
 export class RegisterComponent {
-  private fb        = inject(FormBuilder);
+  private fb = inject(FormBuilder);
   private authService = inject(AuthService);
+  private social = inject(SocialAuthService);
+  private router = inject(Router);
   private toastCtrl = inject(ToastController);
 
-  showPwd   = signal(false);
-  isLoading = this.authService.isLoading;
+  readonly step = signal<Step>('details');
+  readonly busy = signal(false);               // start / verify / resend
+  readonly isLoading = this.authService.isLoading; // final set-password call
+  readonly showPassword = signal(false);
 
-  form = this.fb.group({
-    name:     ['', [Validators.required, Validators.maxLength(100)]],
-    email:    ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
+  private email = '';
+  private setupToken = '';
+
+  readonly stepTitle = computed(() => ({
+    details:  'Create your account',
+    otp:      'Verify your email',
+    password: 'Set a password',
+  }[this.step()]));
+
+  readonly stepSub = computed(() => ({
+    details:  'Tell us who you are to get started.',
+    otp:      `Enter the 6-digit code we sent to ${this.email}.`,
+    password: 'Last step — choose a password to secure your account.',
+  }[this.step()]));
+
+  detailsForm = this.fb.group({
+    name:  ['', [Validators.required, Validators.maxLength(100)]],
+    email: ['', [Validators.required, Validators.email]],
   });
 
-  get f() { return this.form.controls; }
+  otpForm = this.fb.group({
+    otp: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]],
+  });
 
-  constructor() { addIcons({ personOutline, mailOutline, lockClosedOutline, eyeOutline, eyeOffOutline }); }
+  passwordForm = this.fb.group({
+    password: ['', [Validators.required, Validators.minLength(8)]],
+    confirm:  ['', [Validators.required]],
+  });
 
-  togglePassword(): void {
-    this.showPwd.update(v => !v);
+  get name(): AbstractControl { return this.detailsForm.get('name')!; }
+  get emailCtrl(): AbstractControl { return this.detailsForm.get('email')!; }
+  get otp(): AbstractControl { return this.otpForm.get('otp')!; }
+  get password(): AbstractControl { return this.passwordForm.get('password')!; }
+  get confirm(): AbstractControl { return this.passwordForm.get('confirm')!; }
+
+  get passwordsMatch(): boolean {
+    return this.password.value === this.confirm.value;
   }
 
-  onSubmit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    const { name, email, password } = this.form.value;
-    this.authService.register({ name: name!, email: email!, password: password! }).subscribe({
-      error: async (err) => {
-        const t = await this.toastCtrl.create({ message: err?.error?.message || 'Registration failed', duration: 3000, color: 'danger', position: 'top' });
-        t.present();
+  // ─── Step 1: name + email → send OTP ──────────────────────────────────────
+  submitDetails(): void {
+    if (this.detailsForm.invalid) {
+      this.detailsForm.markAllAsTouched();
+      return;
+    }
+
+    this.busy.set(true);
+    const { name, email } = this.detailsForm.value;
+    this.authService.signupStart(name!, email!).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.email = email!;
+        this.step.set('otp');
+      },
+      error: (err) => {
+        this.busy.set(false);
+        this.notify(err?.error?.message || 'Could not start signup', 'danger');
       },
     });
+  }
+
+  // ─── Step 2: verify OTP → get setup token ─────────────────────────────────
+  submitOtp(): void {
+    if (this.otpForm.invalid) {
+      this.otpForm.markAllAsTouched();
+      return;
+    }
+
+    this.busy.set(true);
+    this.authService.signupVerify(this.email, this.otp.value!).subscribe({
+      next: ({ setupToken }) => {
+        this.busy.set(false);
+        this.setupToken = setupToken;
+        this.step.set('password');
+      },
+      error: (err) => {
+        this.busy.set(false);
+        this.notify(err?.error?.message || 'Invalid or expired code', 'danger');
+      },
+    });
+  }
+
+  // Pull a 6-digit code straight from the clipboard so users can paste the
+  // code from their email in one tap instead of typing it.
+  async pasteOtp(): Promise<void> {
+    try {
+      const text = await navigator.clipboard.readText();
+      const code = (text.match(/\d/g) || []).join('').slice(0, 6);
+      if (code.length === 6) {
+        this.otp.setValue(code);
+        this.otp.markAsTouched();
+        this.notify('Code pasted', 'success');
+      } else {
+        this.notify('No 6-digit code found on your clipboard', 'medium');
+      }
+    } catch {
+      this.notify("Couldn't read the clipboard — please paste the code manually", 'medium');
+    }
+  }
+
+  resendOtp(): void {
+    this.busy.set(true);
+    this.authService.signupResend(this.email).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.notify('A new code is on its way', 'success');
+      },
+      error: (err) => {
+        this.busy.set(false);
+        this.notify(err?.error?.message || 'Could not resend code', 'danger');
+      },
+    });
+  }
+
+  // ─── Step 3: set password → create account + log in ───────────────────────
+  submitPassword(): void {
+    if (this.passwordForm.invalid || !this.passwordsMatch) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+
+    this.authService.signupSetPassword(this.setupToken, this.password.value!).subscribe({
+      next: () => this.router.navigateByUrl('/onboarding'),
+      error: (err) =>
+        this.notify(err?.error?.message || 'Could not finish signup', 'danger'),
+    });
+  }
+
+  async onGoogle(): Promise<void> {
+    if (!this.social.isConfigured) {
+      this.notify('Google sign-in is not configured yet', 'medium');
+      return;
+    }
+
+    try {
+      const cred = await this.social.signInWithGoogle();
+      this.authService.googleLogin(cred).subscribe({
+        error: (err) =>
+          this.notify(err?.error?.message || 'Google sign-in failed', 'danger'),
+      });
+    } catch {
+      this.notify('Google sign-in was cancelled', 'medium');
+    }
+  }
+
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
+  }
+
+  back(): void {
+    if (this.step() === 'otp') this.step.set('details');
+    else if (this.step() === 'password') this.step.set('otp');
+  }
+
+  private async notify(message: string, color: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'top',
+    });
+    await toast.present();
   }
 }

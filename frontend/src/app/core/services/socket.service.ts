@@ -12,7 +12,14 @@ export type SocketEvent =
   | 'reminder:sharedStatus'
   | 'friend:request'
   | 'friend:accepted'
-  | 'notification:new';
+  | 'notification:new'
+  | 'chat:message'
+  | 'chat:ack'
+  | 'chat:delivered'
+  | 'chat:read'
+  | 'chat:typing'
+  | 'presence:update'
+  | 'presence:state';
 
 export interface SocketPayload<T = unknown> {
   event: SocketEvent;
@@ -58,6 +65,13 @@ export class SocketService {
       'friend:request',
       'friend:accepted',
       'notification:new',
+      'chat:message',
+      'chat:ack',
+      'chat:delivered',
+      'chat:read',
+      'chat:typing',
+      'presence:update',
+      'presence:state',
     ];
 
     events.forEach((event) => {
