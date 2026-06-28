@@ -19,6 +19,9 @@ import {
   peopleOutline,
   addOutline,
   person,
+  flameOutline,
+  flagOutline,
+  documentTextOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../core/services/auth.service';
 import { ReminderService } from '../core/services/reminder.service';
@@ -106,6 +109,39 @@ import { ReminderService } from '../core/services/reminder.service';
         </div>
       </div>
 
+      <!-- Productivity modules -->
+      <div class="modules-title">Get started</div>
+      <div class="modules-grid">
+        <div class="module-card" style="background:rgba(124,58,237,0.10)" (click)="nav.navigate(['/app/daily-plan'])">
+          <div class="module-icon" style="background:#7C3AED">
+            <ion-icon name="time-outline"></ion-icon>
+          </div>
+          <div class="module-title">Daily Plan</div>
+          <div class="module-sub">Time-block your day</div>
+        </div>
+        <div class="module-card" style="background:rgba(224,115,43,0.10)" (click)="nav.navigate(['/app/habits'])">
+          <div class="module-icon" style="background:#E0732B">
+            <ion-icon name="flame-outline"></ion-icon>
+          </div>
+          <div class="module-title">Habits</div>
+          <div class="module-sub">Build streaks</div>
+        </div>
+        <div class="module-card" style="background:rgba(123,97,216,0.10)" (click)="nav.navigate(['/app/goals'])">
+          <div class="module-icon" style="background:#7B61D8">
+            <ion-icon name="flag-outline"></ion-icon>
+          </div>
+          <div class="module-title">Goals</div>
+          <div class="module-sub">Plan the big picture</div>
+        </div>
+        <div class="module-card" style="background:rgba(201,154,30,0.10)" (click)="nav.navigate(['/app/notes'])">
+          <div class="module-icon" style="background:#C99A1E">
+            <ion-icon name="document-text-outline"></ion-icon>
+          </div>
+          <div class="module-title">Sticky Notes</div>
+          <div class="module-sub">Jot it down</div>
+        </div>
+      </div>
+
       <!-- FAB -->
       <div class="fab" (click)="nav.navigate(['/app/reminders/create'])">
         <ion-icon name="add-outline" style="font-size:26px;color:white"></ion-icon>
@@ -138,6 +174,13 @@ import { ReminderService } from '../core/services/reminder.service';
     .action-title { font-size: 17px; font-weight: 800; color: white; margin-top: 8px; }
     .action-sub { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
     .fab { position: fixed; bottom: 88px; right: 20px; width: 54px; height: 54px; border-radius: 50%; background: var(--rm-purple); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 20px rgba(124,58,237,0.4); z-index: 100; }
+    .modules-title { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); padding: 24px 16px 0; }
+    .modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 16px 24px; }
+    .module-card { border-radius: 20px; padding: 16px; cursor: pointer; min-height: 124px; display: flex; flex-direction: column; transition: transform 0.15s; }
+    .module-card:active { transform: scale(0.97); }
+    .module-icon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; }
+    .module-title { font-size: 15.5px; font-weight: 800; color: var(--rm-text-primary); margin-top: 14px; }
+    .module-sub { font-size: 12px; color: var(--rm-text-secondary); margin-top: 3px; }
   `],
 })
 export class DashboardComponent implements OnInit {
@@ -167,7 +210,7 @@ export class DashboardComponent implements OnInit {
     addIcons({
       timeOutline, notificationsOutline, alertCircleOutline,
       trendingUpOutline, calendarOutline, peopleOutline,
-      addOutline, person,
+      addOutline, person, flameOutline, flagOutline, documentTextOutline,
     });
   }
 

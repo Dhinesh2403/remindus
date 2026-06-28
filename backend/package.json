@@ -8,6 +8,7 @@
     "dev": "cross-env NODE_ENV=development nodemon src/app.js",
     "dev:staging": "cross-env NODE_ENV=staging nodemon src/app.js",
     "start": "cross-env NODE_ENV=production node src/app.js",
+    "seed": "cross-env NODE_ENV=development node src/seed/seed.js",
     "lint": "eslint src/ --ext .js",
     "test": "jest --coverage",
     "test:watch": "jest --watchAll"
