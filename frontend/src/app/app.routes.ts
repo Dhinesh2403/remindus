@@ -140,6 +140,30 @@ export const routes: Routes = [
             (m) => m.NotificationsComponent
           ),
       },
+
+      // ─── Productivity modules ───────────────────────────────────────────────
+      {
+        path: 'habits',
+        loadComponent: () =>
+          import('./habits/habits.component').then((m) => m.HabitsComponent),
+      },
+      {
+        path: 'goals',
+        loadComponent: () =>
+          import('./goals/goals.component').then((m) => m.GoalsComponent),
+      },
+      {
+        path: 'daily-plan',
+        loadComponent: () =>
+          import('./daily-plan/daily-plan.component').then(
+            (m) => m.DailyPlanComponent
+          ),
+      },
+      {
+        path: 'notes',
+        loadComponent: () =>
+          import('./notes/notes.component').then((m) => m.NotesComponent),
+      },
       {
         // The "Go Premium" upgrade page must be reachable by non-premium users —
         // that's its whole purpose, so no premiumGuard here.
