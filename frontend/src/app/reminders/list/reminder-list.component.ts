@@ -30,7 +30,7 @@ const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; label:
   study:    { emoji: '📚', color: '#10B981', label: 'Study' },
   work:     { emoji: '💼', color: '#F59E0B', label: 'Work' },
   general:  { emoji: '📌', color: '#6B7280', label: 'General' },
-  custom:   { emoji: '✨', color: '#7C3AED', label: 'Custom' },
+  custom:   { emoji: '✨', color: '#3D5AF1', label: 'Custom' },
 };
 
 const REMINDER_STATUS_META: Record<string, { label: string; color: string }> = {
@@ -443,7 +443,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .empty-state h3 { font-size: 17px; font-weight: 700; color: var(--rm-text-primary); margin-bottom: 6px; }
     .empty-state p { font-size: 13px; color: var(--rm-text-muted); }
 
-    ion-fab-button { --background: var(--rm-purple); --box-shadow: 0 6px 20px rgba(124,58,237,0.4); }
+    ion-fab-button { --background: var(--rm-purple); --box-shadow: 0 6px 20px rgba(61,90,241,0.4); }
   `],
 })
 export class ReminderListComponent implements OnInit {

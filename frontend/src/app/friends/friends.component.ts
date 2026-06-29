@@ -1,5 +1,5 @@
 // src/app/friends/friends.component.ts
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -8,17 +8,23 @@ import {
   IonSearchbar, IonSkeletonText,
   ToastController, AlertController,
 } from '@ionic/angular/standalone';
+import { ActivatedRoute, Router } from '@angular/router';
 import { addIcons } from 'ionicons';
 import {
   personAddOutline, personRemoveOutline, closeOutline, searchOutline,
   addCircleOutline, chevronDownOutline, chevronUpOutline,
+  shareSocialOutline, copyOutline, keyOutline, checkmarkCircle,
+  chatbubbleEllipsesOutline, arrowBackOutline, send,
+  checkmarkOutline, checkmarkDoneOutline, timeOutline,
 } from 'ionicons/icons';
-import { Subject, EMPTY, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, filter } from 'rxjs/operators';
-import { FriendService, Friend, UserSearchResult, SharedReminder, SharedStatus } from '../core/services/friend.service';
+import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
+import { FriendService, Friend, PendingRequest, RefIdLookup, FriendRelationship, SharedReminder, SharedStatus } from '../core/services/friend.service';
 import { TimeAmPmPipe } from '../core/pipes/time-ampm.pipe';
 import { SocketService } from '../core/services/socket.service';
+import { ChatService, ChatMessage } from '../core/services/chat.service';
 import { AuthService } from '../core/services/auth.service';
+import { ShareService } from '../core/services/share.service';
 
 @Component({
   selector: 'app-friends',
@@ -50,49 +56,82 @@ import { AuthService } from '../core/services/auth.service';
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
 
+      <!-- Your shareable friend code -->
+      <div class="mycode-card">
+        <div class="mycode-left">
+          <div class="mycode-label">Your friend code</div>
+          <div class="mycode-value">{{ myRefId() || '••••••••' }}</div>
+        </div>
+        <button class="btn-copy" (click)="copyMyCode()" [disabled]="!myRefId()" title="Copy">
+          <ion-icon name="copy-outline"></ion-icon>
+        </button>
+        <button class="btn-share" (click)="shareMyCode()" [disabled]="!myRefId()">
+          <ion-icon name="share-social-outline"></ion-icon>
+          Share
+        </button>
+      </div>
+
       @if (showAddPanel()) {
         <div class="add-panel">
           <div class="add-panel-header">
-            <ion-icon name="search-outline" class="panel-icon"></ion-icon>
-            <span class="panel-title">Find Friends</span>
+            <ion-icon name="key-outline" class="panel-icon"></ion-icon>
+            <span class="panel-title">Add by Friend Code</span>
             <button class="btn-close-panel" (click)="closeAddPanel()">
               <ion-icon name="close-outline"></ion-icon>
             </button>
           </div>
-          <div class="add-panel-input-wrap">
+
+          <div class="code-entry-row">
             <input
-              class="friend-search-input"
+              class="friend-search-input code-input"
               type="text"
-              placeholder="Search by name..."
+              placeholder="e.g. K7P2X9Q4"
               autocomplete="off"
-              (input)="onFriendSearch($event)"
+              autocapitalize="characters"
+              maxlength="12"
+              [value]="codeInput()"
+              (input)="onCodeInput($event)"
+              (keyup.enter)="lookup()"
             />
+            <button class="btn-lookup" [disabled]="codeInput().length < 6 || isLookingUp()" (click)="lookup()">
+              {{ isLookingUp() ? '...' : 'Find' }}
+            </button>
           </div>
-          @if (addQuery().length === 1) {
-            <div class="panel-hint">Type one more character to search</div>
+
+          @if (lookupError()) {
+            <div class="panel-hint error-hint">{{ lookupError() }}</div>
           }
-          @if (isSearching()) {
-            <div class="panel-loading">
-              <div class="loader-ring"></div>
-              <span>Searching...</span>
-            </div>
-          } @else if (searchResults().length > 0) {
-            <div class="search-results">
-              @for (user of searchResults(); track user._id) {
-                <div class="result-row">
-                  <div class="result-avatar">{{ user.name[0].toUpperCase() }}</div>
-                  <div class="result-info">
-                    <div class="result-name">{{ user.name }}</div>
-                    <div class="result-email">{{ user.email }}</div>
-                  </div>
-                  <button class="btn-add-user" [disabled]="sending() === user._id" (click)="addFriend(user)">
-                    {{ sending() === user._id ? '...' : 'Add' }}
+
+          @if (lookupResult(); as r) {
+            <div class="preview-card">
+              <div class="preview-avatar">
+                @if (r.user.avatar) {
+                  <img [src]="r.user.avatar" [alt]="r.user.name" />
+                } @else {
+                  {{ r.user.name[0].toUpperCase() }}
+                }
+              </div>
+              <div class="preview-info">
+                <div class="preview-name">{{ r.user.name }}</div>
+                <div class="preview-sub">{{ relationshipLabel(r.relationship) }}</div>
+              </div>
+              @switch (r.relationship) {
+                @case ('none') {
+                  <button class="btn-add-user" [disabled]="sending() === r.user._id" (click)="sendRequest(r)">
+                    {{ sending() === r.user._id ? '...' : 'Send Request' }}
                   </button>
-                </div>
+                }
+                @case ('friends') {
+                  <span class="rel-pill rel-ok"><ion-icon name="checkmark-circle"></ion-icon> Friends</span>
+                }
+                @case ('request_sent') {
+                  <span class="rel-pill">Requested</span>
+                }
+                @case ('request_received') {
+                  <span class="rel-pill rel-action">Check requests below</span>
+                }
               }
             </div>
-          } @else if (addQuery().length >= 2 && !isSearching()) {
-            <div class="panel-hint">No users found for "{{ addQuery() }}"</div>
           }
         </div>
       }
@@ -110,8 +149,14 @@ import { AuthService } from '../core/services/auth.service';
             {{ pendingRequests().length }} pending request{{ pendingRequests().length > 1 ? 's' : '' }}
           </div>
           @for (req of pendingRequests(); track req._id) {
-            <div class="request-row">
-              <div class="req-avatar">{{ req.name[0] }}</div>
+            <div class="request-row" [class.highlight]="highlightId() === req._id">
+              <div class="req-avatar">
+                @if (req.avatar) {
+                  <img [src]="req.avatar" [alt]="req.name" />
+                } @else {
+                  {{ req.name[0] }}
+                }
+              </div>
               <span class="req-name">{{ req.name }}</span>
               <button class="btn-accept" (click)="accept(req._id)">Accept</button>
               <button class="btn-reject" (click)="reject(req._id)">Decline</button>
@@ -149,12 +194,18 @@ import { AuthService } from '../core/services/auth.service';
               <div class="friend-top">
                 <div class="friend-avatar-wrap">
                   <div class="friend-avatar">{{ getInitials(friend.name) }}</div>
-                  <span class="status-dot" [class.online]="friend.isOnline"></span>
+                  <span class="status-dot" [class.online]="chatService.isOnline(friend._id)"></span>
                 </div>
                 <div class="friend-meta">
                   <div class="friend-name">{{ friend.name }}</div>
                   <div class="friend-username">&#64;{{ friend.username }}</div>
                 </div>
+                <button class="btn-chat" (click)="openChat(friend)" title="Chat">
+                  <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
+                  @if (chatService.unreadFor(friend._id) > 0) {
+                    <span class="chat-unread">{{ chatService.unreadFor(friend._id) }}</span>
+                  }
+                </button>
                 <button class="btn-unfriend" (click)="confirmUnfriend(friend)" title="Unfriend">
                   <ion-icon name="person-remove-outline"></ion-icon>
                 </button>
@@ -166,8 +217,8 @@ import { AuthService } from '../core/services/auth.service';
                   <div class="fstat-num" style="color:#10B981">{{ friend.completedCount }}</div>
                   <div class="fstat-label">Completed</div>
                 </div>
-                <div class="fstat" style="background:rgba(124,58,237,0.12)">
-                  <div class="fstat-num" style="color:#7C3AED">{{ friend.sharedCount }}</div>
+                <div class="fstat" style="background:rgba(61,90,241,0.12)">
+                  <div class="fstat-num" style="color:#3D5AF1">{{ friend.sharedCount }}</div>
                   <div class="fstat-label">Shared</div>
                 </div>
                 <div class="fstat" [style.background]="friend.pendingCount > 0 ? 'rgba(234,88,12,0.12)' : 'var(--rm-surface)'">
@@ -209,10 +260,10 @@ import { AuthService } from '../core/services/auth.service';
               }
 
               <!-- Shared reminders with status -->
-              @if ((sharedReminders()[friend._id] ?? []).length) {
+              @if (sharedFor(friend._id).length) {
                 <div class="shared-list">
                   <div class="shared-list-title">Shared Reminders</div>
-                  @for (r of sharedReminders()[friend._id]; track r._id) {
+                  @for (r of sharedFor(friend._id); track r._id) {
                     <div class="shared-item">
                       <div class="shared-row">
                         <div class="shared-info">
@@ -259,6 +310,63 @@ import { AuthService } from '../core/services/auth.service';
         </div>
       }
     </ion-content>
+
+    <!-- ── Full-screen chat (WhatsApp-style) ───────────────────────────── -->
+    @if (activeChat(); as chat) {
+      <div class="chat-overlay">
+        <div class="chat-head">
+          <button class="chat-back" (click)="closeChat()">
+            <ion-icon name="arrow-back-outline"></ion-icon>
+          </button>
+          <div class="chat-head-avatar">
+            {{ getInitials(chat.name) }}
+            <span class="chat-head-dot" [class.online]="chatService.isOnline(chat._id)"></span>
+          </div>
+          <div class="chat-head-meta">
+            <div class="chat-head-name">{{ chat.name }}</div>
+            <div class="chat-head-status">
+              @if (chatService.isTyping(chat._id)) {
+                <span class="typing-text">typing…</span>
+              } @else if (chatService.isOnline(chat._id)) {
+                <span class="online-text">online</span>
+              } @else {
+                <span class="offline-text">offline</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-body" #chatBody>
+          @for (m of chatService.messagesFor(chat._id); track m._id) {
+            <div class="bubble-row" [class.mine]="isOwn(m)">
+              <div class="bubble" [class.bubble-mine]="isOwn(m)">
+                <span class="bubble-text">{{ m.text }}</span>
+                <span class="bubble-meta">
+                  {{ m.createdAt | date:'shortTime' }}
+                  @if (isOwn(m)) {
+                    <ion-icon class="tick" [class.tick-read]="m.status === 'read'"
+                      [name]="m.status === 'sending' ? 'time-outline'
+                            : (m.status === 'sent' ? 'checkmark-outline' : 'checkmark-done-outline')">
+                    </ion-icon>
+                  }
+                </span>
+              </div>
+            </div>
+          } @empty {
+            <div class="chat-empty">Say hi to {{ chat.name.split(' ')[0] }} 👋</div>
+          }
+        </div>
+
+        <div class="chat-input-bar">
+          <input class="chat-input" type="text" placeholder="Message…"
+            autocomplete="off"
+            [(ngModel)]="draft" (input)="onDraftInput()" (keyup.enter)="send()" />
+          <button class="chat-send" [disabled]="!draft.trim()" (click)="send()">
+            <ion-icon name="send"></ion-icon>
+          </button>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .friends-content{--background:var(--rm-bg)}
@@ -291,12 +399,42 @@ import { AuthService } from '../core/services/auth.service';
     .result-email{font-size:12px;color:var(--rm-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .btn-add-user{padding:8px 16px;background:var(--rm-purple);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
     .btn-add-user:disabled{opacity:0.6;cursor:default}
+    /* My friend code card */
+    .mycode-card{display:flex;align-items:center;gap:10px;margin:12px 16px 0;padding:14px 16px;background:linear-gradient(135deg,var(--rm-purple),#5B7CFF);border-radius:18px;box-shadow:var(--rm-shadow-sm)}
+    .mycode-left{flex:1;min-width:0}
+    .mycode-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px}
+    .mycode-value{font-size:22px;font-weight:800;color:#fff;letter-spacing:2px;font-family:'Courier New',monospace;margin-top:2px}
+    .btn-copy{width:38px;height:38px;border:none;border-radius:11px;background:rgba(255,255,255,0.18);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .btn-copy ion-icon{font-size:18px;pointer-events:none}
+    .btn-copy:disabled{opacity:0.5}
+    .btn-share{display:flex;align-items:center;gap:6px;padding:9px 14px;border:none;border-radius:11px;background:#fff;color:var(--rm-purple);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
+    .btn-share ion-icon{font-size:16px}
+    .btn-share:disabled{opacity:0.6}
+    /* Code entry */
+    .code-entry-row{display:flex;gap:8px}
+    .code-input{flex:1;text-transform:uppercase;letter-spacing:2px;font-family:'Courier New',monospace;font-weight:700}
+    .btn-lookup{padding:0 18px;background:var(--rm-purple);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
+    .btn-lookup:disabled{opacity:0.5;cursor:default}
+    .error-hint{color:#DC2626}
+    /* Lookup preview */
+    .preview-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-purple-light)}
+    .preview-avatar{width:48px;height:48px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+    .preview-avatar img{width:100%;height:100%;object-fit:cover}
+    .preview-info{flex:1;min-width:0}
+    .preview-name{font-size:15px;font-weight:700;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .preview-sub{font-size:12px;color:var(--rm-text-muted);margin-top:2px}
+    .rel-pill{padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;background:var(--rm-card);color:var(--rm-text-secondary);display:flex;align-items:center;gap:4px;flex-shrink:0}
+    .rel-pill ion-icon{font-size:15px}
+    .rel-ok{color:#047857;background:rgba(16,185,129,0.12)}
+    .rel-action{color:#C2410C;background:rgba(234,88,12,0.12)}
     .search-wrap{padding:8px 12px 0}
     .custom-searchbar{--background:var(--rm-surface);--border-radius:14px;--box-shadow:var(--rm-shadow-sm);--color:var(--rm-text-primary);--placeholder-color:var(--rm-text-muted);padding:0}
     .requests-banner{margin:12px 16px;background:rgba(234,88,12,0.08);border-radius:16px;padding:14px;border:1.5px solid rgba(234,88,12,0.2)}
     .requests-title{font-size:13px;font-weight:700;color:#C2410C;display:flex;align-items:center;gap:6px;margin-bottom:10px}
-    .request-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-    .req-avatar{width:32px;height:32px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .request-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;border-radius:10px;transition:background 0.3s}
+    .request-row.highlight{background:rgba(234,88,12,0.16);box-shadow:0 0 0 2px rgba(234,88,12,0.35);padding:6px}
+    .req-avatar{width:32px;height:32px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+    .req-avatar img{width:100%;height:100%;object-fit:cover}
     .req-name{flex:1;font-size:14px;font-weight:600}
     .btn-accept{padding:6px 12px;background:var(--rm-green);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
     .btn-reject{padding:6px 12px;background:var(--rm-surface);color:var(--rm-text-secondary);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
@@ -349,35 +487,83 @@ import { AuthService } from '../core/services/auth.service';
     .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
     .status-sent{background:rgba(234,179,8,0.15);color:#B45309}
     .status-received{background:rgba(59,130,246,0.15);color:#1D4ED8}
-    .status-acknowledged{background:rgba(124,58,237,0.15);color:var(--rm-purple)}
+    .status-acknowledged{background:rgba(61,90,241,0.15);color:var(--rm-purple)}
     .status-processing{background:rgba(234,88,12,0.15);color:#C2410C}
     .status-skipped{background:rgba(107,114,128,0.15);color:#6B7280}
     .status-completed{background:rgba(16,185,129,0.15);color:#047857}
     .action-row{display:flex;gap:6px;flex-wrap:wrap}
     .act-btn{padding:6px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
-    .act-start{background:rgba(124,58,237,0.12);color:var(--rm-purple)}
+    .act-start{background:rgba(61,90,241,0.12);color:var(--rm-purple)}
     .act-done{background:rgba(16,185,129,0.12);color:#047857}
     .act-snooze{background:rgba(234,179,8,0.12);color:#B45309}
     .act-skip{background:rgba(107,114,128,0.12);color:#6B7280}
+    /* Chat button on friend card */
+    .btn-chat{position:relative;margin-left:auto;flex-shrink:0;width:34px;height:34px;border:none;background:rgba(61,90,241,0.1);color:var(--rm-purple);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;padding:0;transition:background 0.15s}
+    .btn-chat:active{background:rgba(61,90,241,0.22)}
+    .chat-unread{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;background:#EF4444;color:#fff;border-radius:8px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--rm-card)}
+    /* Chat overlay */
+    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn 0.22s ease}
+    @keyframes chatSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+    .chat-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:var(--rm-card);box-shadow:var(--rm-shadow-sm);flex-shrink:0}
+    .chat-back{width:38px;height:38px;border:none;background:transparent;color:var(--rm-text-primary);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;padding:0;flex-shrink:0}
+    .chat-head-avatar{position:relative;width:42px;height:42px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .chat-head-dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid var(--rm-card);background:var(--rm-border)}
+    .chat-head-dot.online{background:#10B981}
+    .chat-head-meta{flex:1;min-width:0}
+    .chat-head-name{font-size:16px;font-weight:800;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .chat-head-status{font-size:12px;margin-top:1px;height:15px}
+    .typing-text{color:var(--rm-purple);font-weight:600}
+    .online-text{color:#10B981;font-weight:600}
+    .offline-text{color:var(--rm-text-muted)}
+    .chat-body{flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:6px;background:var(--rm-bg)}
+    .chat-empty{margin:auto;color:var(--rm-text-muted);font-size:14px;text-align:center}
+    .bubble-row{display:flex;justify-content:flex-start}
+    .bubble-row.mine{justify-content:flex-end}
+    .bubble{max-width:78%;padding:8px 11px 6px;border-radius:14px;background:var(--rm-card);box-shadow:var(--rm-shadow-sm);border-bottom-left-radius:4px}
+    .bubble-mine{background:var(--rm-purple);border-bottom-left-radius:14px;border-bottom-right-radius:4px}
+    .bubble-text{font-size:14.5px;line-height:1.35;color:var(--rm-text-primary);word-break:break-word;white-space:pre-wrap}
+    .bubble-mine .bubble-text{color:#fff}
+    .bubble-meta{display:flex;align-items:center;justify-content:flex-end;gap:3px;font-size:10px;color:var(--rm-text-muted);margin-top:3px}
+    .bubble-mine .bubble-meta{color:rgba(255,255,255,0.75)}
+    .tick{font-size:14px}
+    .tick-read{color:#38BDF8}
+    .chat-input-bar{display:flex;align-items:center;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);background:var(--rm-card);flex-shrink:0}
+    .chat-input{flex:1;padding:11px 14px;border:1.5px solid var(--rm-border);border-radius:22px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:15px;font-family:inherit;outline:none}
+    .chat-input:focus{border-color:var(--rm-purple)}
+    .chat-send{width:44px;height:44px;border:none;border-radius:50%;background:var(--rm-purple);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px;flex-shrink:0;transition:opacity 0.15s}
+    .chat-send:disabled{opacity:0.45;cursor:default}
   `],
 })
 export class FriendsComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
   private socketService = inject(SocketService);
+  protected chatService = inject(ChatService);
   private authService   = inject(AuthService);
+  private shareService  = inject(ShareService);
+  private route         = inject(ActivatedRoute);
+  private router        = inject(Router);
   private toastCtrl     = inject(ToastController);
   private alertCtrl     = inject(AlertController);
 
   isLoading       = signal(true);
   searchQuery     = signal('');
   friends         = signal<Friend[]>([]);
-  pendingRequests = signal<any[]>([]);
+  pendingRequests = signal<PendingRequest[]>([]);
 
+  // Add-by-code panel
   showAddPanel  = signal(false);
-  addQuery      = signal('');
-  searchResults = signal<UserSearchResult[]>([]);
-  isSearching   = signal(false);
+  codeInput     = signal('');
+  isLookingUp   = signal(false);
+  lookupResult  = signal<RefIdLookup | null>(null);
+  lookupError   = signal<string>('');
   sending       = signal<string | null>(null);
+
+  // The signed-in user's own shareable code
+  myRefId = () => this.authService.currentUser()?.refId ?? '';
+
+  // A pending request to flash when arriving via a notification tap
+  highlightId    = signal<string | null>(null);
+  private pendingAcceptId: string | null = null;
 
   // Send reminder
   openFormId      = signal<string | null>(null);
@@ -392,10 +578,15 @@ export class FriendsComponent implements OnInit, OnDestroy {
     { value: 'urgent', label: '🚨 Urgent' },
   ];
 
-  private search$    = new Subject<string>();
-  private searchSub: Subscription | undefined;
+  // Chat
+  @ViewChild('chatBody') private chatBody?: ElementRef<HTMLDivElement>;
+  activeChat = signal<Friend | null>(null);
+  draft = '';
+  private typingTimer: ReturnType<typeof setTimeout> | undefined;
+
   private socketSub: Subscription | undefined;
   private socketSub2: Subscription | undefined;
+  private querySub: Subscription | undefined;
 
   readonly filtered = () => {
     const q = this.searchQuery().toLowerCase();
@@ -406,13 +597,36 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   constructor() {
     addIcons({ personAddOutline, personRemoveOutline, closeOutline, searchOutline,
-               addCircleOutline, chevronDownOutline, chevronUpOutline });
+               addCircleOutline, chevronDownOutline, chevronUpOutline,
+               shareSocialOutline, copyOutline, keyOutline, checkmarkCircle,
+               chatbubbleEllipsesOutline, arrowBackOutline, send,
+               checkmarkOutline, checkmarkDoneOutline, timeOutline });
+
+    // Auto-scroll the chat to the newest message whenever it changes.
+    effect(() => {
+      const chat = this.activeChat();
+      if (!chat) return;
+      this.chatService.messagesFor(chat._id);   // track message changes
+      this.chatService.isTyping(chat._id);       // keep view pinned when typing shows
+      setTimeout(() => this.scrollToBottom(), 50);
+    });
   }
 
   ngOnInit() {
     const uid = this.authService.currentUser()?._id;
     if (uid) this.currentUserId.set(uid);
     this.load();
+
+    // Arriving from a "friend request" notification tap → flash + prompt accept.
+    this.querySub = this.route.queryParams.subscribe(params => {
+      const acceptId = params['accept'];
+      if (acceptId) {
+        this.pendingAcceptId = acceptId;
+        this.maybePromptAccept();
+        // Clear the param so a refresh doesn't re-trigger the prompt.
+        this.router.navigate([], { queryParams: {}, replaceUrl: true });
+      }
+    });
 
     // Reload when a new friend request arrives while this tab is open
     this.socketSub = this.socketService.on<{ type: string }>('notification:new').pipe(
@@ -433,32 +647,12 @@ export class FriendsComponent implements OnInit, OnDestroy {
           return next;
         });
       });
-
-    this.searchSub = this.search$.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(q => {
-        if (q.length < 2) {
-          this.searchResults.set([]);
-          this.isSearching.set(false);
-          return EMPTY;
-        }
-        this.isSearching.set(true);
-        return this.friendService.searchUsers(q);
-      }),
-    ).subscribe({
-      next: (res: any) => {
-        this.searchResults.set(res.users ?? []);
-        this.isSearching.set(false);
-      },
-      error: () => this.isSearching.set(false),
-    });
   }
 
   ngOnDestroy() {
-    this.searchSub?.unsubscribe();
     this.socketSub?.unsubscribe();
     this.socketSub2?.unsubscribe();
+    this.querySub?.unsubscribe();
   }
 
   private load() {
@@ -468,9 +662,33 @@ export class FriendsComponent implements OnInit, OnDestroy {
         this.friends.set(friends);
         this.pendingRequests.set(pending);
         this.isLoading.set(false);
+        this.maybePromptAccept();
       },
       error: () => this.isLoading.set(false),
     });
+  }
+
+  // If we arrived via a notification and the matching request is loaded, prompt.
+  private async maybePromptAccept(): Promise<void> {
+    const id = this.pendingAcceptId;
+    if (!id) return;
+    const req = this.pendingRequests().find(r => r._id === id);
+    if (!req) return;          // not loaded yet — load() will retry
+    this.pendingAcceptId = null;
+
+    this.highlightId.set(id);
+    setTimeout(() => this.highlightId.set(null), 3000);
+
+    const alert = await this.alertCtrl.create({
+      header: 'Friend Request',
+      message: `${req.name} wants to be your accountability buddy. Accept?`,
+      buttons: [
+        { text: 'Later', role: 'cancel' },
+        { text: 'Decline', role: 'destructive', handler: () => this.reject(id) },
+        { text: 'Accept', handler: () => this.accept(id) },
+      ],
+    });
+    await alert.present();
   }
 
   doRefresh(event: CustomEvent) {
@@ -490,36 +708,60 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   openAddPanel() {
     this.showAddPanel.set(true);
-    this.addQuery.set('');
-    this.searchResults.set([]);
-    this.isSearching.set(false);
+    this.resetAddPanel();
     setTimeout(() => {
-      (document.querySelector('.friend-search-input') as HTMLInputElement)?.focus();
+      (document.querySelector('.code-input') as HTMLInputElement)?.focus();
     }, 100);
   }
 
   closeAddPanel() {
     this.showAddPanel.set(false);
-    this.addQuery.set('');
-    this.searchResults.set([]);
-    this.isSearching.set(false);
+    this.resetAddPanel();
+  }
+
+  private resetAddPanel() {
+    this.codeInput.set('');
+    this.lookupResult.set(null);
+    this.lookupError.set('');
+    this.isLookingUp.set(false);
     this.sending.set(null);
   }
 
-  onFriendSearch(event: Event) {
-    const q = (event.target as HTMLInputElement).value.trim();
-    this.addQuery.set(q);
-    this.search$.next(q);
+  onCodeInput(event: Event) {
+    // Normalise as the user types: uppercase, strip anything that isn't A–Z/0–9.
+    const cleaned = (event.target as HTMLInputElement).value
+      .toUpperCase().replace(/[^A-Z0-9]/g, '');
+    this.codeInput.set(cleaned);
+    this.lookupResult.set(null);
+    this.lookupError.set('');
   }
 
-  async addFriend(user: UserSearchResult) {
-    this.sending.set(user._id);
-    this.friendService.sendRequest(user.email).subscribe({
+  lookup() {
+    const code = this.codeInput();
+    if (code.length < 6 || this.isLookingUp()) return;
+    this.isLookingUp.set(true);
+    this.lookupError.set('');
+    this.lookupResult.set(null);
+    this.friendService.lookupByRefId(code).subscribe({
+      next: (res) => {
+        this.lookupResult.set(res);
+        this.isLookingUp.set(false);
+      },
+      error: (err) => {
+        this.isLookingUp.set(false);
+        this.lookupError.set(err?.error?.message || 'No one found with that code');
+      },
+    });
+  }
+
+  sendRequest(r: RefIdLookup) {
+    this.sending.set(r.user._id);
+    this.friendService.sendRequest(this.codeInput()).subscribe({
       next: async () => {
         this.sending.set(null);
         this.closeAddPanel();
         const toast = await this.toastCtrl.create({
-          message: `Friend request sent to ${user.name}!`,
+          message: `Friend request sent to ${r.user.name}!`,
           duration: 2500, color: 'success', position: 'top',
         });
         toast.present();
@@ -534,6 +776,37 @@ export class FriendsComponent implements OnInit, OnDestroy {
         toast.present();
       },
     });
+  }
+
+  relationshipLabel(rel: FriendRelationship): string {
+    switch (rel) {
+      case 'friends':          return 'Already your buddy';
+      case 'request_sent':     return 'Request already sent';
+      case 'request_received': return 'They already requested you';
+      default:                 return 'Send a buddy request';
+    }
+  }
+
+  async copyMyCode() {
+    const code = this.myRefId();
+    if (!code) return;
+    try { await navigator.clipboard.writeText(code); } catch { /* ignore */ }
+    const t = await this.toastCtrl.create({
+      message: 'Friend code copied!', duration: 1800, color: 'success', position: 'top',
+    });
+    t.present();
+  }
+
+  async shareMyCode() {
+    const code = this.myRefId();
+    if (!code) return;
+    const outcome = await this.shareService.shareRefId(code);
+    if (outcome === 'failed') return;
+    const t = await this.toastCtrl.create({
+      message: outcome === 'copied' ? 'Invite copied to clipboard!' : 'Thanks for sharing!',
+      duration: 1800, color: 'success', position: 'top',
+    });
+    t.present();
   }
 
   accept(id: string) { this.friendService.accept(id).subscribe(() => this.load()); }
@@ -574,6 +847,10 @@ export class FriendsComponent implements OnInit, OnDestroy {
       this.reminderForm = { title: '', date: this.todayStr(), time: this.nowTimeStr(), priority: 'medium' };
       if (!this.sharedReminders()[friendId]) this.loadSharedReminders(friendId);
     }
+  }
+
+  sharedFor(friendId: string): SharedReminder[] {
+    return this.sharedReminders()[friendId] ?? [];
   }
 
   private loadSharedReminders(friendId: string): void {
@@ -649,5 +926,48 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  // ── Chat ──────────────────────────────────────────────────────────────
+  openChat(friend: Friend): void {
+    this.draft = '';
+    this.activeChat.set(friend);
+    this.chatService.openChat(friend._id);
+    setTimeout(() => this.scrollToBottom(), 80);
+  }
+
+  closeChat(): void {
+    const chat = this.activeChat();
+    if (chat) this.chatService.setTyping(chat._id, false);
+    clearTimeout(this.typingTimer);
+    this.chatService.closeChat();
+    this.activeChat.set(null);
+  }
+
+  send(): void {
+    const chat = this.activeChat();
+    if (!chat || !this.draft.trim()) return;
+    this.chatService.sendMessage(chat._id, this.draft);
+    this.draft = '';
+    this.chatService.setTyping(chat._id, false);
+    clearTimeout(this.typingTimer);
+    setTimeout(() => this.scrollToBottom(), 50);
+  }
+
+  onDraftInput(): void {
+    const chat = this.activeChat();
+    if (!chat) return;
+    this.chatService.setTyping(chat._id, true);
+    clearTimeout(this.typingTimer);
+    this.typingTimer = setTimeout(() => this.chatService.setTyping(chat._id, false), 1500);
+  }
+
+  isOwn(m: ChatMessage): boolean {
+    return m.sender === this.currentUserId();
+  }
+
+  private scrollToBottom(): void {
+    const el = this.chatBody?.nativeElement;
+    if (el) el.scrollTop = el.scrollHeight;
   }
 }

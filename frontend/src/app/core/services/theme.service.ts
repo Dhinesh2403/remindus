@@ -23,7 +23,7 @@ export class ThemeService {
       if (isDark) {
         // Dark theme — purple bar, white icons
         StatusBar.setStyle({ style: Style.Light });
-        StatusBar.setBackgroundColor({ color: '#5B21B6' });
+        StatusBar.setBackgroundColor({ color: '#2A3FCC' });
       } else {
         // Light theme — white bar, dark icons
         StatusBar.setStyle({ style: Style.Dark });

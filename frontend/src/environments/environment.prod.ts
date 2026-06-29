@@ -5,8 +5,8 @@ export const environment = {
   staging: false,
 
   // Railway production backend
-  apiUrl: 'https://remindme-buddy-api.up.railway.app/api',
-  socketUrl: 'https://remindme-buddy-api.up.railway.app',
+  apiUrl: 'https://remindus-api.onrender.com/api',
+  socketUrl: 'https://remindus-api.onrender.com',
 
   firebase: {
     apiKey: 'YOUR_FIREBASE_PROD_KEY',
@@ -16,6 +16,13 @@ export const environment = {
     appId: 'YOUR_APP_ID',
     vapidKey: 'YOUR_VAPID_KEY',
   },
+
+  // Google Sign-In — OAuth Web client ID (same value the backend verifies against).
+  googleClientId: '',
+
+  // Play Store listing — used when sharing a friend code. TODO: replace with the
+  // real listing URL once the app is published.
+  playStoreUrl: 'https://play.google.com/store/apps/details?id=com.remindus.app',
 
   features: {
     whatsappIntegration: true,

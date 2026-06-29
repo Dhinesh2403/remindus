@@ -30,6 +30,11 @@ const friendRoutes       = require('./routes/friend.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const userRoutes         = require('./routes/user.routes');
 const adminRoutes        = require('./routes/admin.routes');
+const chatRoutes         = require('./routes/chat.routes');
+const habitRoutes        = require('./routes/habit.routes');
+const goalRoutes         = require('./routes/goal.routes');
+const activityRoutes     = require('./routes/activity.routes');
+const noteRoutes         = require('./routes/note.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -118,6 +123,11 @@ app.use('/api/friends',                   friendRoutes);
 app.use('/api/notifications',             notificationRoutes);
 app.use('/api/users',                     userRoutes);
 app.use('/api/admin',                     adminRoutes);
+app.use('/api/chat',                       chatRoutes);
+app.use('/api/habits',                     habitRoutes);
+app.use('/api/goals',                      goalRoutes);
+app.use('/api/activities',                 activityRoutes);
+app.use('/api/notes',                      noteRoutes);
 
 // ── 404 handler ────────────────────────────────────────────────────────────
 app.use((_req, res) => {

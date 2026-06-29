@@ -3,11 +3,15 @@
 
 const User     = require('../models/User');
 const Reminder = require('../models/Reminder');
+const Friendship = require('../models/Friendship');
+const { cloudinary, cloudinaryReady, cloudinaryFolder } = require('../config/cloudinary');
 const { asyncHandler, AppError } = require('../utils/helpers');
 
 // ── GET /api/users/me ─────────────────────────────────────────────────────
 exports.getProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
+  // Backfill a refId for legacy accounts created before this field existed.
+  if (user && !user.refId) await user.save();
   res.json(user);
 });
 
@@ -36,130 +40,34 @@ exports.changePassword = asyncHandler(async (req, res) => {
 });
 
 // ── PUT /api/users/me/notif-prefs ─────────────────────────────────────────
+// Merges whatever is provided so a partial update never wipes other keys.
+// Accepts either delivery channels (notifPrefs / legacy flat push,email,…) and
+// per-category switches (notifTypes).
 exports.updateNotifPrefs = asyncHandler(async (req, res) => {
-  const { push, email, sms, whatsapp } = req.body;
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    { notifPrefs: { push, email, sms, whatsapp } },
-    { new: true }
-  );
-  res.json({ success: true, notifPrefs: user.notifPrefs });
-});
+  const user = await User.findById(req.user._id);
+  if (!user) throw new AppError('User not found', 404);
 
-// ── GET /api/users/me/insights ────────────────────────────────────────────
-exports.getInsights = asyncHandler(async (req, res) => {
-  const uid   = req.user._id;
-  const user  = await User.findById(uid);
+  // Delivery channels — support both nested `notifPrefs` and legacy flat body.
+  const channels = req.body.notifPrefs ?? (() => {
+    const { push, email, sms, whatsapp } = req.body;
+    const flat = { push, email, sms, whatsapp };
+    return Object.values(flat).some(v => v !== undefined) ? flat : null;
+  })();
+  if (channels) {
+    for (const k of ['push', 'email', 'sms', 'whatsapp']) {
+      if (channels[k] !== undefined) user.notifPrefs[k] = !!channels[k];
+    }
+  }
 
-  // Weekly data — last 7 days completed reminders per day
-  const weeklyData = await Promise.all(
-    Array.from({ length: 7 }, async (_, i) => {
-      const d     = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      const start = new Date(d); start.setHours(0,0,0,0);
-      const end   = new Date(d); end.setHours(23,59,59,999);
-      const count = await Reminder.countDocuments({
-        userId: uid, status: 'done',
-        completedAt: { $gte: start, $lte: end },
-      });
-      return {
-        label: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d.getDay() === 0 ? 6 : d.getDay() - 1],
-        value: count,
-      };
-    })
-  );
+  // Per-category switches.
+  if (req.body.notifTypes) {
+    for (const k of ['reminders', 'chat', 'friendRequests', 'other']) {
+      if (req.body.notifTypes[k] !== undefined) user.notifTypes[k] = !!req.body.notifTypes[k];
+    }
+  }
 
-  // Category breakdown
-  const catAgg = await Reminder.aggregate([
-    { $match: { userId: uid, status: 'done' } },
-    { $group: { _id: '$type', count: { $sum: 1 } } },
-    { $sort: { count: -1 } },
-  ]);
-  const totalDone = catAgg.reduce((s, c) => s + c.count, 0);
-  const CAT_META = {
-    birthday: { label:'Birthday', emoji:'🎂', color:'#EC4899' },
-    wedding:  { label:'Wedding',  emoji:'💍', color:'#8B5CF6' },
-    medicine: { label:'Medicine', emoji:'💊', color:'#EF4444' },
-    bill:     { label:'Bill',     emoji:'💰', color:'#3B82F6' },
-    study:    { label:'Study',    emoji:'📚', color:'#10B981' },
-    work:     { label:'Work',     emoji:'💼', color:'#F59E0B' },
-    general:  { label:'General',  emoji:'📌', color:'#6B7280' },
-    custom:   { label:'Custom',   emoji:'✨', color:'#7C3AED' },
-  };
-  const categoryBreakdown = catAgg.map(c => ({
-    type:       c._id,
-    ...(CAT_META[c._id] ?? CAT_META.general),
-    count:      c.count,
-    percentage: totalDone > 0 ? Math.round((c.count / totalDone) * 100) : 0,
-  }));
-
-  // Accountability rate (% of assigned reminders responded to)
-  const [assignedTotal, assignedDone] = await Promise.all([
-    Reminder.countDocuments({ assignedTo: uid }),
-    Reminder.countDocuments({ assignedTo: uid, status: 'done' }),
-  ]);
-  const accountabilityRate = assignedTotal > 0
-    ? Math.round((assignedDone / assignedTotal) * 100)
-    : 100;
-
-  res.json({
-    success: true,
-    streak:             user.streak,
-    bestStreak:         user.bestStreak,
-    completedTotal:     user.completedCount,
-    accountabilityRate,
-    weeklyData,
-    categoryBreakdown,
-  });
-});
-
-// ── GET /api/users/me/insights/achievements ───────────────────────────────
-exports.getAchievements = asyncHandler(async (req, res) => {
-  const uid  = req.user._id;
-  const user = await User.findById(uid);
-
-  const achievements = [
-    {
-      id:       '7-day-streak',
-      name:     '7-Day Streak',
-      emoji:    '🔥',
-      earned:   user.bestStreak >= 7,
-      earnedAt: user.bestStreak >= 7 ? user.updatedAt : null,
-      progress: Math.min(Math.round((user.streak / 7) * 100), 100),
-    },
-    {
-      id:       'early-bird',
-      name:     'Early Bird',
-      emoji:    '🌅',
-      earned:   user.completedCount >= 5,
-      earnedAt: user.completedCount >= 5 ? user.updatedAt : null,
-      progress: Math.min(Math.round((user.completedCount / 5) * 100), 100),
-    },
-    {
-      id:       'team-player',
-      name:     'Team Player',
-      emoji:    '🤝',
-      earned:   false,  // needs friend reminders count ≥ 3
-      progress: 0,
-    },
-    {
-      id:       'century-club',
-      name:     'Century Club',
-      emoji:    '💯',
-      earned:   user.completedCount >= 100,
-      earnedAt: user.completedCount >= 100 ? user.updatedAt : null,
-      progress: Math.min(Math.round((user.completedCount / 100) * 100), 100),
-    },
-    {
-      id:       'perfect-week',
-      name:     'Perfect Week',
-      emoji:    '⭐',
-      earned:   false,
-      progress: Math.min(Math.round((user.streak / 7) * 100), 100),
-    },
-  ];
-
-  res.json({ success: true, data: achievements });
+  await user.save();
+  res.json({ success: true, notifPrefs: user.notifPrefs, notifTypes: user.notifTypes });
 });
 
 // ── DELETE /api/users/me ──────────────────────────────────────────────────
@@ -175,6 +83,36 @@ exports.deleteAccount = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Account deleted' });
 });
 
+
+// ── POST /api/users/me/avatar ─────────────────────────────────────────────
+// Accepts a base64 data URI in `image`, uploads it to Cloudinary, and stores
+// the resulting secure URL on the user. Returns the updated user.
+exports.uploadAvatar = asyncHandler(async (req, res) => {
+  if (!cloudinaryReady) {
+    throw new AppError('Image uploads are not configured on the server', 503);
+  }
+
+  const { image } = req.body;
+  if (!image || !/^data:image\/(png|jpe?g|webp|gif);base64,/.test(image)) {
+    throw new AppError('A valid base64 image is required', 400);
+  }
+
+  const result = await cloudinary.uploader.upload(image, {
+    folder:          `${cloudinaryFolder}/avatars`,
+    public_id:       `user_${req.user._id}`,
+    overwrite:       true,
+    invalidate:      true,
+    transformation:  [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }],
+  });
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { avatar: result.secure_url },
+    { new: true }
+  );
+
+  res.json({ success: true, avatar: result.secure_url, user });
+});
 
 // ── PATCH /api/users/me/fcm-token ────────────────────────────────────────
 exports.updateFcmToken = asyncHandler(async (req, res) => {

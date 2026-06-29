@@ -1,0 +1,329 @@
+:host {
+  display: block;
+  font-family: var(--sc-font);
+}
+
+.scLogin {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(72px + env(safe-area-inset-top)) 30px calc(40px + env(safe-area-inset-bottom));
+  background: var(--sc-screen);
+  overflow-y: auto;
+  animation: scScreenIn .34s ease;
+}
+
+.scLoginLogo {
+  width: 74px;
+  height: 74px;
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--sc-shadow);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.scLoginTitle {
+  margin: 30px 0 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -.6px;
+  color: var(--sc-text);
+}
+
+.scLoginSub {
+  margin: 12px 0 0;
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--sc-muted);
+}
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+.scLoginBadges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.scLoginBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--sc-surface-2);
+  border: 1px solid var(--sc-border);
+}
+
+.scLoginBadgeIcon { display: flex; }
+
+.scLoginBadgeLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sc-text);
+}
+
+/* ─── Feature cards ───────────────────────────────────────────────────────── */
+.scLoginFeatures {
+  margin-top: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.scLoginFeature {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 15px;
+  border-radius: 16px;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  box-shadow: var(--sc-shadow-sm);
+}
+
+.scLoginFeatureIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scLoginFeatureText { flex: 1; min-width: 0; }
+
+.scLoginFeatureTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--sc-text);
+}
+
+.scLoginFeatureBody {
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--sc-muted);
+}
+
+.scLoginSpacer { flex: 1; min-height: 24px; }
+
+/* ─── Form ────────────────────────────────────────────────────────────────── */
+.scLoginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.scField { display: flex; flex-direction: column; }
+
+.scFieldLabel {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sc-text);
+}
+
+.scInputWrap { position: relative; }
+
+.scInput {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border: 1.5px solid var(--sc-border);
+  border-radius: 15px;
+  background: var(--sc-surface-2);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sc-text);
+  outline: none;
+  transition: border-color .2s;
+}
+
+.scInput:focus { border-color: var(--sc-accent); }
+
+.scInputToggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sc-accent);
+}
+
+.scFieldError {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sc-danger);
+}
+
+.scLoginForgot { text-align: right; }
+
+.scLoginForgot a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-accent);
+  text-decoration: none;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+.scBtnPrimary {
+  flex: none;
+  height: 56px;
+  border: none;
+  border-radius: 16px;
+  background: var(--sc-accent);
+  color: var(--sc-on-accent);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(50, 87, 238, .32);
+  transition: opacity .2s;
+}
+
+.scBtnPrimary:disabled { opacity: .6; cursor: not-allowed; }
+
+.scBtnSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: scSpin .8s linear infinite;
+}
+
+.scBtnGoogle {
+  position: relative;
+  flex: none;
+  margin-top: 30px;
+  height: 58px;
+  border: 1px solid var(--sc-border);
+  border-radius: 16px;
+  background: var(--sc-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 54px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sc-text);
+  cursor: pointer;
+  box-shadow: var(--sc-shadow-sm);
+
+  .scBtnIcon { position: absolute; left: 20px; }
+}
+
+.scBtnGhost {
+  position: relative;
+  flex: none;
+  margin-top: 13px;
+  height: 54px;
+  border: none;
+  border-radius: 16px;
+  background: var(--sc-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 54px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sc-muted);
+  cursor: pointer;
+
+  .scBtnIcon { position: absolute; left: 20px; }
+}
+
+/* ─── Social proof ────────────────────────────────────────────────────────── */
+.scLoginProof {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.scLoginAvatars { display: flex; }
+
+.scLoginAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2.5px solid var(--sc-screen);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.scLoginProofText {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--sc-muted);
+}
+
+.scLoginProofText strong {
+  color: var(--sc-text);
+  font-weight: 800;
+}
+
+/* ─── Footer ──────────────────────────────────────────────────────────────── */
+.scLoginTerms {
+  margin: 22px 0 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--sc-faint);
+}
+
+.scLoginTerms span {
+  font-weight: 600;
+  color: var(--sc-accent);
+}
+
+.scLoginFooter {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sc-muted);
+}
+
+.scLoginFooter a {
+  font-weight: 700;
+  color: var(--sc-accent);
+  text-decoration: none;
+}

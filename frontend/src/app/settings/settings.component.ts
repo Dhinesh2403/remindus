@@ -1,5 +1,5 @@
 // src/app/settings/settings.component.ts
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonContent, IonHeader, IonToolbar, IonIcon, IonToggle,
@@ -11,10 +11,14 @@ import {
   shieldOutline, lockClosedOutline, logOutOutline,
   chevronForwardOutline, mailOutline, phonePortraitOutline,
   logoWhatsapp, sunnyOutline, moonOutline, desktopOutline,
-  trashOutline, starOutline,
+  trashOutline, starOutline, cameraOutline, keyOutline,
+  copyOutline, shareSocialOutline, notificationsOffOutline,
+  alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
+  sparklesOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../core/services/auth.service';
 import { ThemeService } from '../core/services/theme.service';
+import { ShareService } from '../core/services/share.service';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -30,7 +34,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       <ion-toolbar>
         <div class="settings-header">
           <div class="settings-title">Settings</div>
-          <div class="settings-sub">Customize your RemindMe experience</div>
+          <div class="settings-sub">Customize your RemindUs experience</div>
         </div>
       </ion-toolbar>
     </ion-header>
@@ -43,19 +47,43 @@ type ThemeMode = 'light' | 'dark' | 'system';
           <ion-icon name="person-outline"></ion-icon>
           Profile
         </div>
-        <div class="profile-row" (click)="editProfile()">
-          <div class="profile-avatar">
+        <div class="profile-row">
+          <div class="profile-avatar" (click)="pickPhoto()">
             @if (user()?.avatar) {
               <img [src]="user()?.avatar" [alt]="user()?.name" class="avatar-img" />
             } @else {
               <ion-icon name="person-outline" style="font-size:26px;color:white"></ion-icon>
             }
+            <div class="avatar-cam">
+              @if (uploadingPhoto()) {
+                <div class="cam-spinner"></div>
+              } @else {
+                <ion-icon name="camera-outline"></ion-icon>
+              }
+            </div>
           </div>
           <div class="profile-info">
             <div class="profile-name">{{ user()?.name ?? 'Loading...' }}</div>
             <div class="profile-email">{{ user()?.email }}</div>
           </div>
-          <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
+        </div>
+        <input #photoInput type="file" accept="image/*" hidden (change)="onPhotoSelected($event)" />
+
+        <!-- Shareable friend code -->
+        <div class="friendcode-row">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
+            <ion-icon name="key-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Your Friend Code</div>
+            <div class="row-code">{{ user()?.refId ?? '••••••••' }}</div>
+          </div>
+          <button class="code-btn" (click)="copyCode()" [disabled]="!user()?.refId" title="Copy">
+            <ion-icon name="copy-outline"></ion-icon>
+          </button>
+          <button class="code-btn" (click)="shareCode()" [disabled]="!user()?.refId" title="Share">
+            <ion-icon name="share-social-outline"></ion-icon>
+          </button>
         </div>
 
         @if (user()?.isPremium) {
@@ -130,7 +158,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row">
-          <div class="row-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
             <ion-icon name="phone-portrait-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -159,6 +187,62 @@ type ThemeMode = 'light' | 'dark' | 'system';
             [disabled]="!user()?.isPremium"
             (click)="user()?.isPremium && toggleNotif('whatsapp')"
           ></button>
+        </div>
+      </div>
+
+      <!-- Notification types — silence whole categories -->
+      <div class="settings-section">
+        <div class="section-label">
+          <ion-icon name="notifications-off-outline"></ion-icon>
+          What You Get Notified About
+        </div>
+
+        <div class="settings-row">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
+            <ion-icon name="alarm-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Reminders</div>
+            <div class="row-sub">Due, assigned & status updates</div>
+          </div>
+          <button class="toggle" [class.toggle-on]="notifTypes().reminders"
+            (click)="toggleType('reminders')"></button>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-icon" style="background:rgba(59,130,246,0.12);color:#3B82F6">
+            <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Chat Messages</div>
+            <div class="row-sub">New messages from friends</div>
+          </div>
+          <button class="toggle" [class.toggle-on]="notifTypes().chat"
+            (click)="toggleType('chat')"></button>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-icon" style="background:rgba(234,88,12,0.12);color:#EA580C">
+            <ion-icon name="person-add-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Friend Requests</div>
+            <div class="row-sub">Requests & acceptances</div>
+          </div>
+          <button class="toggle" [class.toggle-on]="notifTypes().friendRequests"
+            (click)="toggleType('friendRequests')"></button>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-icon" style="background:rgba(107,114,128,0.12);color:#6B7280">
+            <ion-icon name="sparkles-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Other & Future Updates</div>
+            <div class="row-sub">System and upcoming features</div>
+          </div>
+          <button class="toggle" [class.toggle-on]="notifTypes().other"
+            (click)="toggleType('other')"></button>
         </div>
       </div>
 
@@ -221,7 +305,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- App version -->
-      <div class="app-version">RemindMe Buddy v1.0.0</div>
+      <div class="app-version">RemindUs v1.0.0</div>
       <div style="height:24px"></div>
 
     </ion-content>
@@ -239,8 +323,18 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
     /* Profile */
     .profile-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px 16px; cursor: pointer; }
-    .profile-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg,var(--rm-purple),#9333EA); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+    .profile-avatar { position: relative; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg,var(--rm-purple),#5B7CFF); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; cursor: pointer; }
     .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-cam { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--rm-purple); border: 2px solid var(--rm-card); display: flex; align-items: center; justify-content: center; }
+    .avatar-cam ion-icon { font-size: 11px; color: #fff; }
+    .cam-spinner { width: 10px; height: 10px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Friend code */
+    .friendcode-row { display: flex; align-items: center; padding: 14px 16px; border-top: 1px solid var(--rm-border); gap: 12px; }
+    .row-code { font-size: 16px; font-weight: 800; color: var(--rm-purple); letter-spacing: 2px; font-family: 'Courier New', monospace; margin-top: 2px; }
+    .code-btn { width: 36px; height: 36px; border: none; border-radius: 10px; background: var(--rm-surface); color: var(--rm-purple); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .code-btn ion-icon { font-size: 17px; pointer-events: none; }
+    .code-btn:disabled { opacity: 0.5; }
     .profile-info { flex: 1; }
     .profile-name { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); }
     .profile-email { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; }
@@ -283,13 +377,18 @@ type ThemeMode = 'light' | 'dark' | 'system';
 export class SettingsComponent implements OnInit {
   private authService  = inject(AuthService);
   private themeService = inject(ThemeService);
+  private shareService = inject(ShareService);
   private alertCtrl   = inject(AlertController);
   private toastCtrl   = inject(ToastController);
 
-  user        = this.authService.currentUser;
-  activeTheme = signal<ThemeMode>('light');
-  twoFAEnabled = signal(false);
-  notifPrefs   = signal({ email: true, push: true, sms: false, whatsapp: false });
+  @ViewChild('photoInput') photoInput!: ElementRef<HTMLInputElement>;
+
+  user          = this.authService.currentUser;
+  activeTheme   = signal<ThemeMode>('light');
+  twoFAEnabled  = signal(false);
+  uploadingPhoto = signal(false);
+  notifPrefs    = signal({ email: true, push: true, sms: false, whatsapp: false });
+  notifTypes    = signal({ reminders: true, chat: true, friendRequests: true, other: true });
 
   constructor() {
     addIcons({
@@ -297,7 +396,10 @@ export class SettingsComponent implements OnInit {
       shieldOutline, lockClosedOutline, logOutOutline,
       chevronForwardOutline, mailOutline, phonePortraitOutline,
       logoWhatsapp, sunnyOutline, moonOutline, desktopOutline,
-      trashOutline, starOutline,
+      trashOutline, starOutline, cameraOutline, keyOutline,
+      copyOutline, shareSocialOutline, notificationsOffOutline,
+      alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
+      sparklesOutline,
     });
   }
 
@@ -305,7 +407,14 @@ export class SettingsComponent implements OnInit {
     const saved = localStorage.getItem('rm_theme') as ThemeMode ?? 'light';
     this.activeTheme.set(saved);
     const prefs = this.user()?.notifPrefs;
-    if (prefs) this.notifPrefs.set({ email: prefs.email || true, push: prefs.push || true, sms: prefs.sms || false, whatsapp: prefs.whatsapp || false });
+    if (prefs) this.notifPrefs.set({ email: prefs.email ?? true, push: prefs.push ?? true, sms: prefs.sms ?? false, whatsapp: prefs.whatsapp ?? false });
+    const types = this.user()?.notifTypes;
+    if (types) this.notifTypes.set({
+      reminders:      types.reminders ?? true,
+      chat:           types.chat ?? true,
+      friendRequests: types.friendRequests ?? true,
+      other:          types.other ?? true,
+    });
   }
 
   setTheme(mode: ThemeMode) {
@@ -316,14 +425,84 @@ export class SettingsComponent implements OnInit {
 
   toggleNotif(key: 'email' | 'push' | 'sms' | 'whatsapp') {
     this.notifPrefs.update(p => ({ ...p, [key]: !p[key] }));
-    // TODO: call UserService.updateNotifPrefs(this.notifPrefs())
+    this.authService.updateNotifPrefs({ notifPrefs: this.notifPrefs() }).subscribe({
+      error: () => {
+        // Revert on failure so the UI stays truthful.
+        this.notifPrefs.update(p => ({ ...p, [key]: !p[key] }));
+        this.showToast('Could not save preference', 'danger');
+      },
+    });
+  }
+
+  toggleType(key: 'reminders' | 'chat' | 'friendRequests' | 'other') {
+    this.notifTypes.update(t => ({ ...t, [key]: !t[key] }));
+    this.authService.updateNotifPrefs({ notifTypes: this.notifTypes() }).subscribe({
+      error: () => {
+        this.notifTypes.update(t => ({ ...t, [key]: !t[key] }));
+        this.showToast('Could not save preference', 'danger');
+      },
+    });
   }
 
   toggle2FA() { this.twoFAEnabled.update(v => !v); }
 
-  editProfile() {
-    // Navigate to profile edit page
-    console.log('Edit profile');
+  pickPhoto() {
+    if (this.uploadingPhoto()) return;
+    this.photoInput?.nativeElement.click();
+  }
+
+  onPhotoSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    input.value = '';   // allow re-picking the same file later
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.showToast('Please choose an image file', 'danger');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.showToast('Image must be under 5 MB', 'danger');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUri = reader.result as string;
+      this.uploadingPhoto.set(true);
+      this.authService.uploadAvatar(dataUri).subscribe({
+        next: () => {
+          this.uploadingPhoto.set(false);
+          this.showToast('Profile photo updated!', 'success');
+        },
+        error: (err) => {
+          this.uploadingPhoto.set(false);
+          this.showToast(err?.error?.message || 'Upload failed', 'danger');
+        },
+      });
+    };
+    reader.onerror = () => this.showToast('Could not read that image', 'danger');
+    reader.readAsDataURL(file);
+  }
+
+  async copyCode() {
+    const code = this.user()?.refId;
+    if (!code) return;
+    try { await navigator.clipboard.writeText(code); } catch { /* ignore */ }
+    this.showToast('Friend code copied!', 'success');
+  }
+
+  async shareCode() {
+    const code = this.user()?.refId;
+    if (!code) return;
+    const outcome = await this.shareService.shareRefId(code);
+    if (outcome === 'failed') return;
+    this.showToast(outcome === 'copied' ? 'Invite copied to clipboard!' : 'Thanks for sharing!', 'success');
+  }
+
+  private async showToast(message: string, color: 'success' | 'danger') {
+    const t = await this.toastCtrl.create({ message, duration: 2000, color, position: 'top' });
+    t.present();
   }
 
   goToPremium() {

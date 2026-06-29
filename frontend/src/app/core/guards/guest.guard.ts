@@ -6,8 +6,7 @@ import { TokenService }          from '../services/token.service';
 export const guestGuard: CanActivateFn = () => {
   const token  = inject(TokenService);
   const router = inject(Router);
-  const t = token.getAccessToken();
-  if (t && token.isTokenValid(t)) {
+  if (token.hasValidSession()) {
     router.navigate(['/app/home']);
     return false;
   }

@@ -4,10 +4,34 @@ import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
+  // ─── Splash (entry point) ─────────────────────────────────────────────────
   {
     path: '',
-    redirectTo: 'auth/login',
     pathMatch: 'full',
+    loadComponent: () =>
+      import('./splash/splash.component').then((m) => m.SplashComponent),
+  },
+
+  // ─── First-run intro (after sign-in) ──────────────────────────────────────
+  {
+    path: 'onboarding',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./onboarding/onboarding.component').then(
+        (m) => m.OnboardingComponent
+      ),
+  },
+
+  // ─── One-time password setup for Google sign-ups ──────────────────────────
+  // Authenticated (the Google session authorises it); not under /auth, whose
+  // guestGuard would bounce a just-signed-in user.
+  {
+    path: 'set-password',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./auth/set-password/set-password.component').then(
+        (m) => m.SetPasswordComponent
+      ),
   },
 
   // ─── Auth Shell (no bottom nav) ───────────────────────────────────────────
@@ -103,13 +127,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'insights',
-        loadComponent: () =>
-          import('./insights/insights.component').then(
-            (m) => m.InsightsComponent
-          ),
-      },
-      {
         path: 'settings',
         loadComponent: () =>
           import('./settings/settings.component').then(
@@ -122,6 +139,30 @@ export const routes: Routes = [
           import('./notifications/notifications.component').then(
             (m) => m.NotificationsComponent
           ),
+      },
+
+      // ─── Productivity modules ───────────────────────────────────────────────
+      {
+        path: 'habits',
+        loadComponent: () =>
+          import('./habits/habits.component').then((m) => m.HabitsComponent),
+      },
+      {
+        path: 'goals',
+        loadComponent: () =>
+          import('./goals/goals.component').then((m) => m.GoalsComponent),
+      },
+      {
+        path: 'daily-plan',
+        loadComponent: () =>
+          import('./daily-plan/daily-plan.component').then(
+            (m) => m.DailyPlanComponent
+          ),
+      },
+      {
+        path: 'notes',
+        loadComponent: () =>
+          import('./notes/notes.component').then((m) => m.NotesComponent),
       },
       {
         // The "Go Premium" upgrade page must be reachable by non-premium users —

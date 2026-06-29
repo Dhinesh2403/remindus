@@ -17,9 +17,11 @@ import {
   trendingUpOutline,
   calendarOutline,
   peopleOutline,
-  statsChartOutline,
   addOutline,
   person,
+  flameOutline,
+  flagOutline,
+  documentTextOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../core/services/auth.service';
 import { ReminderService } from '../core/services/reminder.service';
@@ -45,8 +47,8 @@ import { ReminderService } from '../core/services/reminder.service';
       <div class="home-header">
         <!-- Brand logo strip -->
         <div class="header-brand">
-          <img src="assets/icon.svg" alt="RemindMe" class="header-brand-icon" />
-          <span class="header-brand-name">RemindMe</span>
+          <img src="assets/icon.svg" alt="RemindUs" class="header-brand-icon" />
+          <span class="header-brand-name">RemindUs</span>
         </div>
         <div class="header-row">
           <div>
@@ -71,10 +73,10 @@ import { ReminderService } from '../core/services/reminder.service';
           <div class="stat-label">Today</div>
         </div>
         <div class="stat-card" (click)="goToReminders('upcoming')">
-          <div class="stat-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
+          <div class="stat-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
             <ion-icon name="notifications-outline"></ion-icon>
           </div>
-          <div class="stat-num" style="color:#7C3AED">{{ upcomingCount() }}</div>
+          <div class="stat-num" style="color:#3D5AF1">{{ upcomingCount() }}</div>
           <div class="stat-label">Upcoming</div>
         </div>
         <div class="stat-card" (click)="goToReminders('missed')">
@@ -105,10 +107,38 @@ import { ReminderService } from '../core/services/reminder.service';
           <div class="action-title">Friends</div>
           <div class="action-sub">Manage accountability buddies</div>
         </div>
-        <div class="action-card insights-card" (click)="nav.navigate(['/app/insights'])">
-          <ion-icon name="stats-chart-outline" class="action-icon"></ion-icon>
-          <div class="action-title">Insights</div>
-          <div class="action-sub">Track your productivity</div>
+      </div>
+
+      <!-- Productivity modules -->
+      <div class="modules-title">Get started</div>
+      <div class="modules-grid">
+        <div class="module-card" style="background:rgba(61,90,241,0.10)" (click)="nav.navigate(['/app/daily-plan'])">
+          <div class="module-icon" style="background:#3D5AF1">
+            <ion-icon name="time-outline"></ion-icon>
+          </div>
+          <div class="module-title">Daily Plan</div>
+          <div class="module-sub">Time-block your day</div>
+        </div>
+        <div class="module-card" style="background:rgba(224,115,43,0.10)" (click)="nav.navigate(['/app/habits'])">
+          <div class="module-icon" style="background:#E0732B">
+            <ion-icon name="flame-outline"></ion-icon>
+          </div>
+          <div class="module-title">Habits</div>
+          <div class="module-sub">Build streaks</div>
+        </div>
+        <div class="module-card" style="background:rgba(123,97,216,0.10)" (click)="nav.navigate(['/app/goals'])">
+          <div class="module-icon" style="background:#7B61D8">
+            <ion-icon name="flag-outline"></ion-icon>
+          </div>
+          <div class="module-title">Goals</div>
+          <div class="module-sub">Plan the big picture</div>
+        </div>
+        <div class="module-card" style="background:rgba(201,154,30,0.10)" (click)="nav.navigate(['/app/notes'])">
+          <div class="module-icon" style="background:#C99A1E">
+            <ion-icon name="document-text-outline"></ion-icon>
+          </div>
+          <div class="module-title">Sticky Notes</div>
+          <div class="module-sub">Jot it down</div>
         </div>
       </div>
 
@@ -128,7 +158,7 @@ import { ReminderService } from '../core/services/reminder.service';
     .header-row { display: flex; align-items: center; justify-content: space-between; }
     .greeting { font-size: 20px; font-weight: 800; color: var(--rm-text-primary); margin: 0; }
     .greeting-sub { font-size: 13px; color: var(--rm-text-secondary); margin: 4px 0 0; }
-    .avatar-btn { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--rm-purple), #9333EA); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .avatar-btn { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--rm-purple), #5B7CFF); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; margin-bottom: 16px; }
     .stat-card { background: var(--rm-card); border-radius: 18px; padding: 16px; box-shadow: var(--rm-shadow-sm); cursor: pointer; transition: transform 0.15s; }
     .stat-card:active { transform: scale(0.97); }
@@ -138,13 +168,19 @@ import { ReminderService } from '../core/services/reminder.service';
     .quick-actions { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
     .action-card { border-radius: 20px; padding: 20px; cursor: pointer; transition: transform 0.15s; }
     .action-card:active { transform: scale(0.98); }
-    .cal-card { background: linear-gradient(135deg, #7C3AED, #9333EA); }
+    .cal-card { background: linear-gradient(135deg, #3D5AF1, #5B7CFF); }
     .friends-card { background: linear-gradient(135deg, #06B6D4, #3B82F6); }
-    .insights-card { background: linear-gradient(135deg, #F97316, #EF4444); }
     .action-icon { font-size: 26px; color: white; }
     .action-title { font-size: 17px; font-weight: 800; color: white; margin-top: 8px; }
     .action-sub { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
-    .fab { position: fixed; bottom: 88px; right: 20px; width: 54px; height: 54px; border-radius: 50%; background: var(--rm-purple); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 20px rgba(124,58,237,0.4); z-index: 100; }
+    .fab { position: fixed; bottom: 88px; right: 20px; width: 54px; height: 54px; border-radius: 50%; background: var(--rm-purple); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 20px rgba(61,90,241,0.4); z-index: 100; }
+    .modules-title { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); padding: 24px 16px 0; }
+    .modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 16px 24px; }
+    .module-card { border-radius: 20px; padding: 16px; cursor: pointer; min-height: 124px; display: flex; flex-direction: column; transition: transform 0.15s; }
+    .module-card:active { transform: scale(0.97); }
+    .module-icon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; }
+    .module-title { font-size: 15.5px; font-weight: 800; color: var(--rm-text-primary); margin-top: 14px; }
+    .module-sub { font-size: 12px; color: var(--rm-text-secondary); margin-top: 3px; }
   `],
 })
 export class DashboardComponent implements OnInit {
@@ -174,7 +210,7 @@ export class DashboardComponent implements OnInit {
     addIcons({
       timeOutline, notificationsOutline, alertCircleOutline,
       trendingUpOutline, calendarOutline, peopleOutline,
-      statsChartOutline, addOutline, person,
+      addOutline, person, flameOutline, flagOutline, documentTextOutline,
     });
   }
 

@@ -1,8 +1,8 @@
 {
-  "name": "RemindMe Buddy",
-  "short_name": "RemindMe",
+  "name": "RemindUs",
+  "short_name": "RemindUs",
   "description": "Smart Reminder & Accountability App",
-  "theme_color": "#7C3AED",
+  "theme_color": "#3D5AF1",
   "background_color": "#F8F7FF",
   "display": "standalone",
   "scope": "/",

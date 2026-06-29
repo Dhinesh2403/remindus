@@ -25,4 +25,17 @@ export class TokenService {
       return payload.exp * 1000 > Date.now();
     } catch { return false; }
   }
+
+  /**
+   * A session is alive as long as the (long-lived) refresh token is valid —
+   * the auth interceptor transparently mints a fresh access token from it.
+   * The short-lived access token expiring (every 15m) must NOT log the user out.
+   */
+  hasValidSession(): boolean {
+    const access = this.getAccessToken();
+    if (access && this.isTokenValid(access)) return true;
+
+    const refresh = this.getRefreshToken();
+    return !!refresh && this.isTokenValid(refresh);
+  }
 }

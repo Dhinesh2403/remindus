@@ -52,10 +52,51 @@ exports.getFriends = asyncHandler(async (req, res) => {
     success: true,
     friends,
     pending: pending.map(p => ({
-      _id:  p._id,
-      name: p.requester.name,
-      email:p.requester.email,
+      _id:    p._id,
+      name:   p.requester.name,
+      email:  p.requester.email,
+      avatar: p.requester.avatar || null,
     })),
+  });
+});
+
+// ── Normalise a typed/shared friend code to its canonical stored form ──────
+function normaliseRefId(raw) {
+  return String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// ── GET /api/friends/lookup?refId=XXXX ────────────────────────────────────
+// Preview the owner of a friend code so the UI can show who they're adding
+// (name + photo) before sending the request.
+exports.lookupByRefId = asyncHandler(async (req, res) => {
+  const refId = normaliseRefId(req.query.refId);
+  if (refId.length < 6) throw new AppError('Enter a valid friend code', 400);
+
+  const uid = String(req.user._id);
+  const target = await User.findOne({ refId }).select('name avatar refId');
+  if (!target) throw new AppError('No one found with that code', 404);
+  if (String(target._id) === uid) throw new AppError('That\'s your own code', 400);
+
+  // Surface any existing relationship so the UI can adapt the button.
+  const existing = await Friendship.findOne({
+    $or: [
+      { requester: uid, recipient: target._id },
+      { requester: target._id, recipient: uid },
+    ],
+  }).select('status requester');
+
+  let relationship = 'none';
+  if (existing) {
+    if (existing.status === 'accepted') relationship = 'friends';
+    else if (existing.status === 'pending') {
+      relationship = String(existing.requester) === uid ? 'request_sent' : 'request_received';
+    }
+  }
+
+  res.json({
+    success: true,
+    user: { _id: target._id, name: target.name, avatar: target.avatar || null },
+    relationship,
   });
 });
 
@@ -93,19 +134,15 @@ exports.searchUsers = asyncHandler(async (req, res) => {
 
 // ── POST /api/friends/request ─────────────────────────────────────────────
 exports.sendRequest = asyncHandler(async (req, res) => {
-  const { query } = req.body;  // email or @username
+  const refId = normaliseRefId(req.body.refId);
   const uid = req.user._id;
 
-  const emailOrUsername = query.startsWith('@') ? query.slice(1) : query;
-  const target = await User.findOne({
-    $or: [
-      { email: emailOrUsername },
-      { email: { $regex: `^${emailOrUsername}@`, $options: 'i' } },
-    ],
-  });
+  if (refId.length < 6) throw new AppError('Enter a valid friend code', 400);
 
-  if (!target) throw new AppError('User not found', 404);
-  if (String(target._id) === String(uid)) throw new AppError('Cannot add yourself', 400);
+  const target = await User.findOne({ refId });
+
+  if (!target) throw new AppError('No one found with that code', 404);
+  if (String(target._id) === String(uid)) throw new AppError('That\'s your own code', 400);
 
   const existing = await Friendship.findOne({
     $or: [

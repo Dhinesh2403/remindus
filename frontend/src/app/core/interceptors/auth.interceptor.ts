@@ -92,7 +92,7 @@ function handle401Error(
 function isPublicEndpoint(url: string): boolean {
   const publicPaths = [
     '/auth/login',
-    '/auth/register',
+    '/auth/signup',
     '/auth/refresh',
     '/auth/forgot-password',
     '/auth/reset-password',

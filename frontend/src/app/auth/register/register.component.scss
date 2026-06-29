@@ -1,0 +1,266 @@
+:host {
+  display: block;
+  font-family: var(--sc-font);
+}
+
+.scSignup {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(64px + env(safe-area-inset-top)) 30px calc(40px + env(safe-area-inset-bottom));
+  background: var(--sc-screen);
+  overflow-y: auto;
+  animation: scScreenIn .34s ease;
+}
+
+/* ─── Header / step dots ──────────────────────────────────────────────────── */
+.scSignupHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 42px;
+}
+
+.scSignupBack {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  border: 1px solid var(--sc-border);
+  background: var(--sc-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--sc-text);
+}
+
+.scSignupSteps {
+  display: flex;
+  gap: 7px;
+}
+
+.scSignupDot {
+  width: 22px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sc-border);
+  transition: background .2s;
+}
+
+.scSignupDotOn { background: var(--sc-accent); }
+
+.scSignupTitle {
+  margin: 26px 0 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  color: var(--sc-text);
+}
+
+.scSignupSub {
+  margin: 10px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--sc-muted);
+}
+
+/* ─── Form ────────────────────────────────────────────────────────────────── */
+.scSignupForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.scField { display: flex; flex-direction: column; }
+
+.scFieldLabel {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sc-text);
+}
+
+.scInputWrap { position: relative; }
+
+.scInput {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border: 1.5px solid var(--sc-border);
+  border-radius: 15px;
+  background: var(--sc-surface-2);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sc-text);
+  outline: none;
+  transition: border-color .2s;
+}
+
+.scInput:focus { border-color: var(--sc-accent); }
+
+.scInputToggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sc-accent);
+}
+
+.scOtpInput {
+  width: 100%;
+  height: 64px;
+  border: 1.5px solid var(--sc-border);
+  border-radius: 16px;
+  background: var(--sc-surface-2);
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 12px;
+  color: var(--sc-accent);
+  outline: none;
+  transition: border-color .2s;
+}
+
+.scOtpInput:focus { border-color: var(--sc-accent); }
+
+.scFieldError {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sc-danger);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+.scBtnPrimary {
+  flex: none;
+  height: 56px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 16px;
+  background: var(--sc-accent);
+  color: var(--sc-on-accent);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(50, 87, 238, .32);
+  transition: opacity .2s;
+}
+
+.scBtnPrimary:disabled { opacity: .6; cursor: not-allowed; }
+
+.scBtnSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: scSpin .8s linear infinite;
+}
+
+.scBtnGoogle {
+  position: relative;
+  flex: none;
+  margin-top: 24px;
+  height: 58px;
+  width: 100%;
+  border: 1px solid var(--sc-border);
+  border-radius: 16px;
+  background: var(--sc-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 54px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sc-text);
+  cursor: pointer;
+  box-shadow: var(--sc-shadow-sm);
+
+  .scBtnIcon { position: absolute; left: 20px; }
+}
+
+.scSignupLinkBtn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--sc-accent);
+  padding: 4px;
+}
+
+.scSignupLinkBtn:disabled { opacity: .5; }
+
+.scOtpPaste {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -2px;
+  padding: 9px 18px;
+  border: 1.5px solid var(--sc-border);
+  border-radius: 999px;
+  background: var(--sc-surface);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--sc-accent);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+
+.scOtpPaste:active { border-color: var(--sc-accent); }
+
+/* ─── Divider ─────────────────────────────────────────────────────────────── */
+.scSignupOr {
+  display: flex;
+  align-items: center;
+  margin: 18px 0 4px;
+  color: var(--sc-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.scSignupOr::before,
+.scSignupOr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--sc-border);
+}
+
+.scSignupOr span { padding: 0 12px; }
+
+/* ─── Footer ──────────────────────────────────────────────────────────────── */
+.scSignupSpacer { flex: 1; min-height: 24px; }
+
+.scSignupFooter {
+  margin: 22px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sc-muted);
+}
+
+.scSignupFooter a {
+  font-weight: 700;
+  color: var(--sc-accent);
+  text-decoration: none;
+}

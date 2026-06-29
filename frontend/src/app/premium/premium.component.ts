@@ -19,7 +19,7 @@ import {
     <ion-content class="premium-content">
       <div class="hero">
         <div class="hero-emoji">⭐</div>
-        <h1 class="hero-title">RemindMe Buddy Premium</h1>
+        <h1 class="hero-title">RemindUs Premium</h1>
         <p class="hero-sub">Unlock powerful features to never miss a thing</p>
       </div>
 
@@ -56,7 +56,7 @@ import {
   styles: [`
     .premium-content { --background:var(--rm-bg); }
     ion-toolbar { --background:var(--rm-card); }
-    .hero { background:linear-gradient(135deg,#7C3AED,#9333EA); padding:40px 24px 32px; text-align:center; }
+    .hero { background:linear-gradient(135deg,#3D5AF1,#5B7CFF); padding:40px 24px 32px; text-align:center; }
     .hero-emoji { font-size:56px; margin-bottom:12px; }
     .hero-title { font-size:24px; font-weight:900; color:white; margin-bottom:8px; }
     .hero-sub { font-size:14px; color:rgba(255,255,255,.8); }
@@ -84,7 +84,6 @@ export class PremiumComponent {
     { icon: '💬', title: 'SMS Notifications',   desc: 'Never miss reminders even offline' },
     { icon: '🤖', title: 'AI Smart Scheduling', desc: 'Let AI find the perfect time for tasks' },
     { icon: '♾️', title: 'Unlimited Reminders', desc: 'No cap on reminders or friends' },
-    { icon: '📊', title: 'Advanced Analytics',  desc: 'Deep productivity insights & reports' },
     { icon: '🎯', title: 'Priority Support',    desc: '24/7 dedicated premium support' },
   ];
 }
