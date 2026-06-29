@@ -61,7 +61,7 @@ import { NotificationService, AppNotification } from '../core/services/notificat
     .empty-state p { color:var(--rm-text-muted); }
     .notif-list { padding:8px 16px 24px; display:flex; flex-direction:column; gap:8px; }
     .notif-card { background:var(--rm-card); border-radius:16px; padding:14px; display:flex; align-items:flex-start; gap:12px; box-shadow:var(--rm-shadow-sm); cursor:pointer; position:relative; }
-    .notif-card.unread { background:rgba(124,58,237,0.08); border-left:3px solid var(--rm-purple); }
+    .notif-card.unread { background:rgba(61,90,241,0.08); border-left:3px solid var(--rm-purple); }
     .notif-icon { font-size:28px; flex-shrink:0; }
     .notif-body { flex:1; }
     .notif-title { font-size:14px; font-weight:700; color:var(--rm-text-primary); margin-bottom:3px; }

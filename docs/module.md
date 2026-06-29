@@ -156,7 +156,7 @@ goals
 habits
 
 
-com.remindmebuddy.app 
+com.remindusbuddy.app 
 
 cliend id
 812312433271-bipqnms8q3mn2e8quap0lrtod44ramdn.apps.googleusercontent.com

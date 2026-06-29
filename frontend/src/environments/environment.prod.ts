@@ -5,8 +5,8 @@ export const environment = {
   staging: false,
 
   // Railway production backend
-  apiUrl: 'https://remindme-buddy-api.up.railway.app/api',
-  socketUrl: 'https://remindme-buddy-api.up.railway.app',
+  apiUrl: 'https://remindus-api.onrender.com/api',
+  socketUrl: 'https://remindus-api.onrender.com',
 
   firebase: {
     apiKey: 'YOUR_FIREBASE_PROD_KEY',

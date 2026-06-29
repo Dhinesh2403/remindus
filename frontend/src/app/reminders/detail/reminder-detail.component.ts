@@ -19,7 +19,7 @@ import { SocketService } from '../../core/services/socket.service';
 
 const CAT_COLOR: Record<string, string> = {
   birthday:'#EC4899',wedding:'#8B5CF6',medicine:'#EF4444',
-  bill:'#3B82F6',study:'#10B981',work:'#F59E0B',general:'#6B7280',custom:'#7C3AED',
+  bill:'#3B82F6',study:'#10B981',work:'#F59E0B',general:'#6B7280',custom:'#3D5AF1',
 };
 const CAT_EMOJI: Record<string, string> = {
   birthday:'🎂',wedding:'💍',medicine:'💊',bill:'💰',study:'📚',work:'💼',general:'📌',custom:'✨',
@@ -140,7 +140,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .loading-wrap { display:flex; justify-content:center; padding:80px; }
 
     /* Light mode (default) — explicit colors so text never depends on var resolution */
-    .detail-card { background:#FFFFFF; margin:16px; border-radius:20px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.08); border-top:4px solid #7C3AED; text-align:center; }
+    .detail-card { background:#FFFFFF; margin:16px; border-radius:20px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.08); border-top:4px solid #3D5AF1; text-align:center; }
     .detail-emoji { font-size:56px; margin-bottom:12px; }
     .detail-title { font-size:22px; font-weight:800; color:#1F2937; margin-bottom:8px; }
     .detail-desc { font-size:14px; color:#6B7280; margin-bottom:16px; }
@@ -204,7 +204,7 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
   loading  = signal(true);
   reminder = signal<Reminder | null>(null);
 
-  color = () => CAT_COLOR[this.reminder()?.type ?? 'general'] ?? '#7C3AED';
+  color = () => CAT_COLOR[this.reminder()?.type ?? 'general'] ?? '#3D5AF1';
   emoji = () => CAT_EMOJI[this.reminder()?.type ?? 'general'] ?? '📌';
 
   /** True when the currently logged-in user is the recipient (assignedTo), not the creator */

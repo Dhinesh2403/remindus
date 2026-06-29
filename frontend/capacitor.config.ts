@@ -17,13 +17,13 @@ const config: CapacitorConfig = {
     },
     SplashScreen: {
       launchShowDuration:    2000,
-      backgroundColor:       '#7C3AED',
+      backgroundColor:       '#3D5AF1',
       androidSplashResourceName: 'splash',
       showSpinner:           false,
     },
     StatusBar: {
-      style:            'LIGHT',   // light icons on purple — overridden dynamically per theme
-      backgroundColor:  '#7C3AED',
+      style:            'LIGHT',   // light icons on blue — overridden dynamically per theme
+      backgroundColor:  '#3D5AF1',
       overlaysWebView:  false,     // push content below the status bar
     },
     Keyboard: {

@@ -143,6 +143,7 @@
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .scBtnPrimary {
+  flex: none;
   height: 56px;
   margin-top: 4px;
   border: none;
@@ -172,6 +173,8 @@
 }
 
 .scBtnGoogle {
+  position: relative;
+  flex: none;
   margin-top: 24px;
   height: 58px;
   width: 100%;
@@ -181,13 +184,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 13px;
+  padding: 0 54px;
   font-family: inherit;
   font-size: 16px;
   font-weight: 700;
   color: var(--sc-text);
   cursor: pointer;
   box-shadow: var(--sc-shadow-sm);
+
+  .scBtnIcon { position: absolute; left: 20px; }
 }
 
 .scSignupLinkBtn {

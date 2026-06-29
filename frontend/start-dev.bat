@@ -1,5 +1,5 @@
 @echo off
-echo Starting RemindMe Frontend Development Server...
+echo Starting RemindUs Frontend Development Server...
 echo.
 echo Serving on http://localhost:8100
 echo.

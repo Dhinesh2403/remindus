@@ -154,7 +154,7 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
           )},
           android: {
             priority: 'high',
-            notification: { sound: 'default', channelId: 'remindme_default' },
+            notification: { sound: 'default', channelId: 'remindus_default' },
           },
         });
         logger.info(`[FCM] Sent "${type}" to user ${userId}`);
@@ -195,7 +195,7 @@ exports.pushChatMessage = async ({ recipientId, senderName, text, senderId }) =>
       },
       android: {
         priority: 'high',
-        notification: { sound: 'default', channelId: 'remindme_default' },
+        notification: { sound: 'default', channelId: 'remindus_default' },
       },
     });
     logger.info(`[FCM] Sent chat message to user ${recipientId}`);

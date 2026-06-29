@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "name": "remindme-buddy",
+  "name": "remindus-buddy",
   "buildCommand": "npm run build:prod",
   "outputDirectory": "www",
   "installCommand": "npm ci",

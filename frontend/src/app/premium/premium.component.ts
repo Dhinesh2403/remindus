@@ -56,7 +56,7 @@ import {
   styles: [`
     .premium-content { --background:var(--rm-bg); }
     ion-toolbar { --background:var(--rm-card); }
-    .hero { background:linear-gradient(135deg,#7C3AED,#9333EA); padding:40px 24px 32px; text-align:center; }
+    .hero { background:linear-gradient(135deg,#3D5AF1,#5B7CFF); padding:40px 24px 32px; text-align:center; }
     .hero-emoji { font-size:56px; margin-bottom:12px; }
     .hero-title { font-size:24px; font-weight:900; color:white; margin-bottom:8px; }
     .hero-sub { font-size:14px; color:rgba(255,255,255,.8); }
