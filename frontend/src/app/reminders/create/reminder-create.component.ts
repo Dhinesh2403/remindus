@@ -210,7 +210,7 @@ interface PriorityOption { value: Priority; label: string; color: string }
     .notif-chip { padding: 10px 14px; border: 2px solid var(--rm-border); border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--rm-text-secondary); background: var(--rm-surface); transition: all 0.15s; }
     .notif-chip.active { border-color: var(--rm-purple); color: var(--rm-purple); background: var(--rm-purple-light); }
     .premium-pill { background: #F59E0B; color: white; border-radius: 20px; padding: 2px 6px; font-size: 10px; font-weight: 700; }
-    .btn-save { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--rm-purple), #9333EA); color: white; border: none; border-radius: var(--rm-radius-md); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; font-family: inherit; box-shadow: 0 4px 16px rgba(124,58,237,0.35); }
+    .btn-save { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--rm-purple), #5B7CFF); color: white; border: none; border-radius: var(--rm-radius-md); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; font-family: inherit; box-shadow: 0 4px 16px rgba(61,90,241,0.35); }
     .btn-save:disabled { opacity: 0.65; }
   `],
 })
@@ -231,7 +231,7 @@ export class ReminderCreateComponent {
     { type: 'study',    emoji: '📚', label: 'Study',    color: '#10B981' },
     { type: 'work',     emoji: '💼', label: 'Work',     color: '#F59E0B' },
     { type: 'general',  emoji: '📌', label: 'General',  color: '#6B7280' },
-    { type: 'custom',   emoji: '✨', label: 'Custom',   color: '#7C3AED' },
+    { type: 'custom',   emoji: '✨', label: 'Custom',   color: '#3D5AF1' },
   ];
 
   repeats: RepeatOption[] = [

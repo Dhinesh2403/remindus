@@ -217,8 +217,8 @@ import { ShareService } from '../core/services/share.service';
                   <div class="fstat-num" style="color:#10B981">{{ friend.completedCount }}</div>
                   <div class="fstat-label">Completed</div>
                 </div>
-                <div class="fstat" style="background:rgba(124,58,237,0.12)">
-                  <div class="fstat-num" style="color:#7C3AED">{{ friend.sharedCount }}</div>
+                <div class="fstat" style="background:rgba(61,90,241,0.12)">
+                  <div class="fstat-num" style="color:#3D5AF1">{{ friend.sharedCount }}</div>
                   <div class="fstat-label">Shared</div>
                 </div>
                 <div class="fstat" [style.background]="friend.pendingCount > 0 ? 'rgba(234,88,12,0.12)' : 'var(--rm-surface)'">
@@ -400,7 +400,7 @@ import { ShareService } from '../core/services/share.service';
     .btn-add-user{padding:8px 16px;background:var(--rm-purple);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
     .btn-add-user:disabled{opacity:0.6;cursor:default}
     /* My friend code card */
-    .mycode-card{display:flex;align-items:center;gap:10px;margin:12px 16px 0;padding:14px 16px;background:linear-gradient(135deg,var(--rm-purple),#9333EA);border-radius:18px;box-shadow:var(--rm-shadow-sm)}
+    .mycode-card{display:flex;align-items:center;gap:10px;margin:12px 16px 0;padding:14px 16px;background:linear-gradient(135deg,var(--rm-purple),#5B7CFF);border-radius:18px;box-shadow:var(--rm-shadow-sm)}
     .mycode-left{flex:1;min-width:0}
     .mycode-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px}
     .mycode-value{font-size:22px;font-weight:800;color:#fff;letter-spacing:2px;font-family:'Courier New',monospace;margin-top:2px}
@@ -487,19 +487,19 @@ import { ShareService } from '../core/services/share.service';
     .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
     .status-sent{background:rgba(234,179,8,0.15);color:#B45309}
     .status-received{background:rgba(59,130,246,0.15);color:#1D4ED8}
-    .status-acknowledged{background:rgba(124,58,237,0.15);color:var(--rm-purple)}
+    .status-acknowledged{background:rgba(61,90,241,0.15);color:var(--rm-purple)}
     .status-processing{background:rgba(234,88,12,0.15);color:#C2410C}
     .status-skipped{background:rgba(107,114,128,0.15);color:#6B7280}
     .status-completed{background:rgba(16,185,129,0.15);color:#047857}
     .action-row{display:flex;gap:6px;flex-wrap:wrap}
     .act-btn{padding:6px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
-    .act-start{background:rgba(124,58,237,0.12);color:var(--rm-purple)}
+    .act-start{background:rgba(61,90,241,0.12);color:var(--rm-purple)}
     .act-done{background:rgba(16,185,129,0.12);color:#047857}
     .act-snooze{background:rgba(234,179,8,0.12);color:#B45309}
     .act-skip{background:rgba(107,114,128,0.12);color:#6B7280}
     /* Chat button on friend card */
-    .btn-chat{position:relative;margin-left:auto;flex-shrink:0;width:34px;height:34px;border:none;background:rgba(124,58,237,0.1);color:var(--rm-purple);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;padding:0;transition:background 0.15s}
-    .btn-chat:active{background:rgba(124,58,237,0.22)}
+    .btn-chat{position:relative;margin-left:auto;flex-shrink:0;width:34px;height:34px;border:none;background:rgba(61,90,241,0.1);color:var(--rm-purple);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;padding:0;transition:background 0.15s}
+    .btn-chat:active{background:rgba(61,90,241,0.22)}
     .chat-unread{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;background:#EF4444;color:#fff;border-radius:8px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--rm-card)}
     /* Chat overlay */
     .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn 0.22s ease}

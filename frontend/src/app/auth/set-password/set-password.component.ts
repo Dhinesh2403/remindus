@@ -81,7 +81,7 @@ import { AuthService } from '../../core/services/auth.service';
   styles: [`
     .login-content { --background: linear-gradient(160deg,#F0ECFF 0%,#E8F0FF 100%); }
     .login-bg { min-height:100%; display:flex; align-items:center; justify-content:center; padding:32px 20px; }
-    .login-card { background:var(--rm-card); border-radius:28px; padding:36px 24px; width:100%; max-width:340px; box-shadow:0 4px 16px rgba(124,58,237,0.1); }
+    .login-card { background:var(--rm-card); border-radius:28px; padding:36px 24px; width:100%; max-width:340px; box-shadow:0 4px 16px rgba(61,90,241,0.1); }
     .login-logo { width:64px; height:64px; background:var(--rm-purple); border-radius:20px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; }
     .login-title { font-size:24px; font-weight:800; color:var(--rm-purple); text-align:center; margin-bottom:6px; }
     .login-sub { color:var(--rm-text-secondary); text-align:center; font-size:14px; margin-bottom:28px; line-height:1.5; }
@@ -93,7 +93,7 @@ import { AuthService } from '../../core/services/auth.service';
     .form-input { width:100%; padding:14px 40px 14px 44px; border:1.5px solid var(--rm-border); border-radius:14px; font-size:14px; outline:none; background:var(--rm-surface); color:var(--rm-text-primary); font-family:inherit; }
     .form-input:focus { border-color:var(--rm-purple); }
     .form-error { display:block; margin-top:6px; font-size:12px; color:#E5484D; }
-    .btn-primary { width:100%; padding:16px; background:linear-gradient(135deg,var(--rm-purple),#9333EA); color:white; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; margin-top:4px; }
+    .btn-primary { width:100%; padding:16px; background:linear-gradient(135deg,var(--rm-purple),#5B7CFF); color:white; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; margin-top:4px; }
     .btn-primary:disabled { opacity:.65; }
   `],
 })

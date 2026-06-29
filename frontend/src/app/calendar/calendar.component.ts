@@ -38,7 +38,7 @@ const MONTHS = ['January','February','March','April','May','June',
 const CAT_COLOR: Record<string, string> = {
   birthday: '#EC4899', wedding: '#8B5CF6', medicine: '#EF4444',
   bill: '#3B82F6', study: '#10B981', work: '#F59E0B',
-  general: '#6B7280', custom: '#7C3AED',
+  general: '#6B7280', custom: '#3D5AF1',
 };
 const CAT_EMOJI: Record<string, string> = {
   birthday: '🎂', wedding: '💍', medicine: '💊',

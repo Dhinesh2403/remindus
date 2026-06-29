@@ -5,10 +5,10 @@
 
 :root {
   // Brand colors
-  --rm-purple:        #7C3AED;
-  --rm-purple-light:  #EDE9FE;
-  --rm-purple-dark:   #5B21B6;
-  --rm-purple-rgb:    124, 58, 237;
+  --rm-purple:        #3D5AF1;
+  --rm-purple-light:  #E8ECFE;
+  --rm-purple-dark:   #2A3FCC;
+  --rm-purple-rgb:    61, 90, 241;
 
   // Semantic
   --rm-success:       #10B981;
@@ -32,8 +32,8 @@
 
   // Shadows
   --rm-shadow-sm:     0 1px 3px rgba(0,0,0,0.08);
-  --rm-shadow-md:     0 4px 16px rgba(124,58,237,0.10);
-  --rm-shadow-lg:     0 8px 32px rgba(124,58,237,0.15);
+  --rm-shadow-md:     0 4px 16px rgba(61,90,241,0.10);
+  --rm-shadow-lg:     0 8px 32px rgba(61,90,241,0.15);
 
   // Radius
   --rm-radius-sm:     8px;
@@ -74,7 +74,7 @@
     --rm-text-muted:    #6B7280;
     --rm-border:        #374151;
     --rm-shadow-md:     0 4px 16px rgba(0,0,0,0.4);
-    --rm-purple-light:  rgba(124,58,237,0.2);
+    --rm-purple-light:  rgba(61,90,241,0.2);
     --rm-birthday-bg:   rgba(236,72,153,0.15);
     --rm-work-bg:       rgba(245,158,11,0.15);
     --rm-medicine-bg:   rgba(239,68,68,0.15);
@@ -92,7 +92,7 @@
   --rm-text-secondary:#9CA3AF;
   --rm-text-muted:    #6B7280;
   --rm-border:        #374151;
-  --rm-purple-light:  rgba(124,58,237,0.2);
+  --rm-purple-light:  rgba(61,90,241,0.2);
   --rm-birthday-bg:   rgba(236,72,153,0.15);
   --rm-work-bg:       rgba(245,158,11,0.15);
   --rm-medicine-bg:   rgba(239,68,68,0.15);

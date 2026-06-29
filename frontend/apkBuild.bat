@@ -60,7 +60,7 @@ for /f "tokens=1-2 delims=:." %%a in ("%time%") do (
     set MN=%%b
 )
 
-set APK_NAME=RemindMe_%D3%%D2%%D1%_%HH%%MN%.apk
+set APK_NAME=RemindUs_%D3%%D2%%D1%_%HH%%MN%.apk
 
 copy "%APK_SOURCE%" "build-apk\%APK_NAME%" >nul
 

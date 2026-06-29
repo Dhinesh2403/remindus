@@ -2,7 +2,7 @@
   "name": "remindus-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "RemindMe Buddy — Node.js Express API",
+  "description": "RemindUs Buddy — Node.js Express API",
   "main": "src/app.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon src/app.js",

@@ -8,13 +8,13 @@
 # Step 1: Create account at https://cloud.mongodb.com
 
 # Step 2: Create 3 clusters (or use one with 3 databases)
-#   - remindme_dev      → Free M0 tier (dev only)
-#   - remindme_staging  → M10 shared (staging)
-#   - remindme_prod     → M10+ dedicated (production)
+#   - remindus_dev      → Free M0 tier (dev only)
+#   - remindus_staging  → M10 shared (staging)
+#   - remindus_prod     → M10+ dedicated (production)
 
 # Step 3: For each cluster:
 #   Database Access → Add DB User
-#     Username: remindme_user
+#     Username: remindus_user
 #     Password: <strong-generated-password>
 #     Role: readWrite on relevant DB
 
@@ -24,7 +24,7 @@
 
 # Step 4: Get connection string:
 #   Clusters → Connect → Connect your application → Driver: Node.js 5.x
-#   mongodb+srv://remindme_user:<password>@cluster0.xxxxx.mongodb.net/<dbname>?retryWrites=true&w=majority
+#   mongodb+srv://remindus_user:<password>@cluster0.xxxxx.mongodb.net/<dbname>?retryWrites=true&w=majority
 ```
 
 ---
@@ -46,13 +46,13 @@ npx web-push generate-vapid-keys
 
 ```
 1. Go to https://console.cloud.google.com
-2. Create project: "RemindMe Buddy"
+2. Create project: "RemindUs Buddy"
 3. APIs & Services → Credentials → Create OAuth 2.0 Client ID
 4. Type: Web application
 5. Authorized JavaScript Origins:
      - http://localhost:8100          (dev)
-     - https://remindme-buddy-staging.vercel.app (staging)
-     - https://remindmebuddy.vercel.app          (prod)
+     - https://remindus-buddy-staging.vercel.app (staging)
+     - https://remindusbuddy.vercel.app          (prod)
 6. Authorized redirect URIs: (same as origins)
 7. Copy Client ID into frontend environments + backend .env
 ```
@@ -69,8 +69,8 @@ node --version   # should be v20.x
 npm install -g @angular/cli@17 @ionic/cli
 
 # Clone repo
-git clone https://github.com/YOUR_USERNAME/remindme-buddy.git
-cd remindme-buddy
+git clone https://github.com/YOUR_USERNAME/remindus-buddy.git
+cd remindus-buddy
 
 # Backend setup
 cd backend
@@ -110,10 +110,10 @@ railway init   # in backend/ folder
 
 # Step 5: Manual deploy (if not using GitHub)
 cd backend
-railway up --service remindme-buddy-api
+railway up --service remindus-buddy-api
 
 # Step 6: Check logs
-railway logs --service remindme-buddy-api
+railway logs --service remindus-buddy-api
 
 # Step 7: Verify
 curl https://YOUR_RAILWAY_URL.up.railway.app/api/health
@@ -127,7 +127,7 @@ curl https://YOUR_RAILWAY_URL.up.railway.app/api/health
 | `MONGO_URI` | `mongodb+srv://...` |
 | `JWT_ACCESS_SECRET` | `<64-char-secret>` |
 | `JWT_REFRESH_SECRET` | `<64-char-secret>` |
-| `FRONTEND_URL` | `https://remindmebuddy.vercel.app` |
+| `FRONTEND_URL` | `https://remindusbuddy.vercel.app` |
 | `GOOGLE_CLIENT_ID` | `<from GCP>` |
 | `SMTP_HOST` | `smtp.sendgrid.net` |
 | `SMTP_USER` | `apikey` |
@@ -164,7 +164,7 @@ vercel --prod false    # creates preview URL
 #   Branch: develop → Preview
 
 # Step 5: Custom domain (optional)
-vercel domains add remindmebuddy.com
+vercel domains add remindusbuddy.com
 
 # Step 6: Force redeploy
 vercel --prod
@@ -185,9 +185,9 @@ vercel --prod
 
 ```bash
 # Initialize
-cd remindme-buddy
+cd remindus-buddy
 git init
-git remote add origin https://github.com/YOUR_USERNAME/remindme-buddy.git
+git remote add origin https://github.com/YOUR_USERNAME/remindus-buddy.git
 
 # Branch strategy
 git checkout -b develop    # staging deploys from this
@@ -195,7 +195,7 @@ git checkout -b main       # production deploys from this
 
 # Initial commit
 git add .
-git commit -m "feat: initial RemindMe Buddy full-stack scaffold"
+git commit -m "feat: initial RemindUs Buddy full-stack scaffold"
 git push -u origin develop
 ```
 

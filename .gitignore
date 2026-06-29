@@ -67,3 +67,4 @@ build-apk/**
 !build-apk/
 !build-apk/*/
 !build-apk/*/latest.apk
+backend/src/seed/seed.js

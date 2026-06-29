@@ -165,7 +165,7 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 
     .page { --background: var(--rm-bg); }
-    .hdr { background: linear-gradient(160deg, #7C3AED, #5B21B6); padding: calc(env(safe-area-inset-top) + 12px) 18px 0; animation: rmFadeUp .35s ease both; }
+    .hdr { background: linear-gradient(160deg, #3D5AF1, #2A3FCC); padding: calc(env(safe-area-inset-top) + 12px) 18px 0; animation: rmFadeUp .35s ease both; }
     .hdr-row { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; }
     .hdr-title { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
     .circle-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.16); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; flex: none; }
@@ -214,11 +214,11 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
     .block-title { font-size: 13px; font-weight: 800; }
     .block-time { font-size: 11px; font-weight: 600; color: var(--rm-text-secondary); }
 
-    .fab { position: fixed; right: 20px; bottom: calc(env(safe-area-inset-bottom) + 24px); width: 58px; height: 58px; border-radius: 19px; border: none; background: var(--rm-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; box-shadow: 0 14px 30px rgba(124,58,237,.45); z-index: 10; }
+    .fab { position: fixed; right: 20px; bottom: calc(env(safe-area-inset-bottom) + 24px); width: 58px; height: 58px; border-radius: 19px; border: none; background: var(--rm-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; box-shadow: 0 14px 30px rgba(61,90,241,.45); z-index: 10; }
     .fab:active { transform: scale(.92); }
 
     .sheet { background: var(--rm-card); height: 100%; display: flex; flex-direction: column; }
-    .sheet-hdr { background: linear-gradient(160deg, #7C3AED, #5B21B6); padding: 22px; display: flex; align-items: flex-start; justify-content: space-between; flex: none; }
+    .sheet-hdr { background: linear-gradient(160deg, #3D5AF1, #2A3FCC); padding: 22px; display: flex; align-items: flex-start; justify-content: space-between; flex: none; }
     .sheet-title { font-size: 22px; font-weight: 800; color: #fff; }
     .sheet-sub { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.78); margin-top: 2px; }
     .sheet-scroll { --background: var(--rm-card); flex: 1; }

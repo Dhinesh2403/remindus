@@ -1,0 +1,98 @@
+# render.yaml — Render Blueprint for RemindMe Buddy
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Env vars with `sync: false` are NOT stored in git — Render prompts you to set
+# them in the dashboard on first deploy (or you paste them via "Add from .env").
+# Only non-secret values are committed inline below.
+
+services:
+  - type: web
+    name: remindme-buddy-api
+    runtime: node
+    rootDir: backend
+    plan: starter            # "starter" ($7/mo, no spin-down) keeps node-cron reminders firing.
+                             # Change to "free" only if you accept 15-min spin-down (cron stops while asleep).
+    region: oregon           # pick the region closest to your users / MongoDB Atlas cluster
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    envVars:
+      # ── Core ────────────────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      # PORT is injected by Render automatically — do NOT set it here.
+
+      # ── Database ────────────────────────────────────────────────────────────
+      - key: MONGO_URI
+        sync: false
+
+      # ── JWT ─────────────────────────────────────────────────────────────────
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+
+      # ── CORS ────────────────────────────────────────────────────────────────
+      - key: FRONTEND_URL
+        sync: false        # your deployed frontend origin (drives CORS whitelist)
+
+      # ── Google Sign-In ──────────────────────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+      # ── Email (Resend) ──────────────────────────────────────────────────────
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        value: no-reply@remindus.online
+
+      # ── Email (SMTP fallback) ───────────────────────────────────────────────
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: no-reply@remindus.online
+
+      # ── Twilio (SMS / WhatsApp) ─────────────────────────────────────────────
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+
+      # ── Web Push (VAPID) ────────────────────────────────────────────────────
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_EMAIL
+        value: mailto:admin@remindus.online
+
+      # ── Cloudinary (avatars) ────────────────────────────────────────────────
+      - key: CLOUDINARY_URL
+        sync: false
+
+      # ── Rate limiting ───────────────────────────────────────────────────────
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX
+        value: "100"
+
+      # ── Logging ─────────────────────────────────────────────────────────────
+      - key: LOG_LEVEL
+        value: info

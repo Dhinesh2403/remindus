@@ -25,7 +25,7 @@ const Goal     = require('../models/Goal');
 const Activity = require('../models/Activity');
 const Note     = require('../models/Note');
 
-const DEMO_EMAIL    = process.env.SEED_EMAIL || 'demo@remindme.app';
+const DEMO_EMAIL    = process.env.SEED_EMAIL || 'demo@remindus.app';
 const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'Password123';
 
 const todayKey = () => {

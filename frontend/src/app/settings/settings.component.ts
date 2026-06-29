@@ -71,7 +71,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
         <!-- Shareable friend code -->
         <div class="friendcode-row">
-          <div class="row-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
             <ion-icon name="key-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -158,7 +158,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row">
-          <div class="row-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
             <ion-icon name="phone-portrait-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -198,7 +198,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
 
         <div class="settings-row">
-          <div class="row-icon" style="background:rgba(124,58,237,0.12);color:#7C3AED">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
             <ion-icon name="alarm-outline"></ion-icon>
           </div>
           <div class="row-text">
@@ -323,7 +323,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
     /* Profile */
     .profile-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px 16px; cursor: pointer; }
-    .profile-avatar { position: relative; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg,var(--rm-purple),#9333EA); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; cursor: pointer; }
+    .profile-avatar { position: relative; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg,var(--rm-purple),#5B7CFF); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; cursor: pointer; }
     .avatar-img { width: 100%; height: 100%; object-fit: cover; }
     .avatar-cam { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--rm-purple); border: 2px solid var(--rm-card); display: flex; align-items: center; justify-content: center; }
     .avatar-cam ion-icon { font-size: 11px; color: #fff; }
