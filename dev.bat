@@ -16,15 +16,17 @@ echo ============================================================
 echo.
 echo   [1]  Run Dev  (Frontend + Backend)
 echo   [2]  Run Frontend only  (dev config)
-echo   [3]  Run Backend only   (dev config)
+echo   [3]  Run Frontend only  (staging db)
+echo   [4]  Run Backend only   (dev config)
 echo.
-echo   [4]  Build APK  ^>  DEV     (debug)
-echo   [5]  Build APK  ^>  STAGING
-echo   [6]  Build APK  ^>  PROD    (release)
+echo   [5]  Build APK  ^>  DEV     (debug)
+echo   [6]  Build APK  ^>  STAGING
+echo   [7]  Build APK  ^>  PROD    (release)
 echo.
-echo   [7]  Cap Sync (build web + sync to Capacitor)
-echo   [8]  Git Commit
-echo   [9]  Git Status / Log
+echo   [8]  Cap Sync (build web + sync to Capacitor)
+echo   [9]  Git Commit
+echo   [10] Git Status / Log
+echo   [11] Deploy  ^>  move changes to PROD branch (back to main after)
 echo.
 echo   [0]  Exit
 echo.
@@ -32,13 +34,15 @@ set /p CHOICE="  Choose an option: "
 
 if "%CHOICE%"=="1" goto RUN_DEV_BOTH
 if "%CHOICE%"=="2" goto RUN_FRONTEND
-if "%CHOICE%"=="3" goto RUN_BACKEND
-if "%CHOICE%"=="4" goto BUILD_DEV_APK
-if "%CHOICE%"=="5" goto BUILD_STAGING_APK
-if "%CHOICE%"=="6" goto BUILD_PROD_APK
-if "%CHOICE%"=="7" goto CAP_SYNC
-if "%CHOICE%"=="8" goto GIT_COMMIT
-if "%CHOICE%"=="9" goto GIT_STATUS
+if "%CHOICE%"=="3" goto RUN_FRONTEND_STAGING
+if "%CHOICE%"=="4" goto RUN_BACKEND
+if "%CHOICE%"=="5" goto BUILD_DEV_APK
+if "%CHOICE%"=="6" goto BUILD_STAGING_APK
+if "%CHOICE%"=="7" goto BUILD_PROD_APK
+if "%CHOICE%"=="8" goto CAP_SYNC
+if "%CHOICE%"=="9" goto GIT_COMMIT
+if "%CHOICE%"=="10" goto GIT_STATUS
+if "%CHOICE%"=="11" goto DEPLOY_PROD
 if "%CHOICE%"=="0" goto EXIT
 
 echo.
@@ -114,7 +118,19 @@ pause
 goto MENU
 
 :: ============================================================
-::  [3] Backend only
+::  [3] Frontend only â€” STAGING db (staging config)
+:: ============================================================
+:RUN_FRONTEND_STAGING
+echo.
+echo   Starting Frontend (staging db)...
+start "RemindUs Frontend (staging)" cmd /k "cd /d %FRONTEND% && npm run start:staging"
+echo   Frontend launched: http://localhost:8100  (staging config / db)
+echo.
+pause
+goto MENU
+
+:: ============================================================
+::  [4] Backend only
 :: ============================================================
 :RUN_BACKEND
 echo.
@@ -126,7 +142,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [4] Build DEV APK  (debug — package ID: com.remindus.app.debug)
+::  [5] Build DEV APK  (debug — package ID: com.remindus.app.debug)
 :: ============================================================
 :BUILD_DEV_APK
 echo.
@@ -151,7 +167,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [5] Build STAGING APK
+::  [6] Build STAGING APK
 ::      Same package ID as prod, debug-signed.
 ::      Installing over production triggers "package appears to be invalid".
 :: ============================================================
@@ -178,7 +194,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [6] Build PROD APK  (release — package ID: com.remindus.app)
+::  [7] Build PROD APK  (release — package ID: com.remindus.app)
 :: ============================================================
 :BUILD_PROD_APK
 echo.
@@ -203,7 +219,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [7] Cap Sync  (build web only + sync — no APK)
+::  [8] Cap Sync  (build web only + sync — no APK)
 :: ============================================================
 :CAP_SYNC
 echo.
@@ -243,7 +259,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [8] Git Commit
+::  [9] Git Commit
 :: ============================================================
 :GIT_COMMIT
 cd /d %ROOT%
@@ -278,7 +294,7 @@ pause
 goto MENU
 
 :: ============================================================
-::  [9] Git Status / Log
+::  [10] Git Status / Log
 :: ============================================================
 :GIT_STATUS
 cd /d %ROOT%
@@ -288,6 +304,68 @@ git status
 echo.
 echo ---- last 10 commits ----
 git log --oneline -10
+echo.
+pause
+goto MENU
+
+:: ============================================================
+::  [11] Deploy — merge main into prod, push, return to main
+:: ============================================================
+:DEPLOY_PROD
+cd /d %ROOT%
+echo.
+echo   This will:
+echo     1. checkout main and pull latest
+echo     2. checkout prod and merge main into it
+echo     3. push prod
+echo     4. switch back to main
+echo.
+echo   Make sure your changes are committed first (uncommitted changes
+echo   can block branch switching / merging).
+echo.
+set /p DEPLOY_CONFIRM="  Continue? (y/n): "
+if /i not "!DEPLOY_CONFIRM!"=="y" (
+    echo   Cancelled.
+    pause
+    goto MENU
+)
+
+echo.
+echo   [1/6] Checking out main...
+git checkout main
+if errorlevel 1 ( echo   FAILED to checkout main. & pause & goto MENU )
+
+echo   [2/6] Pulling latest main...
+git pull origin main
+if errorlevel 1 ( echo   FAILED to pull main. & pause & goto MENU )
+
+echo   [3/6] Checking out prod...
+git checkout prod
+if errorlevel 1 ( echo   FAILED to checkout prod. & pause & goto MENU )
+
+echo   [4/6] Pulling latest prod...
+git pull origin prod
+if errorlevel 1 ( echo   FAILED to pull prod. & pause & goto MENU )
+
+echo   [5/6] Merging main into prod...
+git merge main
+if errorlevel 1 (
+    echo.
+    echo   MERGE FAILED / conflicts. Resolve them on prod, then push manually.
+    echo   You are currently on the prod branch.
+    pause
+    goto MENU
+)
+
+git push origin prod
+if errorlevel 1 ( echo   PUSH FAILED. You are on prod. & pause & goto MENU )
+
+echo   [6/6] Switching back to main...
+git checkout main
+if errorlevel 1 ( echo   Merge/push done, but FAILED to switch back to main. & pause & goto MENU )
+
+echo.
+echo   ✓  Deployed main -^> prod and back on main.
 echo.
 pause
 goto MENU

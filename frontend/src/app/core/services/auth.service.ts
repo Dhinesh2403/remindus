@@ -1,11 +1,12 @@
 // src/app/core/services/auth.service.ts
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenService } from './token.service';
 import { SocketService } from './socket.service';
+import { ConnectivityService } from './connectivity.service';
 import { GoogleCredential } from './social-auth.service';
 
 export interface User {
@@ -57,6 +58,7 @@ export class AuthService {
   private router = inject(Router);
   private tokenService = inject(TokenService);
   private socketService = inject(SocketService);
+  private connectivity = inject(ConnectivityService);
 
   private readonly API = `${environment.apiUrl}/auth`;
 
@@ -277,7 +279,12 @@ export class AuthService {
   }
 
   /**
-   * Called on app boot to restore session from localStorage
+   * Called on app boot to restore session from storage.
+   *
+   * Failure handling is deliberate so a transient outage can't sign users out:
+   *  - `401` (after the interceptor's refresh attempts) is a real auth failure → log out.
+   *  - Network / 5xx while a valid session exists → keep the session, route to
+   *    /maintenance. The user stays logged in and retries when the server is back.
    */
   restoreSession(): void {
     const accessToken = this.tokenService.getAccessToken();
@@ -286,12 +293,26 @@ export class AuthService {
     this.fetchCurrentUser().subscribe({
       next: (user) => {
         this._currentUser.set(user);
-        this.socketService.connect(accessToken);
+        this.socketService.connect(this.tokenService.getAccessToken() ?? accessToken);
+        this.connectivity.markServerUp();
       },
-      error: () => {
-        // Token invalid or expired — clear and redirect
-        this.tokenService.clearTokens();
-        this.router.navigate(['/auth/login']);
+      error: (err: HttpErrorResponse) => {
+        if (err?.status === 401) {
+          // Genuine auth failure — access + refresh both rejected.
+          this.tokenService.clearTokens();
+          this._currentUser.set(null);
+          this.router.navigate(['/auth/login']);
+          return;
+        }
+
+        // Server unreachable / 5xx. Keep the session if it's still valid.
+        if (this.tokenService.hasValidSession()) {
+          this.connectivity.markServerDown();
+          this.router.navigate(['/maintenance']);
+        } else {
+          this.tokenService.clearTokens();
+          this.router.navigate(['/auth/login']);
+        }
       },
     });
   }

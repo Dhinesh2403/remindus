@@ -14,11 +14,14 @@ import {
   trashOutline, starOutline, cameraOutline, keyOutline,
   copyOutline, shareSocialOutline, notificationsOffOutline,
   alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
-  sparklesOutline,
+  sparklesOutline, informationCircleOutline, cloudDownloadOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../core/services/auth.service';
 import { ThemeService } from '../core/services/theme.service';
 import { ShareService } from '../core/services/share.service';
+import { RatingService } from '../core/services/rating.service';
+import { UpdateService } from '../core/services/update.service';
+import { AppVersionService } from '../core/services/app-version.service';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -280,6 +283,36 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
       </div>
 
+      <!-- About -->
+      <div class="settings-section">
+        <div class="section-label">
+          <ion-icon name="information-circle-outline"></ion-icon>
+          About
+        </div>
+
+        <div class="settings-row" (click)="rateApp()">
+          <div class="row-icon" style="background:rgba(245,158,11,0.14);color:#F59E0B">
+            <ion-icon name="star-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Rate RemindUs</div>
+            <div class="row-sub">Enjoying the app? Leave a review</div>
+          </div>
+          <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
+        </div>
+
+        <div class="settings-row" (click)="checkUpdates()">
+          <div class="row-icon" style="background:rgba(61,90,241,0.12);color:#3D5AF1">
+            <ion-icon name="cloud-download-outline"></ion-icon>
+          </div>
+          <div class="row-text">
+            <div class="row-title">Check for updates</div>
+            <div class="row-sub">{{ checkingUpdate() ? 'Checking…' : 'Version ' + appVersionLabel() }}</div>
+          </div>
+          <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
+        </div>
+      </div>
+
       <!-- Danger zone -->
       <div class="settings-section danger-section">
         <div class="settings-row" (click)="logout()">
@@ -305,7 +338,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- App version -->
-      <div class="app-version">RemindUs v1.0.0</div>
+      <div class="app-version">RemindUs v{{ appVersionLabel() }}</div>
       <div style="height:24px"></div>
 
     </ion-content>
@@ -378,6 +411,9 @@ export class SettingsComponent implements OnInit {
   private authService  = inject(AuthService);
   private themeService = inject(ThemeService);
   private shareService = inject(ShareService);
+  private ratingService = inject(RatingService);
+  private updateService = inject(UpdateService);
+  private appVersion    = inject(AppVersionService);
   private alertCtrl   = inject(AlertController);
   private toastCtrl   = inject(ToastController);
 
@@ -387,6 +423,8 @@ export class SettingsComponent implements OnInit {
   activeTheme   = signal<ThemeMode>('light');
   twoFAEnabled  = signal(false);
   uploadingPhoto = signal(false);
+  appVersionLabel = signal('1.0.0');
+  checkingUpdate  = signal(false);
   notifPrefs    = signal({ email: true, push: true, sms: false, whatsapp: false });
   notifTypes    = signal({ reminders: true, chat: true, friendRequests: true, other: true });
 
@@ -399,11 +437,12 @@ export class SettingsComponent implements OnInit {
       trashOutline, starOutline, cameraOutline, keyOutline,
       copyOutline, shareSocialOutline, notificationsOffOutline,
       alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
-      sparklesOutline,
+      sparklesOutline, informationCircleOutline, cloudDownloadOutline,
     });
   }
 
   ngOnInit() {
+    this.appVersion.getInfo().then((i) => this.appVersionLabel.set(i.versionName));
     const saved = localStorage.getItem('rm_theme') as ThemeMode ?? 'light';
     this.activeTheme.set(saved);
     const prefs = this.user()?.notifPrefs;
@@ -565,5 +604,37 @@ export class SettingsComponent implements OnInit {
       ],
     });
     await alert.present();
+  }
+
+  // ─── About ────────────────────────────────────────────────────────────────
+  rateApp() {
+    this.ratingService.promptNow();
+  }
+
+  async checkUpdates() {
+    if (this.checkingUpdate()) return;
+    this.checkingUpdate.set(true);
+    const res = await this.updateService.check();
+    this.checkingUpdate.set(false);
+
+    if (!res) {
+      const t = await this.toastCtrl.create({ message: 'Couldn\'t reach the server. Try again later.', duration: 2500, color: 'dark' });
+      await t.present();
+      return;
+    }
+    if (res.updateAvailable || res.forceUpdate) {
+      const alert = await this.alertCtrl.create({
+        header: 'Update available',
+        message: res.message,
+        buttons: [
+          { text: 'Later', role: 'cancel' },
+          { text: 'Update', handler: () => this.updateService.openStore() },
+        ],
+      });
+      await alert.present();
+    } else {
+      const t = await this.toastCtrl.create({ message: 'You\'re on the latest version 🎉', duration: 2000, color: 'success' });
+      await t.present();
+    }
   }
 }

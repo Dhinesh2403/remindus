@@ -30,6 +30,11 @@ export const environment = {
     smsReminders: true,
   },
 
+  // App version — web fallback only (native uses @capacitor/app). Keep in sync
+  // with android/app/build.gradle (versionName / versionCode) on every release.
+  appVersion: '1.0.0',
+  appBuild: 1,
+
   enableLogging: false,
   logLevel: 'error',
 };

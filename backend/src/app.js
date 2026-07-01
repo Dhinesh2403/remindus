@@ -37,6 +37,8 @@ const activityRoutes     = require('./routes/activity.routes');
 const noteRoutes         = require('./routes/note.routes');
 const taskRoutes         = require('./routes/task.routes');
 const specialDayRoutes   = require('./routes/specialDay.routes');
+const appConfigRoutes    = require('./routes/app.routes');
+const logRoutes          = require('./routes/log.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -104,7 +106,7 @@ app.use('/api', globalLimiter);
 // Auth-specific stricter limiter
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 10,
   message: { success: false, message: 'Too many login attempts. Try again in 15 minutes.' },
 });
 
@@ -132,6 +134,8 @@ app.use('/api/activities',                 activityRoutes);
 app.use('/api/notes',                      noteRoutes);
 app.use('/api/tasks',                      taskRoutes);
 app.use('/api/special-days',               specialDayRoutes);
+app.use('/api/app',                        appConfigRoutes);   // version-check / maintenance (public)
+app.use('/api/logs',                       logRoutes);         // device log ingest (auth)
 
 // ── 404 handler ────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -144,17 +148,22 @@ app.use(errorHandler);
 // ── Startup ────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-// Start listening immediately so Railway's healthcheck can reach /api/health
-// while the DB connection is still being established.
-server.listen(PORT, () => {
-  logger.info(`🚀 Server running in [${process.env.NODE_ENV}] mode on port ${PORT}`);
-  // Connect DB and start jobs after the HTTP server is up
-  connectDB().then(() => {
-    startJobs();
-  }).catch((err) => {
-    logger.error('Fatal DB connection error:', err.message);
-    process.exit(1);
+// Skip the network boot when running under Jest — tests import { app } and
+// drive it with supertest against an in-memory MongoDB, so we must not open a
+// port, connect to the real DB, or start cron jobs on import.
+if (process.env.NODE_ENV !== 'test') {
+  // Start listening immediately so Railway's healthcheck can reach /api/health
+  // while the DB connection is still being established.
+  server.listen(PORT, () => {
+    logger.info(`🚀 Server running in [${process.env.NODE_ENV}] mode on port ${PORT}`);
+    // Connect DB and start jobs after the HTTP server is up
+    connectDB().then(() => {
+      startJobs();
+    }).catch((err) => {
+      logger.error('Fatal DB connection error:', err.message);
+      process.exit(1);
+    });
   });
-});
+}
 
 module.exports = { app, server }; // for testing
