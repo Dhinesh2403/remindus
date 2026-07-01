@@ -99,6 +99,8 @@ function isPublicEndpoint(url: string): boolean {
     '/auth/verify-otp',
     '/auth/google',
     '/health',
+    '/app/version-check',
+    '/app/config',
   ];
   return publicPaths.some((path) => url.includes(path));
 }

@@ -18,4 +18,19 @@ router.patch('/users/:id/premium',
 );
 router.get('/reminders', ctrl.getAllReminders);
 
+// Device logs (named endpoint + body filters, per CLAUDE.md)
+router.post('/device-logs', ctrl.getDeviceLogs);
+
+// Remote app config — version gates + maintenance mode
+router.get('/app-config', ctrl.getAppConfig);
+router.put('/app-config',
+  [
+    body('androidLatestBuild').optional().isInt({ min: 1 }),
+    body('androidMinBuild').optional().isInt({ min: 1 }),
+    body('maintenanceMode').optional().isBoolean(),
+  ],
+  validate,
+  ctrl.updateAppConfig
+);
+
 module.exports = router;

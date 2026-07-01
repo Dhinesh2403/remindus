@@ -218,6 +218,18 @@ export const routes: Routes = [
     ],
   },
 
+  // ─── App-lifecycle screens (no guard — reachable in any auth state) ────────
+  {
+    path: 'update',
+    loadComponent: () =>
+      import('./update/update.component').then((m) => m.UpdateComponent),
+  },
+  {
+    path: 'maintenance',
+    loadComponent: () =>
+      import('./maintenance/maintenance.component').then((m) => m.MaintenanceComponent),
+  },
+
   // Catch-all
   { path: '**', redirectTo: 'auth/login' },
 ];

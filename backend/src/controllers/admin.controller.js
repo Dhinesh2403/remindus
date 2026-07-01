@@ -4,6 +4,8 @@
 const User         = require('../models/User');
 const Reminder     = require('../models/Reminder');
 const Notification = require('../models/Notification');
+const DeviceLog    = require('../models/DeviceLog');
+const AppConfig    = require('../models/AppConfig');
 const { asyncHandler } = require('../utils/helpers');
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────
@@ -84,4 +86,52 @@ exports.getAllReminders = asyncHandler(async (req, res) => {
     .limit(Number(limit));
 
   res.json({ success: true, data, total, page: Number(page) });
+});
+
+// ── POST /api/admin/device-logs ───────────────────────────────────────────
+// Named endpoint + body filters (per CLAUDE.md). Body: { page, limit, level, userId, platform }
+exports.getDeviceLogs = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 50, level, userId, platform } = req.body || {};
+  const filter = {};
+  if (level)    filter.level    = level;
+  if (userId)   filter.userId   = userId;
+  if (platform) filter.platform = platform;
+
+  const perPage = Math.min(Number(limit) || 50, 200);
+  const skip    = (Number(page) - 1) * perPage;
+  const total   = await DeviceLog.countDocuments(filter);
+  const data    = await DeviceLog.find(filter)
+    .populate('userId', 'name email')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(perPage);
+
+  res.json({ success: true, data, total, page: Number(page) });
+});
+
+// ── GET /api/admin/app-config ─────────────────────────────────────────────
+exports.getAppConfig = asyncHandler(async (_req, res) => {
+  const cfg = await AppConfig.getSingleton();
+  res.json({ success: true, data: cfg });
+});
+
+// ── PUT /api/admin/app-config ─────────────────────────────────────────────
+// Body: any subset of the editable AppConfig fields.
+exports.updateAppConfig = asyncHandler(async (req, res) => {
+  const editable = [
+    'androidLatestVersion', 'androidLatestBuild', 'androidMinBuild', 'androidUpdateUrl',
+    'iosLatestVersion', 'iosLatestBuild', 'iosMinBuild', 'iosUpdateUrl',
+    'maintenanceMode', 'maintenanceMessage', 'forceUpdateMessage', 'normalUpdateMessage',
+  ];
+  const update = {};
+  for (const key of editable) {
+    if (req.body[key] !== undefined) update[key] = req.body[key];
+  }
+
+  const cfg = await AppConfig.findOneAndUpdate(
+    { key: 'singleton' },
+    { $set: update },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  res.json({ success: true, data: cfg });
 });
