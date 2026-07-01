@@ -14,6 +14,9 @@ export interface User {
   email: string;
   avatar?: string;
   refId?: string;
+  phone?: string;
+  gender?: 'male' | 'female' | 'other';
+  dob?: string;
   isPremium: boolean;
   streak: number;
   completionRate: number;

@@ -57,6 +57,8 @@ const userSchema = new mongoose.Schema(
 
     // Phone (for SMS/WhatsApp)
     phone:         { type: String, default: null },
+    gender:        { type: String, enum: ['male', 'female', 'other'], default: null },
+    dob:           { type: String, default: null },
 
     // Auth
     isEmailVerified: { type: Boolean, default: false },

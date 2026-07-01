@@ -73,6 +73,10 @@ const STATUS_COLOR: Record<string, string> = {
             <div class="cal-title">Calendar</div>
             <div class="cal-subtitle">{{ currentMonthLabel() }}</div>
           </div>
+          <div class="view-toggle">
+            <button class="view-toggle-btn" [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Month</button>
+            <button class="view-toggle-btn" [class.active]="viewMode() === 'week'"  (click)="viewMode.set('week')">Week</button>
+          </div>
           <button class="btn-today" (click)="goToday()">Today</button>
         </div>
       </ion-toolbar>
@@ -82,6 +86,50 @@ const STATUS_COLOR: Record<string, string> = {
       <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
+
+      <!-- ── WEEK VIEW ── -->
+      @if (viewMode() === 'week') {
+        <div class="week-header">
+          <button class="nav-btn" (click)="prevWeek()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="month-label">{{ currentMonthLabel() }}</div>
+          <button class="nav-btn" (click)="nextWeek()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="week-days-row">
+          @for (d of weekDays(); track d.date.toISOString()) {
+            <div class="week-day-col" [class.wk-selected]="d.isSelected" [class.wk-today]="d.isToday" (click)="selected.set(d.date)">
+              <div class="wk-dow">{{ d.weekday }}</div>
+              <div class="wk-num">{{ d.num }}</div>
+              @if (d.reminders.length > 0) {
+                <div class="wk-dot"></div>
+              }
+            </div>
+          }
+        </div>
+        <!-- Time slots -->
+        <div class="week-slots">
+          @for (h of hours; track h) {
+            <div class="slot-row">
+              <div class="slot-hour">{{ formatHour(h) }}</div>
+              <div class="slot-line">
+                @for (r of selectedDayReminders(); track r._id) {
+                  @if (getHour(r.time) === h) {
+                    <div class="slot-event" [style.background]="getCatColor(r.type) + '22'" [style.border-left-color]="getCatColor(r.type)">
+                      {{ r.title }}
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ── MONTH VIEW ── -->
+      @if (viewMode() === 'month') {
 
       <!-- Month navigator -->
       <div class="month-nav">
@@ -169,6 +217,7 @@ const STATUS_COLOR: Record<string, string> = {
           </div>
         }
       </div>
+      } <!-- end @if month -->
 
     </ion-content>
   `,
@@ -219,6 +268,27 @@ const STATUS_COLOR: Record<string, string> = {
     .event-from { font-style: italic; }
     .event-right { flex-shrink: 0; }
     .event-status-chip { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
+
+    /* View toggle */
+    .view-toggle { display: flex; background: var(--rm-surface); border-radius: 10px; padding: 3px; gap: 2px; }
+    .view-toggle-btn { height: 30px; padding: 0 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--rm-text-secondary); background: transparent; cursor: pointer; font-family: inherit; }
+    .view-toggle-btn.active { background: var(--rm-card); color: var(--rm-purple); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    /* Week view */
+    .week-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--rm-card); }
+    .week-days-row { display: flex; background: var(--rm-card); padding: 0 12px 12px; border-radius: 0 0 20px 20px; box-shadow: var(--rm-shadow-md); }
+    .week-day-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 12px; cursor: pointer; }
+    .week-day-col.wk-today .wk-num { background: var(--rm-purple); color: #fff; }
+    .week-day-col.wk-selected:not(.wk-today) .wk-num { background: var(--rm-purple-light); color: var(--rm-purple); }
+    .wk-dow { font-size: 10px; font-weight: 700; color: var(--rm-text-muted); }
+    .wk-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--rm-text-primary); }
+    .wk-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--rm-purple); }
+
+    .week-slots { padding: 12px 0; }
+    .slot-row { display: flex; align-items: flex-start; min-height: 56px; }
+    .slot-hour { width: 52px; flex-shrink: 0; text-align: right; padding-right: 10px; font-size: 11px; color: var(--rm-text-muted); padding-top: 4px; }
+    .slot-line { flex: 1; border-top: 1px solid var(--rm-border); padding: 4px 12px 4px 8px; min-height: 48px; position: relative; }
+    .slot-event { border-left: 3px solid; border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 600; color: var(--rm-text-primary); margin-bottom: 4px; }
   `],
 })
 export class CalendarComponent implements OnInit {
@@ -228,6 +298,7 @@ export class CalendarComponent implements OnInit {
   today     = new Date();
   viewDate  = signal(new Date());
   selected  = signal(new Date());
+  viewMode  = signal<'month' | 'week'>('month');
 
   private toCalReminder = (r: Reminder): CalReminder => ({
     _id:          r._id,
@@ -366,4 +437,42 @@ export class CalendarComponent implements OnInit {
   getSharedColor(s?: string | null): string { return SHARED_COLOR[s ?? ''] ?? '#9CA3AF'; }
   getSharedLabel(s?: string | null): string { return SHARED_LABEL[s ?? ''] ?? (s ?? ''); }
   getStatusColor(s?: string | null): string { return STATUS_COLOR[s ?? ''] ?? '#9CA3AF'; }
+
+  // ── Week view ────────────────────────────────────────────────────────────
+  readonly hours = Array.from({ length: 17 }, (_, i) => i + 7); // 7am–11pm
+
+  readonly weekDays = computed(() => {
+    const sel = this.selected();
+    const startOfWeek = new Date(sel);
+    startOfWeek.setDate(sel.getDate() - sel.getDay());
+    const rem = this.allReminders();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      return {
+        date:     d,
+        weekday:  DOW[d.getDay()].slice(0, 3),
+        num:      d.getDate(),
+        isToday:  d.toDateString() === this.today.toDateString(),
+        isSelected: d.toDateString() === sel.toDateString(),
+        reminders: rem.filter(r => this.reminderOccursOn(r, d)),
+      };
+    });
+  });
+
+  prevWeek(): void {
+    this.selected.update(d => { const n = new Date(d); n.setDate(d.getDate() - 7); return n; });
+  }
+  nextWeek(): void {
+    this.selected.update(d => { const n = new Date(d); n.setDate(d.getDate() + 7); return n; });
+  }
+
+  formatHour(h: number): string {
+    if (h === 12) return '12 PM';
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
+  }
+
+  getHour(time: string): number {
+    return parseInt(time?.split(':')[0] ?? '0', 10);
+  }
 }

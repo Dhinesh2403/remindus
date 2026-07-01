@@ -1,0 +1,89 @@
+// src/theme/sc-tokens.scss
+// ─────────────────────────────────────────────────────────────────────────────
+// "sc" (screen-component) token layer — bridges the redesigned screens that
+// use --sc-* variables to the canonical --rm-* design system.
+// ─────────────────────────────────────────────────────────────────────────────
+
+:root {
+  --sc-font:          'DM Sans', -apple-system, system-ui, sans-serif;
+  --sc-heading-font:  'Nunito', sans-serif;
+
+  // Core surface / background
+  --sc-screen:        var(--rm-bg);
+  --sc-card:          var(--rm-card);
+  --sc-surface:       var(--rm-surface);
+
+  // Text
+  --sc-text:          var(--rm-text-primary);
+  --sc-sub:           var(--rm-text-secondary);
+  --sc-muted:         var(--rm-text-muted);
+
+  // Brand accent (blue)
+  --sc-accent:        var(--rm-purple);
+  --sc-accent-dark:   var(--rm-purple-dark);
+  --sc-accent-soft:   var(--rm-purple-light);
+  --sc-on-accent:     #ffffff;
+
+  // Semantic
+  --sc-success:       var(--rm-success);
+  --sc-success-soft:  rgba(16, 185, 129, 0.10);
+  --sc-danger:        var(--rm-danger);
+  --sc-danger-soft:   rgba(239, 68, 68, 0.10);
+  --sc-warn:          #E08A2B;
+  --sc-warn-soft:     rgba(224, 138, 43, 0.12);
+
+  // Extra surfaces
+  --sc-surface-2:     #F3F4F6;
+  --sc-faint:         var(--rm-text-muted);
+
+  // Border / divider
+  --sc-border:        var(--rm-border);
+  --sc-divider:       var(--rm-border);
+  --sc-shadow:        0 2px 8px rgba(0,0,0,0.07);
+
+  // Radius
+  --sc-radius-sm:     var(--rm-radius-sm);
+  --sc-radius-md:     var(--rm-radius-md);
+  --sc-radius-lg:     var(--rm-radius-lg);
+  --sc-radius-xl:     var(--rm-radius-xl);
+  --sc-radius-full:   var(--rm-radius-full);
+
+  // Shadows
+  --sc-shadow-sm:     var(--rm-shadow-sm);
+  --sc-shadow-md:     var(--rm-shadow-md);
+
+  // Module accent colors (matching design screens)
+  --sc-tasks-color:       #3D9970;
+  --sc-tasks-bg:          rgba(61, 153, 112, 0.10);
+  --sc-reminders-color:   #E07A2B;
+  --sc-reminders-bg:      rgba(224, 122, 43, 0.10);
+  --sc-habits-color:      #E0732B;
+  --sc-habits-bg:         rgba(224, 115, 43, 0.10);
+  --sc-goals-color:       #7B61D8;
+  --sc-goals-bg:          rgba(123, 97, 216, 0.10);
+  --sc-notes-color:       #C99A1E;
+  --sc-notes-bg:          rgba(201, 154, 30, 0.10);
+  --sc-special-color:     #E0699B;
+  --sc-special-bg:        rgba(224, 105, 155, 0.10);
+  --sc-alarms-color:      #0D9488;
+  --sc-alarms-bg:         rgba(13, 148, 136, 0.10);
+  --sc-calendar-color:    #3B82F6;
+  --sc-calendar-bg:       rgba(59, 130, 246, 0.10);
+  --sc-daily-color:       var(--rm-purple);
+  --sc-daily-bg:          var(--rm-purple-light);
+}
+
+.dark-theme, [data-theme="dark"] {
+  --sc-screen:       #0F0F1A;
+  --sc-card:         #1A1A2E;
+  --sc-surface:      #16213E;
+  --sc-text:         #F9FAFB;
+  --sc-sub:          #9CA3AF;
+  --sc-muted:        #6B7280;
+  --sc-border:       #374151;
+  --sc-divider:      #2D3748;
+  --sc-accent-soft:  rgba(61, 90, 241, 0.18);
+  --sc-success-soft: rgba(16, 185, 129, 0.15);
+  --sc-danger-soft:  rgba(239, 68, 68, 0.15);
+  --sc-warn-soft:    rgba(224, 138, 43, 0.18);
+}

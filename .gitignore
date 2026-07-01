@@ -20,6 +20,7 @@ environment.prod.ts
 www/
 dist/
 build/
+docs/
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 logs/
@@ -56,6 +57,7 @@ coverage/
 # ─── Railway ──────────────────────────────────────────────────────────────────
 .railway/
 README.md
+*.md
 
 # ─── Environment files (contain secrets) ─────────────────────────────────────
 frontend/src/environments/environment.ts

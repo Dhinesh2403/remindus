@@ -2,10 +2,10 @@
 
   <!-- Brand logo -->
   <div class="scLoginLogo">
-    <img src="assets/icon.svg" alt="RemindUs" />
+    <img src="assets/icon.svg" alt="Remind" />
   </div>
 
-  <h1 class="scLoginTitle">Welcome to RemindUs</h1>
+  <h1 class="scLoginTitle">Welcome to Remind</h1>
   <p class="scLoginSub">
     Sign in to sync your reminders, share tasks, and stay on track with the
     people who matter.
@@ -35,6 +35,20 @@
         </div>
       </div>
     }
+  </div>
+
+  <!-- Social proof -->
+  <div class="scLoginProof">
+    <div class="scLoginAvatars">
+      @for (avatar of avatars; track avatar.initials; let i = $index) {
+        <div class="scLoginAvatar"
+             [style.background]="avatar.color"
+             [style.margin-left.px]="i === 0 ? 0 : -10">{{ avatar.initials }}</div>
+      }
+    </div>
+    <div class="scLoginProofText">
+      Join <strong>120k+</strong> people staying on track together
+    </div>
   </div>
 
   <div class="scLoginSpacer"></div>
@@ -81,22 +95,6 @@
       </button>
     </form>
   }
-
-  <!-- Social proof — hidden until we have more users; re-enable later -->
-  <!--
-  <div class="scLoginProof">
-    <div class="scLoginAvatars">
-      @for (avatar of avatars; track avatar.initials; let i = $index) {
-        <div class="scLoginAvatar"
-             [style.background]="avatar.color"
-             [style.margin-left.px]="i === 0 ? 0 : -10">{{ avatar.initials }}</div>
-      }
-    </div>
-    <div class="scLoginProofText">
-      Join <strong>120k+</strong> people<br>staying on track together
-    </div>
-  </div>
-  -->
 
   <!-- Primary entry points -->
   <button class="scBtnGoogle" (click)="onGoogle()">
