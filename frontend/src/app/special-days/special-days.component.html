@@ -1,0 +1,123 @@
+<ion-content class="sd-content">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <!-- Header -->
+  <div class="sd-header">
+    <button class="sd-back" (click)="nav.navigate(['/app/home'])">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div>
+      <h1 class="sd-title">Special Days</h1>
+      <p class="sd-sub">Birthdays, anniversaries &amp; events</p>
+    </div>
+    <button class="sd-add-btn" (click)="showForm.set(true)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="sd-filters">
+    @for (f of filters; track f) {
+      <button class="sd-filter" [class.active]="filter() === f" (click)="setFilter(f)">{{ f }}</button>
+    }
+  </div>
+
+  <!-- Featured card -->
+  @if (featured()) {
+    <div class="sd-featured">
+      <div class="sd-featured-type">{{ typeLabel(featured()!.type).toUpperCase() }} · {{ months[featured()!.month - 1] | uppercase }} {{ featured()!.day }}</div>
+      <div class="sd-featured-avatar">{{ initials(featured()!.name) }}</div>
+      <div class="sd-featured-name">{{ featured()!.name }}</div>
+      @if (featured()!.note) {
+        <div class="sd-featured-note">{{ featured()!.note }}</div>
+      }
+      <div class="sd-featured-bottom">
+        <span class="sd-featured-countdown">{{ countdownLabel(featured()!.daysUntil) }}</span>
+        <button class="sd-remind-btn">Remind me
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 016 6c0 5 2 6 2 6H4s2-1 2-6a6 6 0 016-6z" stroke="currentColor" stroke-width="1.9"/><path d="M10.5 19a1.7 1.7 0 003 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- List -->
+  <div class="sd-list">
+    @for (item of filteredItems(); track item._id) {
+      @if (item !== featured()) {
+        <div class="sd-item">
+          <div class="sd-item-avatar" [style.background]="item.color ?? '#3D5AF1'">{{ initials(item.name) }}</div>
+          <div class="sd-item-body">
+            <div class="sd-item-name">{{ item.name }}</div>
+            <div class="sd-item-meta">{{ typeLabel(item.type) }} · {{ months[item.month - 1] }} {{ item.day }}</div>
+          </div>
+          <div class="sd-item-right">
+            <span class="sd-countdown-badge">{{ countdownLabel(item.daysUntil) }}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 016 6c0 5 2 6 2 6H4s2-1 2-6a6 6 0 016-6z" stroke="#D1D5DB" stroke-width="1.7"/><path d="M10.5 19a1.7 1.7 0 003 0" stroke="#D1D5DB" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+      }
+    }
+    @if (filteredItems().length === 0) {
+      <div class="sd-empty">
+        <p>No special days yet</p>
+        <span>Tap + to add a birthday, anniversary or event</span>
+      </div>
+    }
+  </div>
+
+  <!-- Add form sheet -->
+  @if (showForm()) {
+    <div class="sd-sheet-overlay" (click)="showForm.set(false)"></div>
+    <div class="sd-sheet">
+      <div class="sd-sheet-handle"></div>
+      <div class="sd-sheet-header">
+        <h2>New Special Day</h2>
+        <p>Never miss the moment</p>
+        <button class="sd-sheet-close" (click)="showForm.set(false)">×</button>
+      </div>
+      <input class="sd-input" placeholder="Name *"
+             (input)="updateForm('name', $any($event.target).value)" />
+      <div class="sd-type-row">
+        @for (t of ['birthday','anniversary','event']; track t) {
+          <button class="sd-type-btn" [class.active]="form().type === t"
+                  (click)="updateForm('type', t)">
+            {{ t | titlecase }}
+          </button>
+        }
+      </div>
+      <div class="sd-date-row">
+        <div class="sd-month-chips">
+          @for (m of months; track m; let i = $index) {
+            <button class="sd-month-chip" [class.active]="form().month === i + 1"
+                    (click)="updateForm('month', i + 1)">{{ m }}</button>
+          }
+        </div>
+        <div class="sd-day-row">
+          <span>Day</span>
+          <button class="sd-day-btn" (click)="updateForm('day', Math.max(1, form().day - 1))">−</button>
+          <span class="sd-day-val">{{ form().day }}</span>
+          <button class="sd-day-btn" (click)="updateForm('day', Math.min(31, form().day + 1))">+</button>
+        </div>
+      </div>
+      <input class="sd-input" placeholder="Note – e.g. Turning 30"
+             (input)="updateForm('note', $any($event.target).value)" />
+      <div class="sd-color-row">
+        @for (c of colors; track c) {
+          <button class="sd-color-dot" [style.background]="c" [class.selected]="form().color === c"
+                  (click)="updateForm('color', c)">
+            @if (form().color === c) {
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+            }
+          </button>
+        }
+      </div>
+      <button class="sd-save-btn" (click)="saveSpecialDay()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Save Special Day
+      </button>
+    </div>
+  }
+
+</ion-content>

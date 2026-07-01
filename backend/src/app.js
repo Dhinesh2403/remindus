@@ -35,6 +35,8 @@ const habitRoutes        = require('./routes/habit.routes');
 const goalRoutes         = require('./routes/goal.routes');
 const activityRoutes     = require('./routes/activity.routes');
 const noteRoutes         = require('./routes/note.routes');
+const taskRoutes         = require('./routes/task.routes');
+const specialDayRoutes   = require('./routes/specialDay.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -128,6 +130,8 @@ app.use('/api/habits',                     habitRoutes);
 app.use('/api/goals',                      goalRoutes);
 app.use('/api/activities',                 activityRoutes);
 app.use('/api/notes',                      noteRoutes);
+app.use('/api/tasks',                      taskRoutes);
+app.use('/api/special-days',               specialDayRoutes);
 
 // ── 404 handler ────────────────────────────────────────────────────────────
 app.use((_req, res) => {

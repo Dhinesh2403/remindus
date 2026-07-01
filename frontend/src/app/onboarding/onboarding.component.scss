@@ -8,8 +8,9 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: calc(96px + env(safe-area-inset-top)) 30px calc(40px + env(safe-area-inset-bottom));
+  padding: calc(72px + env(safe-area-inset-top)) 28px calc(40px + env(safe-area-inset-bottom));
   background: var(--sc-screen);
+  overflow-y: auto;
   animation: scScreenIn .34s ease;
 }
 
@@ -20,13 +21,14 @@
   line-height: 1.2;
   letter-spacing: -.5px;
   color: var(--sc-text);
+  font-family: var(--sc-heading-font);
 }
 
 .scOnboardList {
-  margin-top: 34px;
+  margin-top: 28px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
 }
 
 .scOnboardItem {
@@ -36,8 +38,8 @@
 }
 
 .scOnboardIcon {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   border-radius: 14px;
   flex: none;
   display: flex;
@@ -48,22 +50,82 @@
 }
 
 .scOnboardItemTitle {
-  font-size: 16.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--sc-text);
 }
 
 .scOnboardItemBody {
-  margin-top: 5px;
-  font-size: 14px;
+  margin-top: 4px;
+  font-size: 13.5px;
   font-weight: 500;
   line-height: 1.5;
   color: var(--sc-muted);
 }
 
+/* ─── Avatar / gender picker ──────────────────────────────────────────────── */
+.scOnboardAvatarSection {
+  margin-top: 32px;
+}
+
+.scOnboardAvatarLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  color: var(--sc-muted);
+  margin-bottom: 14px;
+}
+
+.scOnboardAvatarRow {
+  display: flex;
+  gap: 14px;
+}
+
+.scOnboardAvatarCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 0 16px;
+  border: 2px solid var(--sc-border);
+  border-radius: 18px;
+  background: var(--sc-surface);
+  cursor: pointer;
+  transition: border-color .18s, background .18s;
+  font-family: inherit;
+}
+
+.scOnboardAvatarCard.selected {
+  border-color: var(--sc-accent);
+  background: var(--sc-accent-soft);
+}
+
+.scOnboardAvatarCircle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.scOnboardAvatarCircle.male   { background: #3D5AF1; }
+.scOnboardAvatarCircle.female { background: #3D5AF1; }
+
+.scOnboardAvatarName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sc-text);
+}
+
+/* ─── Spacer & button ─────────────────────────────────────────────────────── */
 .scOnboardSpacer {
   flex: 1;
-  min-height: 30px;
+  min-height: 24px;
 }
 
 .scOnboardBtn {
@@ -76,5 +138,8 @@
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 12px 30px rgba(50, 87, 238, .32);
+  box-shadow: 0 12px 30px rgba(61, 90, 241, .32);
+  transition: opacity .2s;
 }
+
+.scOnboardBtn:active { opacity: .85; }

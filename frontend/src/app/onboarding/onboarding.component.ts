@@ -1,30 +1,26 @@
 // src/app/onboarding/onboarding.component.ts
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SafeHtmlPipe } from '../core/pipes/safe-html.pipe';
 
 interface OnboardItem {
-  icon: string;   // inline SVG markup
+  icon: string;
   title: string;
   body: string;
 }
 
-/**
- * First-run intro shown once after the user signs in. "Get started" marks the
- * intro as seen and enters the app.
- *
- * TODO(db): the "seen onboarding" flag is kept in localStorage for now and
- * should move to the user profile so it follows the account across devices.
- */
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [SafeHtmlPipe],
+  imports: [CommonModule, SafeHtmlPipe],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.scss',
 })
 export class OnboardingComponent {
   private router = inject(Router);
+
+  readonly selectedGender = signal<'male' | 'female' | null>(null);
 
   readonly items: OnboardItem[] = [
     {
@@ -54,7 +50,15 @@ export class OnboardingComponent {
     },
   ];
 
+  selectGender(gender: 'male' | 'female'): void {
+    this.selectedGender.set(gender);
+  }
+
   enterApp(): void {
+    const gender = this.selectedGender();
+    if (gender) {
+      localStorage.setItem('rm_gender', gender);
+    }
     localStorage.setItem('sc_onboarded', '1');
     this.router.navigateByUrl('/app/home');
   }
