@@ -21,37 +21,31 @@ export class PushService {
   async init(): Promise<void> {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Request permission
-    const permission = await PushNotifications.requestPermissions();
-    if (permission.receive !== 'granted') {
-      console.warn('[Push] Notification permission denied');
-      return;
-    }
-
-    // Register with FCM — triggers registration event below
-    await PushNotifications.register();
+    // Attach listeners BEFORE register() — register() fires the `registration`
+    // event asynchronously, and any listener added afterwards would miss the
+    // token entirely (it would never reach the backend).
 
     // Token received → send to backend
-    PushNotifications.addListener('registration', ({ value: token }) => {
+    await PushNotifications.addListener('registration', ({ value: token }) => {
       console.log('[Push] FCM token:', token);
       this.http.patch(this.API, { token }).subscribe({
         error: (e) => console.warn('[Push] Token upload failed', e.message),
       });
     });
 
-    PushNotifications.addListener('registrationError', (err) => {
+    await PushNotifications.addListener('registrationError', (err) => {
       console.error('[Push] Registration error:', err.error);
     });
 
     // Foreground notification received
-    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('[Push] Foreground notification:', notification);
       // The in-app notification bell (Socket.IO) already handles real-time
       // updates, so no extra UI action is needed here.
     });
 
     // Notification tapped (background / killed state)
-    PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
       const data         = action.notification.data ?? {};
       const type         = String(data['type'] ?? '');
       const reminderId   = data['reminderId'];
@@ -91,6 +85,21 @@ export class PushService {
           this.router.navigate(['/app/home']);
       }
     });
+
+    // Listeners are attached — now request permission and register with FCM.
+    // On Android 13+ this shows the POST_NOTIFICATIONS runtime prompt; on
+    // earlier versions / iOS it resolves the OS-level permission.
+    let permission = await PushNotifications.checkPermissions();
+    if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
+      permission = await PushNotifications.requestPermissions();
+    }
+    if (permission.receive !== 'granted') {
+      console.warn('[Push] Notification permission denied');
+      return;
+    }
+
+    // Register with FCM — fires the `registration` listener above with the token.
+    await PushNotifications.register();
   }
 
   /** Call on logout to remove the token from the backend */

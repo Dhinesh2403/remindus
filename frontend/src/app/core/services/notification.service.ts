@@ -62,27 +62,4 @@ export class NotificationService {
       })
     );
   }
-
-  subscribe(subscription: PushSubscription): Observable<void> {
-    return this.http.post<void>(`${this.API}/subscribe`, subscription.toJSON());
-  }
-
-  async requestPushPermission(): Promise<void> {
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(environment.firebase.vapidKey),
-    });
-    this.subscribe(sub).subscribe();
-  }
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw     = window.atob(base64);
-  return new Uint8Array([...raw].map(c => c.charCodeAt(0)));
 }

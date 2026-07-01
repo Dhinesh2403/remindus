@@ -24,18 +24,21 @@ export interface GoogleCredential {
  * The backend verifies whichever token it receives before issuing our session.
  *
  * Config needed before this works:
- *  - environment.googleClientId — OAuth *Web* client ID, with the app's origin
- *    (e.g. http://localhost:8100) listed under "Authorized JavaScript origins".
- *  - capacitor.config GoogleAuth.serverClientId — same Web client ID (Android).
+ *  - environment.googleClientId — OAuth *Web* client ID. On web it must list the
+ *    app's origin (e.g. http://localhost:8100) under "Authorized JavaScript
+ *    origins"; on native it is passed to GoogleAuth.initialize() as the
+ *    requestIdToken audience so the backend can verify the ID token.
+ *    (This plugin version ignores capacitor.config GoogleAuth.serverClientId.)
  */
 @Injectable({ providedIn: 'root' })
 export class SocialAuthService {
   private gisScript?: Promise<void>;
   private tokenClient?: any;
+  private nativeInit?: Promise<void>;
 
-  /** True once a client ID is available for the current platform. */
+  /** True once a Web client ID is available (needed on both native and web). */
   get isConfigured(): boolean {
-    return Capacitor.isNativePlatform() || !!environment.googleClientId;
+    return !!environment.googleClientId;
   }
 
   async signInWithGoogle(): Promise<GoogleCredential> {
@@ -46,11 +49,33 @@ export class SocialAuthService {
   }
 
   // ── Native: Capacitor plugin → Google ID token ────────────────────────────
+  // GoogleAuth.signIn() dereferences a sign-in client that only exists after
+  // GoogleAuth.initialize() has run. Skipping initialize() leaves that client
+  // null and crashes the app natively (NPE) instead of throwing to JS — so we
+  // always initialize first. The client ID must be passed here: this plugin
+  // version reads `clientId`/`androidClientId` (not the `serverClientId` set in
+  // capacitor.config.ts), otherwise it falls back to a placeholder resource.
   private async signInNative(): Promise<GoogleCredential> {
+    await this.ensureNativeInit();
     const user = await GoogleAuth.signIn();
     const idToken = user?.authentication?.idToken;
     if (!idToken) throw new Error('No Google ID token returned');
     return { idToken };
+  }
+
+  /** Initialize the native Google Auth client once, with the Web client ID. */
+  private ensureNativeInit(): Promise<void> {
+    if (this.nativeInit) return this.nativeInit;
+    this.nativeInit = GoogleAuth.initialize({
+      clientId: environment.googleClientId,
+      scopes: ['profile', 'email'],
+      grantOfflineAccess: true,
+    }).catch((err) => {
+      // Let the next attempt retry instead of caching a failed init.
+      this.nativeInit = undefined;
+      throw err;
+    });
+    return this.nativeInit;
   }
 
   // ── Web: GIS popup → OAuth access token ───────────────────────────────────

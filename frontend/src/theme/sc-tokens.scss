@@ -73,10 +73,21 @@
   --sc-daily-bg:          var(--rm-purple-light);
 }
 
-.dark-theme, [data-theme="dark"] {
+// Dark-mode token overrides. These MUST be applied on both activation paths —
+// exactly like the --rm-* tokens in variables.scss — otherwise the two token
+// layers fall out of sync:
+//   1. `.dark-theme` class — set by ThemeService for explicit "dark"/"system".
+//   2. `@media (prefers-color-scheme: dark)` — auto-dark when the OS is dark,
+//      which fires even while the in-app theme is still the default "light".
+// The bug this fixes: --sc-text derives from --rm-text-primary, which DOES flip
+// to near-white under the media query, but --sc-surface-2 was hard-coded light
+// and only overridden by the class → white text on a white input = invisible
+// letters whenever the OS was dark but the app hadn't set the .dark-theme class.
+@mixin sc-dark-tokens {
   --sc-screen:       #0F0F1A;
   --sc-card:         #1A1A2E;
   --sc-surface:      #16213E;
+  --sc-surface-2:    #16213E;
   --sc-text:         #F9FAFB;
   --sc-sub:          #9CA3AF;
   --sc-muted:        #6B7280;
@@ -87,3 +98,9 @@
   --sc-danger-soft:  rgba(239, 68, 68, 0.15);
   --sc-warn-soft:    rgba(224, 138, 43, 0.18);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root { @include sc-dark-tokens; }
+}
+
+.dark-theme, [data-theme="dark"] { @include sc-dark-tokens; }

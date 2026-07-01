@@ -62,7 +62,7 @@ README.md
 # ─── Environment files (contain secrets) ─────────────────────────────────────
 frontend/src/environments/environment.ts
 frontend/src/environments/environment.staging.ts
-frontend/src/environments/environment.production.ts
+frontend/src/environments/environment.prod.ts
 
 # ─── APK build output — ignore versioned files, track only latest per type ────
 build-apk/**
