@@ -14,6 +14,25 @@
     }
   </div>
 
+  <!-- Gender / avatar picker -->
+  <div class="scOnboardAvatarSection">
+    <div class="scOnboardAvatarLabel">CHOOSE YOUR PROFILE PICTURE</div>
+    <div class="scOnboardAvatarRow">
+      <button class="scOnboardAvatarCard"
+              [class.selected]="selectedGender() === 'male'"
+              (click)="selectGender('male')">
+        <div class="scOnboardAvatarCircle male">M</div>
+        <div class="scOnboardAvatarName">Male</div>
+      </button>
+      <button class="scOnboardAvatarCard"
+              [class.selected]="selectedGender() === 'female'"
+              (click)="selectGender('female')">
+        <div class="scOnboardAvatarCircle female">F</div>
+        <div class="scOnboardAvatarName">Female</div>
+      </button>
+    </div>
+  </div>
+
   <div class="scOnboardSpacer"></div>
 
   <button class="scOnboardBtn" (click)="enterApp()">Get started</button>

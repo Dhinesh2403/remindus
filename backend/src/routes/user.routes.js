@@ -11,6 +11,9 @@ router.use(authenticate);
 
 router.get('/me',               ctrl.getProfile);
 router.put('/me',               ctrl.updateProfile);
+// Alias used by edit-profile page
+router.get('/profile',          ctrl.getProfile);
+router.put('/profile',          ctrl.updateProfile);
 router.patch('/me/password',
   [
     body('currentPassword').notEmpty().withMessage('Current password required'),

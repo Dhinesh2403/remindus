@@ -1,0 +1,132 @@
+:host { display: block; }
+.qa-content { --background: var(--rm-bg); }
+
+.qa-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 14px;
+  background: #0D9488;
+}
+.qa-back {
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.20); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.qa-title { font-size: 20px; font-weight: 900; color: #fff; margin: 0; font-family: 'Nunito', sans-serif; }
+.qa-sub   { font-size: 12px; color: rgba(255,255,255,0.75); margin: 2px 0 0; }
+.qa-add-btn {
+  margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.20); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+
+.qa-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 24px; gap: 8px; text-align: center;
+}
+.qa-empty-icon { margin-bottom: 8px; }
+.qa-empty p  { font-size: 18px; font-weight: 800; color: var(--rm-text-secondary); margin: 0; font-family: 'Nunito', sans-serif; }
+.qa-empty span { font-size: 14px; color: var(--rm-text-muted); }
+.qa-add-alarm-btn {
+  margin-top: 16px; height: 48px; padding: 0 28px; border-radius: 24px;
+  border: none; background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+
+.qa-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.qa-alarm-card {
+  background: var(--rm-card); border-radius: 16px; padding: 16px;
+  box-shadow: var(--rm-shadow-sm);
+}
+.qa-alarm-main { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.qa-alarm-time { font-size: 32px; font-weight: 900; color: var(--rm-text-primary); font-family: 'Nunito', sans-serif; flex: 1; }
+.qa-alarm-meta { font-size: 13px; color: var(--rm-text-muted); margin-right: 8px; }
+.qa-alarm-days { display: flex; gap: 8px; margin-bottom: 12px; }
+.qa-day-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; background: var(--rm-surface); color: var(--rm-text-muted);
+}
+.qa-day-dot.active { background: var(--rm-purple); color: #fff; }
+.qa-alarm-actions { display: flex; gap: 10px; }
+.qa-del-btn {
+  flex: 1; height: 38px; border-radius: 10px; border: 1px solid rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.08); color: #EF4444; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.qa-edit-btn {
+  flex: 1; height: 38px; border-radius: 10px; border: 1px solid var(--rm-border);
+  background: var(--rm-surface); color: var(--rm-text-primary); font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+
+.qa-toast {
+  position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  background: #1F2937; color: #fff; padding: 12px 20px; border-radius: 12px;
+  font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 300; animation: scPop .2s ease;
+  white-space: nowrap;
+}
+
+.qa-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200;
+}
+.qa-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
+  background: var(--rm-card); border-radius: 24px 24px 0 0;
+  padding: 12px 24px calc(env(safe-area-inset-bottom) + 24px);
+  animation: scSheetUp .25s ease;
+}
+.qa-sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--rm-border); margin: 0 auto 16px; }
+.qa-sheet-title { font-size: 20px; font-weight: 900; color: var(--rm-text-primary); margin: 0 0 20px; font-family: 'Nunito', sans-serif; }
+
+.qa-spinner { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.qa-spinner-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.qa-spin-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--rm-surface);
+  color: var(--rm-text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.qa-spin-val {
+  font-size: 52px; font-weight: 900; color: var(--rm-text-primary); min-width: 70px; text-align: center;
+  font-family: 'Nunito', sans-serif; line-height: 1;
+}
+.qa-spin-lbl { font-size: 11px; color: var(--rm-text-muted); font-weight: 600; }
+.qa-spin-colon { font-size: 48px; font-weight: 900; color: var(--rm-text-primary); margin-bottom: 24px; font-family: 'Nunito', sans-serif; }
+.qa-ampm { display: flex; flex-direction: column; gap: 6px; margin-left: 8px; }
+.qa-ampm-btn {
+  height: 36px; padding: 0 14px; border-radius: 8px; border: none;
+  background: var(--rm-surface); font-size: 13px; font-weight: 700; color: var(--rm-text-muted);
+  cursor: pointer; font-family: inherit;
+}
+.qa-ampm-btn.active { background: var(--rm-purple); color: #fff; }
+
+.qa-fires-in {
+  display: flex; align-items: center; gap: 6px; background: var(--rm-purple-light);
+  border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600;
+  color: var(--rm-purple); margin-bottom: 16px;
+}
+
+.qa-label-row {
+  display: flex; align-items: center; gap: 10px; padding: 12px 0;
+  border-top: 1px solid var(--rm-border); border-bottom: 1px solid var(--rm-border);
+  margin-bottom: 16px;
+}
+.qa-label-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-size: 15px; font-weight: 600; color: var(--rm-text-primary); font-family: inherit;
+}
+
+.qa-repeat-label { font-size: 11px; font-weight: 700; letter-spacing: .6px; color: var(--rm-text-muted); margin-bottom: 10px; }
+.qa-day-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.qa-day-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: var(--rm-surface); font-size: 13px; font-weight: 700; color: var(--rm-text-muted);
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.qa-day-btn.active { background: var(--rm-purple); color: #fff; }
+.qa-days-hint { font-size: 12.5px; font-weight: 700; color: var(--rm-purple); margin-bottom: 16px; }
+
+.qa-save-btn {
+  width: 100%; height: 54px; border-radius: 14px; border: none; margin-top: 20px;
+  background: var(--rm-purple); color: #fff; font-size: 16px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}

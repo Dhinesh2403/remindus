@@ -1,0 +1,64 @@
+<ion-content class="profile-content">
+  <!-- Blue header -->
+  <div class="profile-hero">
+    <button class="profile-back" (click)="nav.navigate(['/app/settings'])">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="profile-edit-btn" (click)="nav.navigate(['/app/settings/profile/edit'])">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.7"/></svg>
+      Edit
+    </button>
+    <div class="profile-avatar">{{ initials() }}</div>
+    <div class="profile-name">{{ user()?.name ?? 'User' }}</div>
+    <div class="profile-email">{{ user()?.email }}</div>
+    @if (user()?.gender) {
+      <div class="profile-gender-badge">{{ user()?.gender | titlecase }}</div>
+    }
+  </div>
+
+  <!-- Stats row -->
+  <div class="profile-stats">
+    <div class="profile-stat"><div class="profile-stat-num">12</div><div class="profile-stat-lbl">TASKS</div></div>
+    <div class="profile-stat"><div class="profile-stat-num">5</div><div class="profile-stat-lbl">HABITS</div></div>
+    <div class="profile-stat"><div class="profile-stat-num">5</div><div class="profile-stat-lbl">GOALS</div></div>
+    <div class="profile-stat"><div class="profile-stat-num">4</div><div class="profile-stat-lbl">FRIENDS</div></div>
+  </div>
+
+  <!-- Personal info -->
+  <div class="profile-section-label">PERSONAL INFO</div>
+  <div class="profile-info-card">
+    <div class="profile-info-row">
+      <div class="profile-info-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/></svg></div>
+      <div><div class="profile-info-lbl">NAME</div><div class="profile-info-val">{{ user()?.name }}</div></div>
+    </div>
+    <div class="profile-info-row">
+      <div class="profile-info-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 8l9 5 9-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+      <div><div class="profile-info-lbl">EMAIL</div><div class="profile-info-val">{{ user()?.email }}</div></div>
+    </div>
+    <div class="profile-info-row">
+      <div class="profile-info-icon orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07A19.5 19.5 0 013.32 6.1 19.87 19.87 0 012.1 2.18 2 2 0 014.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" stroke="currentColor" stroke-width="1.7"/></svg></div>
+      <div><div class="profile-info-lbl">PHONE</div><div class="profile-info-val">{{ user()?.phone ?? 'Not set' }}</div></div>
+    </div>
+    <div class="profile-info-row" style="border-bottom:none">
+      <div class="profile-info-icon purple"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20.84 4.6a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" stroke-width="1.7"/></svg></div>
+      <div class="profile-info-flex1"><div class="profile-info-lbl">GENDER</div><div class="profile-info-val">{{ user()?.gender ?? 'Not set' | titlecase }}</div></div>
+      <button class="profile-change-btn">Change</button>
+    </div>
+  </div>
+
+  <!-- This week -->
+  <div class="profile-section-label">THIS WEEK</div>
+  <div class="profile-week-cards">
+    <div class="profile-week-card">
+      <div class="profile-week-num green">2</div>
+      <div class="profile-week-lbl">tasks done</div>
+      <div class="profile-week-sub">COMPLETED</div>
+    </div>
+    <div class="profile-week-card">
+      <div class="profile-week-num orange">7</div>
+      <div class="profile-week-lbl">days active</div>
+      <div class="profile-week-sub">STREAK</div>
+    </div>
+  </div>
+
+</ion-content>

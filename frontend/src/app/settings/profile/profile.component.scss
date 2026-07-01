@@ -1,0 +1,86 @@
+:host { display: block; }
+.profile-content { --background: var(--rm-bg); }
+
+.profile-hero {
+  background: linear-gradient(160deg, #3D5AF1, #2A3FCC);
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 28px;
+  display: flex; flex-direction: column; align-items: center; position: relative;
+}
+.profile-back {
+  position: absolute; top: calc(env(safe-area-inset-top) + 14px); left: 16px;
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.18); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.profile-edit-btn {
+  position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 16px;
+  height: 34px; padding: 0 14px; border-radius: 17px; border: none;
+  background: rgba(255,255,255,0.18); color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit;
+}
+.profile-avatar {
+  width: 84px; height: 84px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.20); display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 800; color: #fff; margin-bottom: 12px; font-family: 'Nunito', sans-serif;
+}
+.profile-name  { font-size: 22px; font-weight: 900; color: #fff; font-family: 'Nunito', sans-serif; }
+.profile-email { font-size: 14px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+.profile-gender-badge {
+  margin-top: 8px; height: 26px; padding: 0 14px; border-radius: 13px;
+  background: rgba(255,255,255,0.20); color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center;
+}
+
+.profile-stats {
+  display: flex; background: var(--rm-card); border-radius: 16px;
+  margin: -16px 16px 16px; padding: 16px; box-shadow: var(--rm-shadow-md);
+  position: relative; z-index: 1;
+}
+.profile-stat { flex: 1; text-align: center; }
+.profile-stat:not(:last-child) { border-right: 1px solid var(--rm-border); }
+.profile-stat-num { font-size: 20px; font-weight: 900; color: var(--rm-purple); font-family: 'Nunito', sans-serif; }
+.profile-stat-lbl { font-size: 10.5px; font-weight: 700; color: var(--rm-text-muted); letter-spacing: .4px; margin-top: 2px; }
+
+.profile-section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .6px; color: var(--rm-text-muted);
+  padding: 20px 16px 8px;
+}
+
+.profile-info-card {
+  margin: 0 16px; background: var(--rm-card); border-radius: 16px;
+  box-shadow: var(--rm-shadow-sm); overflow: hidden;
+}
+.profile-info-row {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  border-bottom: 1px solid var(--rm-border);
+}
+.profile-info-row:last-child { border-bottom: none; }
+.profile-info-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.profile-info-icon.blue   { background: rgba(59,130,246,0.12); color: #3B82F6; }
+.profile-info-icon.green  { background: rgba(16,185,129,0.12); color: #10B981; }
+.profile-info-icon.orange { background: rgba(245,158,11,0.12); color: #F59E0B; }
+.profile-info-icon.purple { background: rgba(139,92,246,0.12); color: #8B5CF6; }
+.profile-info-flex1 { flex: 1; }
+.profile-info-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .4px; color: var(--rm-text-muted); }
+.profile-info-val { font-size: 15px; font-weight: 600; color: var(--rm-text-primary); margin-top: 2px; }
+.profile-change-btn {
+  height: 30px; padding: 0 14px; border-radius: 15px; border: none;
+  background: var(--rm-surface); font-size: 13px; font-weight: 700;
+  color: var(--rm-text-secondary); cursor: pointer; font-family: inherit;
+}
+
+.profile-week-cards {
+  display: flex; gap: 12px; padding: 0 16px 40px;
+}
+.profile-week-card {
+  flex: 1; background: var(--rm-card); border-radius: 16px; padding: 16px;
+  box-shadow: var(--rm-shadow-sm);
+}
+.profile-week-num { font-size: 32px; font-weight: 900; font-family: 'Nunito', sans-serif; }
+.profile-week-num.green  { color: #10B981; }
+.profile-week-num.orange { color: #F59E0B; }
+.profile-week-lbl { font-size: 13px; color: var(--rm-text-secondary); font-weight: 500; margin-top: 2px; }
+.profile-week-sub { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; color: var(--rm-text-muted); margin-top: 8px; }

@@ -17,7 +17,7 @@ exports.getProfile = asyncHandler(async (req, res) => {
 
 // ── PUT /api/users/me ─────────────────────────────────────────────────────
 exports.updateProfile = asyncHandler(async (req, res) => {
-  const allowed = ['name', 'phone', 'avatar'];
+  const allowed = ['name', 'phone', 'avatar', 'gender', 'dob'];
   const updates = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
 
