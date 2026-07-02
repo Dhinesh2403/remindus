@@ -772,4 +772,4 @@ export class SettingsComponent implements OnInit {
     this.showToast('Logs cleared', 'success');
   }
 }
-}
+
