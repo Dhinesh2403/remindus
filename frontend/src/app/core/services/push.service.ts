@@ -6,6 +6,36 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { environment } from '../../../environments/environment';
 
+// Persistent logging for debugging
+class PushLogger {
+  private logs: string[] = [];
+  private maxLogs = 100;
+
+  log(message: string, data?: any) {
+    const timestamp = new Date().toISOString();
+    const entry = `[${timestamp}] ${message}${data ? ': ' + JSON.stringify(data) : ''}`;
+    this.logs.push(entry);
+    if (this.logs.length > this.maxLogs) this.logs.shift();
+    localStorage.setItem('rm_push_logs', JSON.stringify(this.logs));
+    console.log('[Push]', entry);
+  }
+
+  getLogs(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem('rm_push_logs') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  clear() {
+    this.logs = [];
+    localStorage.removeItem('rm_push_logs');
+  }
+}
+
+const pushLogger = new PushLogger();
+
 /**
  * Handles Firebase Cloud Messaging (FCM) token registration and
  * incoming push notification routing on native (Android/iOS) platforms.
@@ -19,124 +49,153 @@ export class PushService {
   private readonly API = `${environment.apiUrl}/users/me/fcm-token`;
 
   constructor() {
-    // Store FCM token in window for debugging
+    pushLogger.log('🔧 PushService constructor called');
+
+    // Expose debugging functions to window
     (window as any).rmPushDebug = {
       getFcmToken: () => localStorage.getItem('rm_fcm_token') || 'Not set yet',
-      clearFcmToken: () => { localStorage.removeItem('rm_fcm_token'); console.log('Cleared'); },
+      isSynced: () => localStorage.getItem('rm_fcm_token_synced') === 'true',
+      getLogs: () => pushLogger.getLogs(),
+      printLogs: () => {
+        const logs = pushLogger.getLogs();
+        console.log('=== FCM LOGS ===');
+        logs.forEach(log => console.log(log));
+        console.log('================');
+        return logs.join('\n');
+      },
+      clearLogs: () => {
+        pushLogger.clear();
+        console.log('Logs cleared');
+      },
+      getEnvironment: () => ({
+        apiUrl: environment.apiUrl,
+        socketUrl: environment.socketUrl,
+        platform: Capacitor.getPlatform(),
+        isNative: Capacitor.isNativePlatform(),
+      }),
     };
+    console.log('✅ rmPushDebug exposed to window');
   }
 
   async init(): Promise<void> {
+    pushLogger.log('🚀 init() called');
+    pushLogger.log('Platform:', Capacitor.getPlatform());
+    pushLogger.log('isNativePlatform:', Capacitor.isNativePlatform());
+
     if (!Capacitor.isNativePlatform()) {
-      console.log('[Push] Skipping — not a native platform');
+      pushLogger.log('⏭️ Skipping — not a native platform');
       return;
     }
 
-    // Attach listeners BEFORE register() — register() fires the `registration`
-    // event asynchronously, and any listener added afterwards would miss the
-    // token entirely (it would never reach the backend).
-
-    // Token received → send to backend
-    await PushNotifications.addListener('registration', ({ value: token }) => {
-      console.log('[Push] ✅ FCM token received:', token);
-      // Store locally for debugging
-      localStorage.setItem('rm_fcm_token', token);
-
-      this.http.patch(this.API, { token }).subscribe({
-        next: () => {
-          console.log('[Push] ✅ Token uploaded to backend');
-          localStorage.setItem('rm_fcm_token_synced', 'true');
-        },
-        error: (e) => {
-          console.error('[Push] ❌ Token upload failed:', e?.error?.message || e.message);
-          console.error('[Push] Full error:', e);
-          localStorage.setItem('rm_fcm_token_synced', 'false');
-        },
-      });
-    });
-
-    await PushNotifications.addListener('registrationError', (err) => {
-      console.error('[Push] ❌ Registration error:', err);
-      console.error('[Push] Error details:', err.error);
-    });
-
-    // Foreground notification received
-    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('[Push] ✅ Foreground notification received:', notification);
-      // The in-app notification bell (Socket.IO) already handles real-time
-      // updates, so no extra UI action is needed here.
-    });
-
-    // Notification tapped (background / killed state)
-    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('[Push] ✅ Notification tapped:', action);
-      const data         = action.notification.data ?? {};
-      const type         = String(data['type'] ?? '');
-      const reminderId   = data['reminderId'];
-      const friendshipId = data['friendshipId'];
-
-      console.log('[Push] Notification type:', type, 'reminderId:', reminderId, 'friendshipId:', friendshipId);
-
-      switch (type) {
-        // Incoming request → Friends tab, auto-prompt to accept the sender.
-        case 'friend_request':
-          this.router.navigate(['/app/friends'],
-            friendshipId ? { queryParams: { accept: friendshipId } } : undefined);
-          break;
-
-        // Request I sent was accepted → Friends tab.
-        case 'friend_accepted':
-          this.router.navigate(['/app/friends']);
-          break;
-
-        // Own reminder fired → detail page
-        case 'reminder_due':
-          this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
-          break;
-
-        // Friend assigned a reminder to me / pre-alert / fire-time for assignedTo → Reminders tab
-        case 'reminder_assigned':
-        case 'reminder_pre_alert':
-        case 'friend_reminder_due':
-          this.router.navigate(['/app/reminders']);
-          break;
-
-        // Status update (friend acted on reminder I sent them) → Reminders tab
-        case 'reminder_response':
-        case 'reminder_status_update':
-          this.router.navigate(['/app/reminders']);
-          break;
-
-        default:
-          this.router.navigate(['/app/home']);
-      }
-    });
-
-    // Listeners are attached — now request permission and register with FCM.
-    // On Android 13+ this shows the POST_NOTIFICATIONS runtime prompt; on
-    // earlier versions / iOS it resolves the OS-level permission.
-    console.log('[Push] Checking notification permissions...');
-    let permission = await PushNotifications.checkPermissions();
-    console.log('[Push] Current permission state:', permission.receive);
-
-    if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
-      console.log('[Push] Requesting notification permissions...');
-      permission = await PushNotifications.requestPermissions();
-      console.log('[Push] Permission after request:', permission.receive);
-    }
-
-    if (permission.receive !== 'granted') {
-      console.warn('[Push] ❌ Notification permission denied:', permission.receive);
-      return;
-    }
-
-    // Register with FCM — fires the `registration` listener above with the token.
-    console.log('[Push] Registering with FCM...');
     try {
+      // Attach listeners BEFORE register() — register() fires the `registration`
+      // event asynchronously, and any listener added afterwards would miss the
+      // token entirely (it would never reach the backend).
+
+      pushLogger.log('📍 Adding registration listener...');
+      // Token received → send to backend
+      await PushNotifications.addListener('registration', ({ value: token }) => {
+        pushLogger.log('✅ FCM token received', { token, length: token?.length });
+        // Store locally for debugging
+        localStorage.setItem('rm_fcm_token', token);
+
+        pushLogger.log('📤 Uploading token to backend', { endpoint: this.API });
+        this.http.patch(this.API, { token }).subscribe({
+          next: (res) => {
+            pushLogger.log('✅ Token uploaded to backend successfully', res);
+            localStorage.setItem('rm_fcm_token_synced', 'true');
+          },
+          error: (e) => {
+            pushLogger.log('❌ Token upload failed', {
+              status: e?.status,
+              statusText: e?.statusText,
+              message: e?.error?.message || e.message,
+            });
+            localStorage.setItem('rm_fcm_token_synced', 'false');
+          },
+        });
+      });
+
+      pushLogger.log('📍 Adding registrationError listener...');
+      await PushNotifications.addListener('registrationError', (err) => {
+        pushLogger.log('❌ Registration error', { error: err.error });
+      });
+
+      pushLogger.log('📍 Adding pushNotificationReceived listener...');
+      // Foreground notification received
+      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        pushLogger.log('✅ Foreground notification received', {
+          title: notification.notification?.title,
+          body: notification.notification?.body,
+          data: notification.notification?.data,
+        });
+      });
+
+      pushLogger.log('📍 Adding pushNotificationActionPerformed listener...');
+      // Notification tapped (background / killed state)
+      await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        pushLogger.log('✅ Notification action performed (tapped)', {
+          title: action.notification?.title,
+          data: action.notification?.data,
+        });
+        const data         = action.notification?.data ?? {};
+        const type         = String(data['type'] ?? '');
+        const reminderId   = data['reminderId'];
+        const friendshipId = data['friendshipId'];
+
+        pushLogger.log('📱 Routing notification', { type, reminderId, friendshipId });
+
+        switch (type) {
+          case 'friend_request':
+            this.router.navigate(['/app/friends'],
+              friendshipId ? { queryParams: { accept: friendshipId } } : undefined);
+            break;
+          case 'friend_accepted':
+            this.router.navigate(['/app/friends']);
+            break;
+          case 'reminder_due':
+            this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
+            break;
+          case 'reminder_assigned':
+          case 'reminder_pre_alert':
+          case 'friend_reminder_due':
+            this.router.navigate(['/app/reminders']);
+            break;
+          case 'reminder_response':
+          case 'reminder_status_update':
+            this.router.navigate(['/app/reminders']);
+            break;
+          default:
+            this.router.navigate(['/app/home']);
+        }
+      });
+
+      // Listeners are attached — now request permission and register with FCM.
+      pushLogger.log('🔐 Checking notification permissions...');
+      let permission = await PushNotifications.checkPermissions();
+      pushLogger.log('🔐 Permission state', { receive: permission.receive });
+
+      if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
+        pushLogger.log('🔐 Requesting notification permissions...');
+        permission = await PushNotifications.requestPermissions();
+        pushLogger.log('🔐 Permission after request', { receive: permission.receive });
+      }
+
+      if (permission.receive !== 'granted') {
+        pushLogger.log('❌ Notification permission NOT granted', { receive: permission.receive });
+        return;
+      }
+
+      // Register with FCM — fires the `registration` listener above with the token.
+      pushLogger.log('📡 Calling PushNotifications.register()...');
       await PushNotifications.register();
-      console.log('[Push] ✅ FCM registration initiated (token will arrive via listener)');
+      pushLogger.log('✅ PushNotifications.register() completed (token coming via listener)');
+
     } catch (error) {
-      console.error('[Push] ❌ FCM registration failed:', error);
+      pushLogger.log('❌ Error during init', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
     }
   }
 
