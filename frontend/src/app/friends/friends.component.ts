@@ -564,6 +564,11 @@ export class FriendsComponent implements OnInit, OnDestroy {
                checkmarkOutline, checkmarkDoneOutline, timeOutline,
                createOutline, cubeOutline, notificationsOutline });
 
+    // Track current user ID changes to ensure messages display on correct side
+    effect(() => {
+      this.updateCurrentUserId();
+    });
+
     // Auto-scroll the chat to the newest message whenever it changes.
     effect(() => {
       const chat = this.activeChat();
@@ -574,9 +579,13 @@ export class FriendsComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnInit() {
+  private updateCurrentUserId(): void {
     const uid = this.authService.currentUser()?._id;
     if (uid) this.currentUserId.set(uid);
+  }
+
+  ngOnInit() {
+    this.updateCurrentUserId();
     this.load();
 
     // Arriving from a "friend request" notification tap → flash + prompt accept.
