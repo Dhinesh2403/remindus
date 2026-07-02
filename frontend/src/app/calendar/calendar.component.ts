@@ -45,6 +45,11 @@ const CAT_EMOJI: Record<string, string> = {
   bill: '💰', study: '📚', work: '💼',
   general: '📌', custom: '✨',
 };
+const CAT_LABEL: Record<string, string> = {
+  birthday: 'Birthday', wedding: 'Wedding', medicine: 'Medicine',
+  bill: 'Bill', study: 'Study', work: 'Work',
+  general: 'General', custom: 'Custom',
+};
 const SHARED_COLOR: Record<string, string> = {
   sent: '#3B82F6', received: '#F59E0B', acknowledged: '#06B6D4',
   processing: '#8B5CF6', skipped: '#9CA3AF', completed: '#10B981',
@@ -68,39 +73,37 @@ const STATUS_COLOR: Record<string, string> = {
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar>
-        <div class="cal-header-inner">
-          <div>
-            <div class="cal-title">Calendar</div>
-            <div class="cal-subtitle">{{ currentMonthLabel() }}</div>
-          </div>
-          <div class="view-toggle">
-            <button class="view-toggle-btn" [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Month</button>
+        <div class="cal-header-inner" [class.pg-in]="pageIn()">
+          <div class="cal-title a-fd">{{ currentMonthLabel() }}</div>
+          <div class="view-toggle a-fd" [style.--i]="1">
+            <div class="view-toggle-thumb" [class.thumb-right]="viewMode() === 'month'"></div>
             <button class="view-toggle-btn" [class.active]="viewMode() === 'week'"  (click)="viewMode.set('week')">Week</button>
+            <button class="view-toggle-btn" [class.active]="viewMode() === 'month'" (click)="viewMode.set('month')">Month</button>
           </div>
-          <button class="btn-today" (click)="goToday()">Today</button>
         </div>
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="cal-content">
+    <ion-content class="cal-content" [class.pg-in]="pageIn()">
       <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
 
       <!-- ── WEEK VIEW ── -->
       @if (viewMode() === 'week') {
-        <div class="week-header">
-          <button class="nav-btn" (click)="prevWeek()">
+        <div class="week-header a-fd">
+          <button class="nav-btn rm-press" (click)="prevWeek()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
-          <div class="month-label">{{ currentMonthLabel() }}</div>
-          <button class="nav-btn" (click)="nextWeek()">
+          <button class="btn-today rm-press" (click)="goToday()">Today</button>
+          <button class="nav-btn rm-press" (click)="nextWeek()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
         </div>
         <div class="week-days-row">
           @for (d of weekDays(); track d.date.toISOString()) {
-            <div class="week-day-col" [class.wk-selected]="d.isSelected" [class.wk-today]="d.isToday" (click)="selected.set(d.date)">
+            <div class="week-day-col a-zoom rm-press" [style.--i]="$index"
+              [class.wk-selected]="d.isSelected" [class.wk-today]="d.isToday" (click)="selected.set(d.date)">
               <div class="wk-dow">{{ d.weekday }}</div>
               <div class="wk-num">{{ d.num }}</div>
               @if (d.reminders.length > 0) {
@@ -112,12 +115,13 @@ const STATUS_COLOR: Record<string, string> = {
         <!-- Time slots -->
         <div class="week-slots">
           @for (h of hours; track h) {
-            <div class="slot-row">
+            <div class="slot-row a-fu" [style.--i]="$index > 8 ? 8 : $index">
               <div class="slot-hour">{{ formatHour(h) }}</div>
               <div class="slot-line">
                 @for (r of selectedDayReminders(); track r._id) {
                   @if (getHour(r.time) === h) {
-                    <div class="slot-event" [style.background]="getCatColor(r.type) + '22'" [style.border-left-color]="getCatColor(r.type)">
+                    <div class="slot-event" [style.border-left-color]="getCatColor(r.type)">
+                      <span class="slot-event-dot" [style.background]="getCatColor(r.type)"></span>
                       {{ r.title }}
                     </div>
                   }
@@ -132,14 +136,16 @@ const STATUS_COLOR: Record<string, string> = {
       @if (viewMode() === 'month') {
 
       <!-- Month navigator -->
-      <div class="month-nav">
-        <button class="nav-btn" (click)="prevMonth()">
-          <ion-icon name="chevron-back-outline"></ion-icon>
-        </button>
-        <div class="month-label">{{ currentMonthLabel() }}</div>
-        <button class="nav-btn" (click)="nextMonth()">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
-        </button>
+      <div class="month-nav a-fd">
+        <button class="btn-today rm-press" (click)="goToday()">Today</button>
+        <div class="nav-arrows">
+          <button class="nav-btn rm-press" (click)="prevMonth()">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+          <button class="nav-btn rm-press" (click)="nextMonth()">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </button>
+        </div>
       </div>
 
       <!-- Day-of-week headers -->
@@ -153,17 +159,18 @@ const STATUS_COLOR: Record<string, string> = {
       <div class="days-grid">
         @for (day of calDays(); track day.date.toISOString()) {
           <div
-            class="day-cell"
+            class="day-cell a-zoom"
+            [style.--i]="($index - $index % 7) / 7"
             [class.other-month]="day.isOtherMonth"
             [class.is-today]="day.isToday"
             [class.is-selected]="day.isSelected"
             (click)="selectDay(day)"
           >
             <span class="day-num">{{ day.day }}</span>
-            @if (day.reminders.length > 0 && !day.isToday) {
+            @if (day.reminders.length > 0) {
               <div class="dots-row">
                 @for (r of day.reminders.slice(0,3); track r._id) {
-                  <span class="dot" [style.background]="getCatColor(r.type)"></span>
+                  <span class="dot" [style.background]="day.isToday ? '#fff' : getCatColor(r.type)"></span>
                 }
               </div>
             }
@@ -173,7 +180,7 @@ const STATUS_COLOR: Record<string, string> = {
 
       <!-- Selected day events -->
       <div class="events-section">
-        <div class="events-title">
+        <div class="events-title a-fu">
           {{ selectedDateLabel() }}
           @if (selectedDayReminders().length > 0) {
             <span class="events-count">{{ selectedDayReminders().length }}</span>
@@ -181,25 +188,26 @@ const STATUS_COLOR: Record<string, string> = {
         </div>
 
         @if (selectedDayReminders().length === 0) {
-          <div class="no-events">
+          <div class="no-events a-fu" [style.--i]="1">
             <span class="no-events-emoji">✨</span>
             <p>No reminders on this day</p>
           </div>
         } @else {
           <div class="events-list">
             @for (r of selectedDayReminders(); track r._id) {
-              <div class="event-card" [style.border-left-color]="getCatColor(r.type)" [class.event-done]="r.status === 'done'">
-                <span class="event-emoji">{{ getCatEmoji(r.type) }}</span>
+              <div class="event-card a-fu" [style.--i]="$index + 1"
+                [style.border-left-color]="getCatColor(r.type)" [class.event-done]="r.status === 'done'">
                 <div class="event-info">
                   <div class="event-title">{{ r.title }}</div>
-                  <div class="event-time">
-                    {{ r.time | timeAmPm }}
+                  <div class="event-cat" [style.color]="getCatColor(r.type)">
+                    {{ getCatEmoji(r.type) }} {{ getCatLabel(r.type) }}
                     @if (r.isReceived && r.fromName) {
                       <span class="event-from"> · from {{ r.fromName }}</span>
                     }
                   </div>
                 </div>
                 <div class="event-right">
+                  <div class="event-time">{{ r.time | timeAmPm }}</div>
                   @if (r.sharedStatus) {
                     <span class="event-status-chip"
                       [style.background]="getSharedColor(r.sharedStatus) + '22'"
@@ -224,71 +232,99 @@ const STATUS_COLOR: Record<string, string> = {
   styles: [`
     .cal-content { --background: var(--rm-bg); }
     ion-toolbar { --background: var(--rm-card); }
-    .cal-header-inner { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 16px 16px; }
-    .cal-title { font-size: 28px; font-weight: 900; color: var(--rm-text-primary); }
-    .cal-subtitle { font-size: 14px; color: var(--rm-text-muted); margin-top: 2px; }
-    .btn-today { padding: 8px 18px; background: var(--rm-purple-light); color: var(--rm-purple); border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .cal-header-inner { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px 14px; }
+    .cal-title { font-size: 28px; font-weight: 900; color: var(--rm-text-primary); letter-spacing: -0.4px; }
+    .btn-today { padding: 8px 16px; background: var(--rm-purple-light); color: var(--rm-purple); border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+    /* View toggle — sliding thumb, blue active (like the design) */
+    .view-toggle { position: relative; display: flex; background: var(--rm-surface); border-radius: 13px; padding: 3px; }
+    .view-toggle-thumb {
+      position: absolute; top: 3px; bottom: 3px; left: 3px;
+      width: calc(50% - 3px);
+      background: var(--rm-purple);
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(61,90,241,.35);
+      transition: transform .3s var(--rm-ease-spring);
+    }
+    .view-toggle-thumb.thumb-right { transform: translateX(100%); }
+    .view-toggle-btn { position: relative; z-index: 1; height: 32px; width: 74px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--rm-text-secondary); background: transparent; cursor: pointer; font-family: inherit; transition: color .25s; }
+    .view-toggle-btn.active { color: #fff; }
 
     /* Month nav */
-    .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--rm-card); }
-    .month-label { font-size: 17px; font-weight: 800; color: var(--rm-text-primary); }
-    .nav-btn { width: 36px; height: 36px; border: 1.5px solid var(--rm-border); border-radius: 10px; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--rm-text-secondary); }
-    .nav-btn ion-icon { font-size: 16px; }
+    .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 4px; background: var(--rm-card); }
+    .nav-arrows { display: flex; gap: 8px; }
+    .nav-btn { width: 34px; height: 34px; border: none; border-radius: 50%; background: var(--rm-surface); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--rm-text-primary); }
+    .nav-btn ion-icon { font-size: 15px; }
 
     /* Day grid */
-    .dow-row { display: grid; grid-template-columns: repeat(7,1fr); padding: 8px 12px 0; background: var(--rm-card); }
+    .dow-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; padding: 8px 12px 0; background: var(--rm-card); }
     .dow-cell { text-align: center; font-size: 11px; color: var(--rm-text-muted); font-weight: 700; padding: 4px 0; }
-    .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; padding: 4px 12px 16px; background: var(--rm-card); border-radius: 0 0 24px 24px; box-shadow: var(--rm-shadow-md); }
-    .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--rm-border); position: relative; transition: all .15s; }
+    .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; padding: 4px 12px 16px; background: var(--rm-card); border-radius: 0 0 24px 24px; box-shadow: var(--rm-shadow-md); }
+    .day-cell {
+      aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border-radius: 13px; cursor: pointer; border: 1px solid var(--rm-border); background: var(--rm-card);
+      position: relative; transition: background .2s, border-color .2s, box-shadow .2s;
+    }
     .day-cell:active { transform: scale(0.92); }
-    .day-cell.other-month { border-color: transparent; }
+    .day-cell.other-month { border-color: transparent; background: transparent; }
     .day-cell.other-month .day-num { color: var(--rm-text-muted); opacity: 0.4; }
-    .day-cell.is-today { background: var(--rm-purple); border-color: var(--rm-purple); }
+    .day-cell.is-today { background: var(--rm-purple); border-color: var(--rm-purple); box-shadow: 0 4px 14px rgba(61,90,241,.35); }
     .day-cell.is-today .day-num { color: white; font-weight: 800; }
+    .day-cell.is-selected { animation: daySelect .35s var(--rm-ease-spring); }
     .day-cell.is-selected:not(.is-today) { background: var(--rm-purple-light); border-color: var(--rm-purple); }
     .day-cell:hover:not(.is-today):not(.other-month) { background: var(--rm-purple-light); }
-    .day-num { font-size: 13px; font-weight: 500; color: var(--rm-text-primary); }
-    .dots-row { display: flex; gap: 2px; position: absolute; bottom: 3px; }
-    .dot { width: 5px; height: 5px; border-radius: 50%; }
+    @keyframes daySelect { 0% { transform: scale(.82); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+    .day-num { font-size: 13px; font-weight: 600; color: var(--rm-text-primary); }
+    .dots-row { display: flex; gap: 2px; position: absolute; bottom: 4px; }
+    .dot { width: 4px; height: 4px; border-radius: 50%; }
 
     /* Events */
-    .events-section { padding: 16px; }
+    .events-section { padding: 16px 16px 100px; }
     .events-title { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .events-count { background: var(--rm-purple); color: white; border-radius: 20px; padding: 2px 9px; font-size: 12px; font-weight: 700; }
     .no-events { text-align: center; padding: 32px 0; }
     .no-events-emoji { font-size: 40px; display: block; margin-bottom: 8px; }
     .no-events p { font-size: 14px; color: var(--rm-text-muted); }
     .events-list { display: flex; flex-direction: column; gap: 10px; }
-    .event-card { background: var(--rm-card); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid var(--rm-border); }
+    .event-card { background: var(--rm-card); border-radius: 16px; padding: 13px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--rm-shadow-sm); border-left: 4px solid var(--rm-border); transition: transform .2s var(--rm-ease-spring), box-shadow .2s; }
+    .event-card:active { transform: scale(0.98); }
     .event-card.event-done { opacity: 0.6; }
-    .event-emoji { font-size: 22px; flex-shrink: 0; }
     .event-info { flex: 1; min-width: 0; }
-    .event-title { font-size: 14px; font-weight: 700; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .event-time { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; }
-    .event-from { font-style: italic; }
-    .event-right { flex-shrink: 0; }
+    .event-title { font-size: 14.5px; font-weight: 700; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .event-cat { font-size: 12px; font-weight: 600; margin-top: 3px; }
+    .event-from { font-style: italic; color: var(--rm-text-muted); font-weight: 500; }
+    .event-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .event-time { font-size: 12.5px; font-weight: 700; color: var(--rm-text-secondary); }
     .event-status-chip { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
 
-    /* View toggle */
-    .view-toggle { display: flex; background: var(--rm-surface); border-radius: 10px; padding: 3px; gap: 2px; }
-    .view-toggle-btn { height: 30px; padding: 0 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--rm-text-secondary); background: transparent; cursor: pointer; font-family: inherit; }
-    .view-toggle-btn.active { background: var(--rm-card); color: var(--rm-purple); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-
     /* Week view */
-    .week-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--rm-card); }
-    .week-days-row { display: flex; background: var(--rm-card); padding: 0 12px 12px; border-radius: 0 0 20px 20px; box-shadow: var(--rm-shadow-md); }
-    .week-day-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 12px; cursor: pointer; }
-    .week-day-col.wk-today .wk-num { background: var(--rm-purple); color: #fff; }
-    .week-day-col.wk-selected:not(.wk-today) .wk-num { background: var(--rm-purple-light); color: var(--rm-purple); }
-    .wk-dow { font-size: 10px; font-weight: 700; color: var(--rm-text-muted); }
-    .wk-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--rm-text-primary); }
+    .week-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--rm-card); }
+    .week-days-row { display: flex; gap: 4px; background: var(--rm-card); padding: 4px 12px 14px; border-radius: 0 0 24px 24px; box-shadow: var(--rm-shadow-md); }
+    .week-day-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 4px; border-radius: 13px; cursor: pointer; border: 1px solid var(--rm-border); transition: background .2s, border-color .2s, box-shadow .2s; }
+    .week-day-col.wk-selected { background: var(--rm-purple); border-color: var(--rm-purple); box-shadow: 0 4px 14px rgba(61,90,241,.35); }
+    .week-day-col.wk-selected .wk-dow, .week-day-col.wk-selected .wk-num { color: #fff; }
+    .week-day-col.wk-selected .wk-dot { background: #fff; }
+    .week-day-col.wk-today:not(.wk-selected) .wk-num { color: var(--rm-purple); }
+    .week-day-col.wk-today:not(.wk-selected) .wk-dow { color: var(--rm-purple); }
+    .wk-dow { font-size: 10px; font-weight: 700; color: var(--rm-text-muted); text-transform: uppercase; }
+    .wk-num { height: 24px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: var(--rm-text-primary); }
     .wk-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--rm-purple); }
 
-    .week-slots { padding: 12px 0; }
+    .week-slots { padding: 12px 0 100px; }
     .slot-row { display: flex; align-items: flex-start; min-height: 56px; }
-    .slot-hour { width: 52px; flex-shrink: 0; text-align: right; padding-right: 10px; font-size: 11px; color: var(--rm-text-muted); padding-top: 4px; }
-    .slot-line { flex: 1; border-top: 1px solid var(--rm-border); padding: 4px 12px 4px 8px; min-height: 48px; position: relative; }
-    .slot-event { border-left: 3px solid; border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 600; color: var(--rm-text-primary); margin-bottom: 4px; }
+    .slot-hour { width: 60px; flex-shrink: 0; text-align: right; padding-right: 12px; font-size: 11px; font-weight: 600; color: var(--rm-text-muted); padding-top: 4px; }
+    .slot-line { flex: 1; border-top: 1px solid var(--rm-border); padding: 4px 16px 4px 10px; min-height: 48px; position: relative; }
+    .slot-event {
+      position: relative;
+      background: var(--rm-card);
+      border-left: 3px solid;
+      border-radius: 10px;
+      padding: 9px 12px 9px 14px;
+      font-size: 12.5px; font-weight: 700; color: var(--rm-text-primary);
+      margin-bottom: 6px;
+      box-shadow: var(--rm-shadow-sm);
+    }
+    .slot-event-dot { position: absolute; left: -14.5px; top: 12px; width: 7px; height: 7px; border-radius: 50%; }
   `],
 })
 export class CalendarComponent implements OnInit {
@@ -299,6 +335,12 @@ export class CalendarComponent implements OnInit {
   viewDate  = signal(new Date());
   selected  = signal(new Date());
   viewMode  = signal<'month' | 'week'>('month');
+
+  // Replays entrance animations on every tab visit (see .pg-in in global.scss)
+  readonly pageIn = signal(true);
+
+  ionViewWillEnter(): void { this.pageIn.set(true); }
+  ionViewDidLeave(): void  { this.pageIn.set(false); }
 
   private toCalReminder = (r: Reminder): CalReminder => ({
     _id:          r._id,
@@ -434,6 +476,7 @@ export class CalendarComponent implements OnInit {
 
   getCatColor(type: string): string { return CAT_COLOR[type] ?? '#6B7280'; }
   getCatEmoji(type: string): string { return CAT_EMOJI[type] ?? '📌'; }
+  getCatLabel(type: string): string { return CAT_LABEL[type] ?? 'General'; }
   getSharedColor(s?: string | null): string { return SHARED_COLOR[s ?? ''] ?? '#9CA3AF'; }
   getSharedLabel(s?: string | null): string { return SHARED_LABEL[s ?? ''] ?? (s ?? ''); }
   getStatusColor(s?: string | null): string { return STATUS_COLOR[s ?? ''] ?? '#9CA3AF'; }

@@ -1,29 +1,31 @@
-<ion-content class="dash-content">
+<ion-content class="dash-content" [class.pg-in]="pageIn()">
   <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
   <!-- ── Blue header ─────────────────────────────────────────────────────── -->
   <div class="dash-header">
-    <div class="dash-header-top">
+    <div class="dash-decor dash-decor-1"></div>
+    <div class="dash-decor dash-decor-2"></div>
+    <div class="dash-header-top a-fd">
       <div class="dash-header-meta">
         <div class="dash-date">{{ todayDateLabel }}</div>
         <h1 class="dash-greeting">{{ greeting }},<br>{{ firstName() }}!</h1>
       </div>
       <div class="dash-header-actions">
-        <button class="dash-icon-btn" (click)="openSearch()">
+        <button class="dash-icon-btn rm-press" (click)="openSearch()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.9"/>
             <path d="M20 20l-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="dash-icon-btn" (click)="nav.navigate(['/app/notifications'])">
+        <button class="dash-icon-btn rm-press" (click)="nav.navigate(['/app/notifications'])">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M12 3a6 6 0 016 6c0 5 2 6 2 6H4s2-1 2-6a6 6 0 016-6z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
             <path d="M10.5 19a1.7 1.7 0 003 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="dash-icon-btn">
+        <button class="dash-icon-btn rm-press">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="5"  r="1.4" fill="currentColor"/>
             <circle cx="12" cy="12" r="1.4" fill="currentColor"/>
@@ -35,23 +37,23 @@
 
     <!-- Summary chips -->
     <div class="dash-chips">
-      <div class="dash-chip" (click)="nav.navigate(['/app/reminders'])">
+      <div class="dash-chip a-pop rm-press" [style.--i]="1" (click)="nav.navigate(['/app/reminders'])">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <path d="M12 3a6 6 0 016 6c0 5 2 6 2 6H4s2-1 2-6a6 6 0 016-6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
           <path d="M10.5 19a1.7 1.7 0 003 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        <strong>{{ todayCount() }}</strong>&nbsp;Remind.
+        <strong [rmCountUp]="todayCount()"></strong>&nbsp;Remind.
       </div>
-      <div class="dash-chip" (click)="nav.navigate(['/app/tasks'])">
+      <div class="dash-chip a-pop rm-press" [style.--i]="2" (click)="nav.navigate(['/app/tasks'])">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <strong>{{ upcomingCount() }}</strong>&nbsp;Tasks
+        <strong [rmCountUp]="upcomingCount()"></strong>&nbsp;Tasks
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="dash-tabs">
+    <div class="dash-tabs a-fd" [style.--i]="2">
       <button class="dash-tab" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')">Dashboard</button>
       <button class="dash-tab" [class.active]="activeTab() === 'today'"     (click)="setTab('today')">Today</button>
       <button class="dash-tab" [class.active]="activeTab() === 'upcoming'"  (click)="setTab('upcoming')">Upcoming</button>
@@ -66,7 +68,7 @@
   <!-- ── DASHBOARD TAB ───────────────────────────────────────────────────── -->
   @if (activeTab() === 'dashboard') {
     <!-- Progress nudge card -->
-    <div class="dash-nudge">
+    <div class="dash-nudge a-fu" [style.--i]="1">
       <div class="dash-nudge-icon">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="#3D5AF1" stroke-width="1.7"/>
@@ -80,10 +82,10 @@
     </div>
 
     <!-- Module grid -->
-    <div class="dash-section-title">Get started</div>
+    <div class="dash-section-title a-fu" [style.--i]="2">Get started</div>
     <div class="dash-modules">
       @for (mod of modules; track mod.label) {
-        <div class="dash-module" [style.background]="mod.bg" (click)="nav.navigate([mod.route])">
+        <div class="dash-module a-fu rm-press" [style.--i]="$index + 3" [style.background]="mod.bg" (click)="nav.navigate([mod.route])">
           <div class="dash-module-icon" [style.color]="mod.color">
             @switch (mod.icon) {
               @case ('clock') {
@@ -127,7 +129,7 @@
 
   <!-- ── TODAY TAB ───────────────────────────────────────────────────────── -->
   @if (activeTab() === 'today') {
-    <div class="today-progress-card">
+    <div class="today-progress-card a-fu">
       <div class="today-progress-top">
         <div class="today-progress-label">Today's progress</div>
         <div class="today-progress-pct">{{ todayProgress() }}%</div>
@@ -138,10 +140,10 @@
       </div>
     </div>
 
-    <div class="today-section-label">MORNING</div>
+    <div class="today-section-label a-fu" [style.--i]="1">MORNING</div>
     <div class="today-items">
       @for (item of todayItems(); track item.id) {
-        <div class="today-item" [class.done]="item.done">
+        <div class="today-item a-fu" [style.--i]="$index + 2" [class.done]="item.done">
           <div class="today-item-check" [style.border-color]="item.done ? item.color : '#D1D5DB'"
                [style.background]="item.done ? item.color : 'transparent'">
             @if (item.done) {
@@ -166,11 +168,11 @@
 
   <!-- ── UPCOMING TAB ────────────────────────────────────────────────────── -->
   @if (activeTab() === 'upcoming') {
-    @for (group of upcomingGroups(); track group.label) {
-      <div class="upcoming-group-label">{{ group.label }}</div>
+    @for (group of upcomingGroups(); track group.label; let gi = $index) {
+      <div class="upcoming-group-label a-fu" [style.--i]="gi * 3">{{ group.label }}</div>
       <div class="upcoming-items">
         @for (item of group.items; track item.id) {
-          <div class="upcoming-item">
+          <div class="upcoming-item a-fu rm-press" [style.--i]="gi * 3 + $index + 1">
             <div class="upcoming-item-dot" [style.background]="item.color"></div>
             <div class="upcoming-item-body">
               <div class="upcoming-item-title">{{ item.title }}</div>
@@ -184,7 +186,7 @@
   }
 
   <!-- ── FAB ─────────────────────────────────────────────────────────────── -->
-  <div class="dash-fab" (click)="nav.navigate(['/app/reminders/create'])">
+  <div class="dash-fab a-pop rm-press-deep" [style.--i]="8" (click)="nav.navigate(['/app/reminders/create'])">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
       <path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
     </svg>

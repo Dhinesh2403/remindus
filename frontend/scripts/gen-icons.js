@@ -1,5 +1,5 @@
 // scripts/gen-icons.js
-// Dependency-free generator for the RemindUs blue-bell icon.
+// Dependency-free generator for the Remindus blue-bell icon.
 // Renders the icon analytically (rounded squircle + tile + bell) with 4x4
 // supersampled anti-aliasing and encodes PNGs using Node's built-in zlib.
 'use strict';

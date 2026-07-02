@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
-title RemindUs Dev Tools
+title Remindus Dev Tools
 
 set ROOT=%~dp0
 set FRONTEND=%ROOT%frontend
@@ -11,7 +11,7 @@ set APK_OUT=%ROOT%build-apk
 :MENU
 cls
 echo ============================================================
-echo   RemindUs Dev Tools
+echo   Remindus Dev Tools
 echo ============================================================
 echo.
 echo   [1]  Run Dev  (Frontend + Backend)
@@ -66,11 +66,11 @@ if not exist "%_DEST%" mkdir "%_DEST%"
 set _VER=1.0
 for /f "delims=" %%V in ('powershell -NoProfile -Command "(gc '%ANDROID%\app\build.gradle' | where{$_ -match '^ *versionName ' -and $_ -notmatch 'Suffix'}).Trim().Split([char]34)[1]"') do set _VER=%%V
 
-:: Auto-increment: if RemindUs-<type>-v<ver>.apk already exists, bump minor version
+:: Auto-increment: if Remindus-<type>-v<ver>.apk already exists, bump minor version
 for /f "delims=" %%F in ('powershell -NoProfile -Command ^
-  "$v='!_VER!'.Split('.'); $maj=[int]$v[0]; $min=[int]$v[1]; $t='%_TYPE%'; $d='%_DEST%'; while(Test-Path \"$d\RemindUs-$t-v$maj.$min.apk\"){$min++}; \"$maj.$min\""') do set _VER=%%F
+  "$v='!_VER!'.Split('.'); $maj=[int]$v[0]; $min=[int]$v[1]; $t='%_TYPE%'; $d='%_DEST%'; while(Test-Path \"$d\Remindus-$t-v$maj.$min.apk\"){$min++}; \"$maj.$min\""') do set _VER=%%F
 
-set _FNAME=RemindUs-%_TYPE%-v!_VER!.apk
+set _FNAME=Remindus-%_TYPE%-v!_VER!.apk
 
 :: Copy versioned file
 copy /Y "%_SRC%" "%_DEST%\%_FNAME%" >nul
@@ -92,10 +92,10 @@ goto :EOF
 :RUN_DEV_BOTH
 echo.
 echo   Starting Backend (dev)...
-start "RemindUs Backend" cmd /k "cd /d %BACKEND% && npm run dev"
+start "Remindus Backend" cmd /k "cd /d %BACKEND% && npm run dev"
 
 echo   Starting Frontend (dev)...
-start "RemindUs Frontend" cmd /k "cd /d %FRONTEND% && npm run start:dev"
+start "Remindus Frontend" cmd /k "cd /d %FRONTEND% && npm run start:dev"
 
 echo.
 echo   Both servers launched in separate windows.
@@ -111,7 +111,7 @@ goto MENU
 :RUN_FRONTEND
 echo.
 echo   Starting Frontend (dev)...
-start "RemindUs Frontend" cmd /k "cd /d %FRONTEND% && npm run start:dev"
+start "Remindus Frontend" cmd /k "cd /d %FRONTEND% && npm run start:dev"
 echo   Frontend launched: http://localhost:8100
 echo.
 pause
@@ -123,7 +123,7 @@ goto MENU
 :RUN_FRONTEND_STAGING
 echo.
 echo   Starting Frontend (staging db)...
-start "RemindUs Frontend (staging)" cmd /k "cd /d %FRONTEND% && npm run start:staging"
+start "Remindus Frontend (staging)" cmd /k "cd /d %FRONTEND% && npm run start:staging"
 echo   Frontend launched: http://localhost:8100  (staging config / db)
 echo.
 pause
@@ -135,7 +135,7 @@ goto MENU
 :RUN_BACKEND
 echo.
 echo   Starting Backend (dev)...
-start "RemindUs Backend" cmd /k "cd /d %BACKEND% && npm run dev"
+start "Remindus Backend" cmd /k "cd /d %BACKEND% && npm run dev"
 echo   Backend launched.
 echo.
 pause

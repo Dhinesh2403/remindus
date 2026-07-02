@@ -3,13 +3,13 @@
 
 /**
  * Seeds the productivity modules (Habits, Goals, Daily-Plan Activities, Notes)
- * for a demo user so the frontend has real, persisted data to work against.
+ * for demo users so the frontend has real, persisted data to work against.
  *
  * Usage:
- *   npm run seed                      # seeds the default demo user
- *   SEED_EMAIL=you@example.com npm run seed   # seeds an existing account
+ *   npm run seed                      # seeds the built-in demo users
+ *   SEED_EMAIL=you@example.com npm run seed   # seeds one existing account
  *
- * Safe to re-run: it removes the target user's existing module data first.
+ * Safe to re-run: it removes each target user's existing module data first.
  */
 
 const path    = require('path');
@@ -25,30 +25,61 @@ const Goal     = require('../models/Goal');
 const Activity = require('../models/Activity');
 const Note     = require('../models/Note');
 
-const DEMO_EMAIL    = process.env.SEED_EMAIL || 'demo@remindus.app';
-const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'Password123';
+const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'Demo@1234';
+
+// Built-in demo accounts seeded for staging. All share DEMO_PASSWORD so QA can
+// sign in without juggling credentials. Override the whole set by passing
+// SEED_EMAIL to seed a single existing account instead.
+const DEMO_USERS = [
+  { name: 'Demo User',    email: 'demo@remindus.app' },
+  { name: 'Alex Morgan',  email: 'alex@remindus.app' },
+  { name: 'Priya Sharma', email: 'priya@remindus.app' },
+];
 
 const todayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-async function getOrCreateUser() {
-  let user = await User.findOne({ email: DEMO_EMAIL });
+async function getOrCreateUser({ name, email }) {
+  let user = await User.findOne({ email });
   if (user) {
     logger.info(`Seeding data for existing user: ${user.email}`);
     return user;
   }
   if (process.env.SEED_EMAIL) {
-    throw new Error(`No user found with email ${DEMO_EMAIL}. Omit SEED_EMAIL to create the demo user.`);
+    throw new Error(`No user found with email ${email}. Omit SEED_EMAIL to create demo users.`);
   }
   user = await User.create({
-    name: 'Demo User',
-    email: DEMO_EMAIL,
+    name,
+    email,
     password: DEMO_PASSWORD, // hashed by the User pre-save hook
     isEmailVerified: true,
   });
   logger.info(`Created demo user: ${user.email} / ${DEMO_PASSWORD}`);
+  return user;
+}
+
+async function seedUser(spec) {
+  const user = await getOrCreateUser(spec);
+  const uid  = user._id;
+
+  // Clear existing module data for an idempotent re-seed
+  await Promise.all([
+    Habit.deleteMany({ userId: uid }),
+    Goal.deleteMany({ userId: uid }),
+    Activity.deleteMany({ userId: uid }),
+    Note.deleteMany({ userId: uid }),
+  ]);
+
+  const [habits, goals, activities, notes] = await Promise.all([
+    Habit.insertMany(habitData(uid)),
+    Goal.insertMany(goalData(uid)),
+    Activity.insertMany(activityData(uid)),
+    Note.insertMany(noteData(uid)),
+  ]);
+
+  logger.info(`✅ ${user.email}: ${habits.length} habits, ${goals.length} goals, ${activities.length} activities, ${notes.length} notes`);
   return user;
 }
 
@@ -99,30 +130,21 @@ async function run() {
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000, family: 4 });
   logger.info(`Connected to MongoDB [${process.env.NODE_ENV || 'development'}]`);
 
-  const user = await getOrCreateUser();
-  const uid  = user._id;
+  // A single explicit SEED_EMAIL seeds just that existing account; otherwise
+  // seed the whole built-in demo set.
+  const specs = process.env.SEED_EMAIL
+    ? [{ name: 'Demo User', email: process.env.SEED_EMAIL }]
+    : DEMO_USERS;
 
-  // Clear existing module data for an idempotent re-seed
-  await Promise.all([
-    Habit.deleteMany({ userId: uid }),
-    Goal.deleteMany({ userId: uid }),
-    Activity.deleteMany({ userId: uid }),
-    Note.deleteMany({ userId: uid }),
-  ]);
-
-  const [habits, goals, activities, notes] = await Promise.all([
-    Habit.insertMany(habitData(uid)),
-    Goal.insertMany(goalData(uid)),
-    Activity.insertMany(activityData(uid)),
-    Note.insertMany(noteData(uid)),
-  ]);
+  const users = [];
+  for (const spec of specs) {
+    users.push(await seedUser(spec));
+  }
 
   logger.info('───────────────────────────────────────────────');
-  logger.info(`✅ Seed complete for ${user.email}`);
-  logger.info(`   Habits:     ${habits.length}`);
-  logger.info(`   Goals:      ${goals.length}`);
-  logger.info(`   Activities: ${activities.length} (day ${todayKey()})`);
-  logger.info(`   Notes:      ${notes.length}`);
+  logger.info(`✅ Seed complete for ${users.length} user(s) — day ${todayKey()}`);
+  logger.info(`   Password (all): ${DEMO_PASSWORD}`);
+  for (const u of users) logger.info(`   • ${u.email}`);
   logger.info('───────────────────────────────────────────────');
 
   await mongoose.disconnect();

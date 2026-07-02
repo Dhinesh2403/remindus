@@ -194,6 +194,83 @@ ion-action-sheet {
 .animate-fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
 .animate-slide-in   { animation: slideIn  0.25s ease both; }
 
+/* ─── Motion system (rm) ─────────────────────────────────────────────────────
+   Staggered entrance utilities for the 5 main tabs.
+   Usage: put `pg-in` on the page root (bind to a signal toggled in
+   ionViewWillEnter/ionViewDidLeave so entrances replay on every tab visit),
+   then `a-fu` / `a-fd` / `a-pop` on children with `[style.--i]` for stagger.
+   Without a `.pg-in` ancestor the elements render static — nothing can get
+   stuck invisible if the lifecycle hook never fires. */
+:root {
+  --rm-ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --rm-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes rmFadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rmFadeDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rmPopIn {
+  0%   { opacity: 0; transform: scale(0.6); }
+  70%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes rmZoomIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes rmBadgePop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes rmDotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+  55%      { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+@keyframes rmShimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* fill-mode backwards (not both): the final keyframe equals the natural state,
+   and releasing the animation after it ends lets :active press transforms work */
+.pg-in .a-fu {
+  animation: rmFadeUp 0.5s var(--rm-ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.pg-in .a-fd {
+  animation: rmFadeDown 0.45s var(--rm-ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.pg-in .a-pop {
+  animation: rmPopIn 0.45s var(--rm-ease-spring) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.pg-in .a-zoom {
+  animation: rmZoomIn 0.4s var(--rm-ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+/* Springy press feedback for anything tappable */
+.rm-press {
+  transition: transform 0.2s var(--rm-ease-spring), box-shadow 0.2s var(--rm-ease-spring);
+  &:active { transform: scale(0.96); }
+}
+.rm-press-deep:active { transform: scale(0.92); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-in .a-fu, .pg-in .a-fd, .pg-in .a-pop, .pg-in .a-zoom {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms;
+  }
+  .rm-press, .rm-press-deep { transition: none; }
+}
+
 /* ─── Shared animations for the redesigned ("sc") screens ────────────────── */
 @keyframes scScreenIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 @keyframes scFadeIn   { from { opacity: 0; } to { opacity: 1; } }

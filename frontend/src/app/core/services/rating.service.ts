@@ -36,7 +36,7 @@ export class RatingService {
     await this.showPrompt();
   }
 
-  /** Force the prompt (e.g. from a Settings → "Rate RemindUs" row). */
+  /** Force the prompt (e.g. from a Settings → "Rate Remindus" row). */
   async promptNow(): Promise<void> {
     await this.showPrompt();
   }
@@ -50,7 +50,7 @@ export class RatingService {
 
   private async showPrompt(): Promise<void> {
     const alert = await this.alertCtrl.create({
-      header: 'Enjoying RemindUs?',
+      header: 'Enjoying Remindus?',
       message: 'Would you mind rating us on the Play Store? It really helps!',
       buttons: [
         { text: 'No thanks', role: 'cancel', handler: () => this.markRated() },
