@@ -19,7 +19,7 @@ import {
     <ion-content class="premium-content">
       <div class="hero">
         <div class="hero-emoji">⭐</div>
-        <h1 class="hero-title">RemindUs Premium</h1>
+        <h1 class="hero-title">Remindus Premium</h1>
         <p class="hero-sub">Unlock powerful features to never miss a thing</p>
       </div>
 

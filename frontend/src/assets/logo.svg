@@ -21,7 +21,7 @@
   <!-- Bell clapper -->
   <path fill="#FFFFFF" d="M40 61 C40 65 42.5 68 46 68 C49.5 68 52 65 52 61 Z"/>
 
-  <!-- Wordmark: "RemindUs" -->
+  <!-- Wordmark: "Remindus" -->
   <text x="108" y="52"
     font-family="'Nunito', 'DM Sans', system-ui, sans-serif"
     font-size="30"

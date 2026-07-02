@@ -235,7 +235,7 @@ async function sendEmail(user, reminder) {
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#F8F7FF;border-radius:16px">
         <div style="background:#7C3AED;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
-          <h1 style="color:white;margin:0;font-size:24px">🔔 RemindUs</h1>
+          <h1 style="color:white;margin:0;font-size:24px">🔔 Remindus</h1>
         </div>
         <h2 style="color:#1F2937">Hi ${user.name}!</h2>
         <p style="color:#4B5563">Your reminder is due:</p>
@@ -245,7 +245,7 @@ async function sendEmail(user, reminder) {
           <p style="color:#9CA3AF;margin:0;font-size:14px">📅 ${timeStr}</p>
         </div>
         <p style="color:#9CA3AF;font-size:12px;text-align:center;margin-top:24px">
-          RemindUs · Unsubscribe from emails in app settings
+          Remindus · Unsubscribe from emails in app settings
         </p>
       </div>
     `,
@@ -254,7 +254,7 @@ async function sendEmail(user, reminder) {
 
 async function sendSms(phone, reminder) {
   await twilioClient.messages.create({
-    body: `⏰ RemindUs: "${reminder.title}"${reminder.description ? ` — ${reminder.description}` : ''}`,
+    body: `⏰ Remindus: "${reminder.title}"${reminder.description ? ` — ${reminder.description}` : ''}`,
     from: process.env.TWILIO_PHONE_NUMBER,
     to:   phone,
   });
@@ -262,7 +262,7 @@ async function sendSms(phone, reminder) {
 
 async function sendWhatsApp(phone, reminder) {
   await twilioClient.messages.create({
-    body: `🔔 *RemindUs*\n\n*${reminder.title}*${reminder.description ? `\n${reminder.description}` : ''}\n\nOpen app to mark Done or Snooze.`,
+    body: `🔔 *Remindus*\n\n*${reminder.title}*${reminder.description ? `\n${reminder.description}` : ''}\n\nOpen app to mark Done or Snooze.`,
     from: process.env.TWILIO_WHATSAPP_FROM,
     to:   `whatsapp:${phone}`,
   });

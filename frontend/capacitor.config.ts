@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId:   'com.remindus.app',
-  appName: 'RemindUs',
+  appName: 'Remindus',
   webDir:  'www',
 
   server: {

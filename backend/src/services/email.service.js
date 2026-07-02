@@ -49,11 +49,11 @@ exports.deliver = deliver;
 exports.sendWelcome = async (user) => {
   await deliver({
     to:      user.email,
-    subject: '🎉 Welcome to RemindUs!',
+    subject: '🎉 Welcome to Remindus!',
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto">
         <div style="background:#7C3AED;padding:28px;border-radius:16px 16px 0 0;text-align:center">
-          <h1 style="color:white;margin:0;font-size:24px">🔔 RemindUs</h1>
+          <h1 style="color:white;margin:0;font-size:24px">🔔 Remindus</h1>
         </div>
         <div style="background:white;padding:32px;border-radius:0 0 16px 16px;border:1px solid #E5E7EB">
           <h2 style="color:#1F2937">Welcome, ${user.name}! 👋</h2>
@@ -63,7 +63,7 @@ exports.sendWelcome = async (user) => {
           </div>
           <a href="${process.env.FRONTEND_URL || 'http://localhost:8100'}/app/home"
              style="display:block;background:#7C3AED;color:white;text-decoration:none;padding:14px;text-align:center;border-radius:12px;font-weight:700;margin-top:20px">
-            Open RemindUs →
+            Open Remindus →
           </a>
         </div>
       </div>`,
@@ -118,7 +118,7 @@ exports.sendPasswordReset = async (user, token) => {
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:8100'}/auth/reset-password?token=${token}`;
   await deliver({
     to:      user.email,
-    subject: '🔑 Reset your RemindUs password',
+    subject: '🔑 Reset your Remindus password',
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto">
         <div style="background:#7C3AED;padding:24px;border-radius:16px 16px 0 0;text-align:center">

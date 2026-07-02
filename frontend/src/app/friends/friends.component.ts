@@ -5,17 +5,17 @@ import { FormsModule } from '@angular/forms';
 import {
   IonContent, IonHeader, IonToolbar,
   IonIcon, IonRefresher, IonRefresherContent,
-  IonSearchbar, IonSkeletonText,
   ToastController, AlertController,
 } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 import { addIcons } from 'ionicons';
 import {
   personAddOutline, personRemoveOutline, closeOutline, searchOutline,
-  addCircleOutline, chevronDownOutline, chevronUpOutline,
+  addOutline, addCircleOutline, chevronDownOutline, chevronUpOutline,
   shareSocialOutline, copyOutline, keyOutline, checkmarkCircle,
   chatbubbleEllipsesOutline, arrowBackOutline, send,
   checkmarkOutline, checkmarkDoneOutline, timeOutline,
+  createOutline, cubeOutline, notificationsOutline,
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -33,19 +33,15 @@ import { ShareService } from '../core/services/share.service';
     CommonModule, FormsModule, TimeAmPmPipe,
     IonContent, IonHeader, IonToolbar,
     IonIcon, IonRefresher, IonRefresherContent,
-    IonSearchbar, IonSkeletonText,
   ],
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar>
         <div class="friends-header-row">
-          <div>
-            <div class="page-title">Accountability Buddies</div>
-            <div class="page-sub">Manage your reminder network</div>
-          </div>
-          <button class="btn-add-friend" (click)="openAddPanel()">
-            <ion-icon name="person-add-outline"></ion-icon>
-            Add Friend
+          <div class="page-title">Friends</div>
+          <button class="btn-add" (click)="openAddSheet()">
+            <ion-icon name="add-outline"></ion-icon>
+            Add
           </button>
         </div>
       </ion-toolbar>
@@ -56,185 +52,106 @@ import { ShareService } from '../core/services/share.service';
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
 
-      <!-- Your shareable friend code -->
-      <div class="mycode-card">
-        <div class="mycode-left">
-          <div class="mycode-label">Your friend code</div>
-          <div class="mycode-value">{{ myRefId() || '••••••••' }}</div>
+      <!-- Your Ref ID -->
+      <div class="refid-card">
+        <div class="refid-left">
+          <div class="refid-label">Your Ref ID</div>
+          <div class="refid-value">{{ myRefId() || '••••••••' }}</div>
         </div>
-        <button class="btn-copy" (click)="copyMyCode()" [disabled]="!myRefId()" title="Copy">
+        <button class="refid-copy" (click)="copyMyCode()" [disabled]="!myRefId()" title="Copy">
           <ion-icon name="copy-outline"></ion-icon>
         </button>
-        <button class="btn-share" (click)="shareMyCode()" [disabled]="!myRefId()">
-          <ion-icon name="share-social-outline"></ion-icon>
-          Share
-        </button>
       </div>
 
-      @if (showAddPanel()) {
-        <div class="add-panel">
-          <div class="add-panel-header">
-            <ion-icon name="key-outline" class="panel-icon"></ion-icon>
-            <span class="panel-title">Add by Friend Code</span>
-            <button class="btn-close-panel" (click)="closeAddPanel()">
-              <ion-icon name="close-outline"></ion-icon>
-            </button>
-          </div>
-
-          <div class="code-entry-row">
-            <input
-              class="friend-search-input code-input"
-              type="text"
-              placeholder="e.g. K7P2X9Q4"
-              autocomplete="off"
-              autocapitalize="characters"
-              maxlength="12"
-              [value]="codeInput()"
-              (input)="onCodeInput($event)"
-              (keyup.enter)="lookup()"
-            />
-            <button class="btn-lookup" [disabled]="codeInput().length < 6 || isLookingUp()" (click)="lookup()">
-              {{ isLookingUp() ? '...' : 'Find' }}
-            </button>
-          </div>
-
-          @if (lookupError()) {
-            <div class="panel-hint error-hint">{{ lookupError() }}</div>
-          }
-
-          @if (lookupResult(); as r) {
-            <div class="preview-card">
-              <div class="preview-avatar">
-                @if (r.user.avatar) {
-                  <img [src]="r.user.avatar" [alt]="r.user.name" />
-                } @else {
-                  {{ r.user.name[0].toUpperCase() }}
-                }
-              </div>
-              <div class="preview-info">
-                <div class="preview-name">{{ r.user.name }}</div>
-                <div class="preview-sub">{{ relationshipLabel(r.relationship) }}</div>
-              </div>
-              @switch (r.relationship) {
-                @case ('none') {
-                  <button class="btn-add-user" [disabled]="sending() === r.user._id" (click)="sendRequest(r)">
-                    {{ sending() === r.user._id ? '...' : 'Send Request' }}
-                  </button>
-                }
-                @case ('friends') {
-                  <span class="rel-pill rel-ok"><ion-icon name="checkmark-circle"></ion-icon> Friends</span>
-                }
-                @case ('request_sent') {
-                  <span class="rel-pill">Requested</span>
-                }
-                @case ('request_received') {
-                  <span class="rel-pill rel-action">Check requests below</span>
-                }
-              }
-            </div>
-          }
-        </div>
-      }
-
-      <div class="search-wrap">
-        <ion-searchbar placeholder="Search friends..." [debounce]="300"
-          (ionInput)="onSearch($event)" mode="ios" class="custom-searchbar">
-        </ion-searchbar>
-      </div>
-
+      <!-- Requests -->
       @if (pendingRequests().length > 0) {
-        <div class="requests-banner">
-          <div class="requests-title">
-            <ion-icon name="person-add-outline"></ion-icon>
-            {{ pendingRequests().length }} pending request{{ pendingRequests().length > 1 ? 's' : '' }}
-          </div>
+        <div class="section-label">Requests</div>
+        <div class="req-list">
           @for (req of pendingRequests(); track req._id) {
-            <div class="request-row" [class.highlight]="highlightId() === req._id">
-              <div class="req-avatar">
+            <div class="req-row" [class.highlight]="highlightId() === req._id">
+              <div class="row-avatar" [style.background]="avatarColor(req.name)">
                 @if (req.avatar) {
                   <img [src]="req.avatar" [alt]="req.name" />
                 } @else {
-                  {{ req.name[0] }}
+                  {{ getInitials(req.name) }}
                 }
               </div>
-              <span class="req-name">{{ req.name }}</span>
-              <button class="btn-accept" (click)="accept(req._id)">Accept</button>
-              <button class="btn-reject" (click)="reject(req._id)">Decline</button>
+              <div class="req-info">
+                <div class="req-name">{{ req.name }}</div>
+                <div class="req-sub">wants to connect</div>
+              </div>
+              <button class="req-accept" (click)="accept(req._id)" title="Accept">
+                <ion-icon name="checkmark-outline"></ion-icon>
+              </button>
+              <button class="req-decline" (click)="reject(req._id)" title="Decline">
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
             </div>
           }
         </div>
       }
 
+      <!-- All friends -->
+      <div class="section-label">All Friends</div>
+
       @if (isLoading()) {
         @for (i of [1,2,3]; track i) {
-          <div class="friend-card-skeleton">
-            <div class="skeleton-avatar"></div>
-            <div class="skeleton-lines">
-              <div class="skeleton-line w70"></div>
-              <div class="skeleton-line w40"></div>
+          <div class="friend-row-skel">
+            <div class="skel-avatar"></div>
+            <div class="skel-lines">
+              <div class="skel-line w60"></div>
+              <div class="skel-line w30"></div>
             </div>
           </div>
         }
-      } @else if (filtered().length === 0) {
+      } @else if (friends().length === 0) {
         <div class="empty-state">
           <div class="empty-emoji">👥</div>
           <h3>No friends yet</h3>
-          <p>Add friends to hold each other accountable!</p>
-          <button class="btn-empty-add" (click)="openAddPanel()">
+          <p>Add a friend by their Ref ID to hold each other accountable.</p>
+          <button class="btn-empty-add" (click)="openAddSheet()">
             <ion-icon name="person-add-outline"></ion-icon>
             Add Your First Friend
           </button>
         </div>
       } @else {
-        <div class="friends-list">
-          @for (friend of filtered(); track friend._id) {
-            <div class="friend-card">
-
-              <!-- Top row -->
-              <div class="friend-top">
-                <div class="friend-avatar-wrap">
-                  <div class="friend-avatar">{{ getInitials(friend.name) }}</div>
-                  <span class="status-dot" [class.online]="chatService.isOnline(friend._id)"></span>
-                </div>
-                <div class="friend-meta">
-                  <div class="friend-name">{{ friend.name }}</div>
-                  <div class="friend-username">&#64;{{ friend.username }}</div>
-                </div>
-                <button class="btn-chat" (click)="openChat(friend)" title="Chat">
-                  <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
-                  @if (chatService.unreadFor(friend._id) > 0) {
-                    <span class="chat-unread">{{ chatService.unreadFor(friend._id) }}</span>
+        <div class="friend-list">
+          @for (friend of friends(); track friend._id) {
+            <div class="friend-entry">
+              <div class="friend-row" (click)="openChat(friend)">
+                <div class="row-avatar" [style.background]="avatarColor(friend.name)">
+                  @if (friend.avatar) {
+                    <img [src]="friend.avatar" [alt]="friend.name" />
+                  } @else {
+                    {{ getInitials(friend.name) }}
                   }
+                  <span class="row-dot" [class.online]="chatService.isOnline(friend._id)"></span>
+                </div>
+                <div class="friend-info">
+                  <div class="friend-name">{{ friend.name }}</div>
+                  <div class="friend-status" [class.online]="chatService.isOnline(friend._id)">
+                    {{ chatService.isOnline(friend._id) ? 'Online' : 'Offline' }}
+                  </div>
+                </div>
+                <button class="row-icon blue" title="Assign reminder"
+                  (click)="toggleReminderForm(friend._id); $event.stopPropagation()">
+                  <ion-icon name="create-outline"></ion-icon>
                 </button>
-                <button class="btn-unfriend" (click)="confirmUnfriend(friend)" title="Unfriend">
-                  <ion-icon name="person-remove-outline"></ion-icon>
+                <button class="row-icon green" title="Shared activity"
+                  (click)="toggleShared(friend._id); $event.stopPropagation()">
+                  <ion-icon name="cube-outline"></ion-icon>
                 </button>
+                <div class="row-end">
+                  @if (lastMsgLabel(friend._id); as t) {
+                    <div class="row-time">{{ t }}</div>
+                  }
+                  @if (chatService.unreadFor(friend._id) > 0) {
+                    <span class="row-badge">{{ chatService.unreadFor(friend._id) }}</span>
+                  }
+                </div>
               </div>
 
-              <!-- Stats -->
-              <div class="friend-stats">
-                <div class="fstat" style="background:rgba(16,185,129,0.12)">
-                  <div class="fstat-num" style="color:#10B981">{{ friend.completedCount }}</div>
-                  <div class="fstat-label">Completed</div>
-                </div>
-                <div class="fstat" style="background:rgba(61,90,241,0.12)">
-                  <div class="fstat-num" style="color:#3D5AF1">{{ friend.sharedCount }}</div>
-                  <div class="fstat-label">Shared</div>
-                </div>
-                <div class="fstat" [style.background]="friend.pendingCount > 0 ? 'rgba(234,88,12,0.12)' : 'var(--rm-surface)'">
-                  <div class="fstat-num" [style.color]="friend.pendingCount > 0 ? '#EA580C' : 'var(--rm-text-muted)'">{{ friend.pendingCount }}</div>
-                  <div class="fstat-label">Pending</div>
-                </div>
-              </div>
-
-              <!-- Send Reminder button -->
-              <button class="btn-send-reminder" (click)="toggleReminderForm(friend._id)">
-                <ion-icon name="add-circle-outline"></ion-icon>
-                Send Reminder
-                <ion-icon [name]="openFormId() === friend._id ? 'chevron-up-outline' : 'chevron-down-outline'" class="chevron"></ion-icon>
-              </button>
-
-              <!-- Inline reminder form -->
+              <!-- Assign reminder (blue icon) -->
               @if (openFormId() === friend._id) {
                 <div class="reminder-form">
                   <input class="rf-input" type="text" placeholder="Reminder title..."
@@ -259,66 +176,85 @@ import { ShareService } from '../core/services/share.service';
                 </div>
               }
 
-              <!-- Shared reminders with status -->
-              @if (sharedFor(friend._id).length) {
-                <div class="shared-list">
+              <!-- Shared activity (green icon) -->
+              @if (openSharedId() === friend._id) {
+                <div class="shared-panel">
                   <div class="shared-list-title">Shared Reminders</div>
-                  @for (r of sharedFor(friend._id); track r._id) {
-                    <div class="shared-item">
-                      <div class="shared-row">
-                        <div class="shared-info">
-                          <div class="shared-title">{{ r.title }}</div>
-                          <div class="shared-date">{{ r.date | date:'MMM d' }} · {{ r.time | timeAmPm }}</div>
+                  @if (sharedFor(friend._id).length) {
+                    @for (r of sharedFor(friend._id); track r._id) {
+                      <div class="shared-item">
+                        <div class="shared-row">
+                          <div class="shared-info">
+                            <div class="shared-title">{{ r.title }}</div>
+                            <div class="shared-date">{{ r.date | date:'MMM d' }} · {{ r.time | timeAmPm }}</div>
+                          </div>
+                          <span class="status-badge" [class]="'status-' + (r.sharedStatus || 'sent')">
+                            {{ statusLabel(r.sharedStatus) }}
+                          </span>
                         </div>
-                        <span class="status-badge" [class]="'status-' + (r.sharedStatus || 'sent')">
-                          {{ statusLabel(r.sharedStatus) }}
-                        </span>
-                      </div>
 
-                      <!-- Action buttons — only for the recipient, only when not done/skipped -->
-                      @if (r.assignedTo === currentUserId() && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
-                        <div class="action-row">
-                          <button class="act-btn act-start"
-                            (click)="onStatusChange(r, 'processing')">
-                            ▶ Start
-                          </button>
-                          <button class="act-btn act-done"
-                            (click)="onStatusChange(r, 'completed')">
-                            ✅ Done
-                          </button>
-                          <button class="act-btn act-snooze"
-                            (click)="snooze(r, 10)">
-                            ⏰ 10 min
-                          </button>
-                          <button class="act-btn act-snooze"
-                            (click)="snooze(r, 60)">
-                            ⏰ 1 hr
-                          </button>
-                          <button class="act-btn act-skip"
-                            (click)="onStatusChange(r, 'skipped')">
-                            ⏭ Skip
-                          </button>
-                        </div>
-                      }
-                    </div>
+                        @if (r.assignedTo === currentUserId() && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
+                          <div class="action-row">
+                            <button class="act-btn act-start" (click)="onStatusChange(r, 'processing')">▶ Start</button>
+                            <button class="act-btn act-done" (click)="onStatusChange(r, 'completed')">✅ Done</button>
+                            <button class="act-btn act-snooze" (click)="snooze(r, 10)">⏰ 10 min</button>
+                            <button class="act-btn act-snooze" (click)="snooze(r, 60)">⏰ 1 hr</button>
+                            <button class="act-btn act-skip" (click)="onStatusChange(r, 'skipped')">⏭ Skip</button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  } @else {
+                    <div class="shared-empty">Nothing shared with {{ friend.name.split(' ')[0] }} yet.</div>
                   }
+                  <button class="btn-remove-friend" (click)="confirmUnfriend(friend)">
+                    <ion-icon name="person-remove-outline"></ion-icon>
+                    Remove friend
+                  </button>
                 </div>
               }
-
             </div>
           }
         </div>
       }
     </ion-content>
 
-    <!-- ── Full-screen chat (WhatsApp-style) ───────────────────────────── -->
+    <!-- ── Add a friend (bottom sheet) ─────────────────────────────────── -->
+    @if (showAddPanel()) {
+      <div class="sheet-backdrop" (click)="closeAddSheet()"></div>
+      <div class="add-sheet">
+        <div class="sheet-grip"></div>
+        <div class="sheet-title">Add a friend</div>
+        <div class="sheet-sub">Enter your friend's Ref ID. They'll get a request to connect with you.</div>
+        <div class="sheet-field-label">Friend's Ref ID</div>
+        <input
+          class="sheet-input"
+          type="text"
+          placeholder="e.g. RMD-4827"
+          autocomplete="off"
+          autocapitalize="characters"
+          maxlength="16"
+          [value]="codeInput()"
+          (input)="onCodeInput($event)"
+          (keyup.enter)="submitAdd()"
+        />
+        @if (lookupError()) {
+          <div class="sheet-error">{{ lookupError() }}</div>
+        }
+        <button class="sheet-send" [disabled]="codeInput().length < 4 || sending() !== null" (click)="submitAdd()">
+          {{ sending() ? 'Sending...' : 'Send request' }}
+        </button>
+      </div>
+    }
+
+    <!-- ── Full-screen chat ─────────────────────────────────────────────── -->
     @if (activeChat(); as chat) {
       <div class="chat-overlay">
         <div class="chat-head">
           <button class="chat-back" (click)="closeChat()">
             <ion-icon name="arrow-back-outline"></ion-icon>
           </button>
-          <div class="chat-head-avatar">
+          <div class="chat-head-avatar" [style.background]="avatarColor(chat.name)">
             {{ getInitials(chat.name) }}
             <span class="chat-head-dot" [class.online]="chatService.isOnline(chat._id)"></span>
           </div>
@@ -328,15 +264,20 @@ import { ShareService } from '../core/services/share.service';
               @if (chatService.isTyping(chat._id)) {
                 <span class="typing-text">typing…</span>
               } @else if (chatService.isOnline(chat._id)) {
-                <span class="online-text">online</span>
+                <span class="online-text">Online</span>
               } @else {
-                <span class="offline-text">offline</span>
+                <span class="offline-text">Offline</span>
               }
             </div>
           </div>
+          <button class="chat-head-action" title="Shared activity"
+            (click)="router.navigate(['/app/friends', chat._id, 'activity'])">
+            <ion-icon name="cube-outline"></ion-icon>
+          </button>
         </div>
 
         <div class="chat-body" #chatBody>
+          <div class="chat-day-pill">Today</div>
           @for (m of chatService.messagesFor(chat._id); track m._id) {
             <div class="bubble-row" [class.mine]="isOwn(m)">
               <div class="bubble" [class.bubble-mine]="isOwn(m)">
@@ -357,7 +298,23 @@ import { ShareService } from '../core/services/share.service';
           }
         </div>
 
+        @if (showChatActions) {
+          <div class="chat-quick">
+            <button class="chat-qa task" (click)="sendTaskFromChat()">
+              <ion-icon name="create-outline"></ion-icon>
+              Send task
+            </button>
+            <button class="chat-qa reminder" (click)="sendReminderFromChat()">
+              <ion-icon name="notifications-outline"></ion-icon>
+              Send reminder
+            </button>
+          </div>
+        }
+
         <div class="chat-input-bar">
+          <button class="chat-plus" (click)="showChatActions = !showChatActions">
+            <ion-icon [name]="showChatActions ? 'close-outline' : 'add-outline'"></ion-icon>
+          </button>
           <input class="chat-input" type="text" placeholder="Message…"
             autocomplete="off"
             [(ngModel)]="draft" (input)="onDraftInput()" (keyup.enter)="send()" />
@@ -371,115 +328,87 @@ import { ShareService } from '../core/services/share.service';
   styles: [`
     .friends-content{--background:var(--rm-bg)}
     ion-toolbar{--background:var(--rm-card);--padding-start:0;--padding-end:0;--padding-top:0;--padding-bottom:0}
-    .friends-header-row{display:flex;align-items:center;justify-content:space-between;padding:20px 16px 16px}
-    .page-title{font-size:22px;font-weight:800;color:var(--rm-text-primary)}
-    .page-sub{font-size:13px;color:var(--rm-text-secondary);margin-top:2px}
-    .btn-add-friend{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--rm-purple);color:white;border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit}
-    .btn-add-friend ion-icon{font-size:16px}
-    .add-panel{margin:12px 16px 0;background:var(--rm-card);border-radius:20px;padding:16px;box-shadow:var(--rm-shadow-sm);border:1.5px solid var(--rm-purple-light)}
-    .add-panel-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-    .panel-icon{font-size:18px;color:var(--rm-purple)}
-    .panel-title{flex:1;font-size:15px;font-weight:700;color:var(--rm-text-primary)}
-    .btn-close-panel{width:30px;height:30px;border:none;background:var(--rm-surface);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--rm-text-secondary);padding:0}
-    .btn-close-panel ion-icon{font-size:18px;pointer-events:none}
-    .add-panel-input-wrap{margin-bottom:4px}
-    .friend-search-input{width:100%;padding:12px 14px;border:1.5px solid var(--rm-border);border-radius:12px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box}
-    .friend-search-input:focus{border-color:var(--rm-purple)}
-    .friend-search-input::placeholder{color:var(--rm-text-muted)}
-    .panel-hint{font-size:13px;color:var(--rm-text-muted);padding:10px 2px;text-align:center}
-    .panel-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;color:var(--rm-text-secondary);font-size:14px}
-    .loader-ring{width:18px;height:18px;border:2.5px solid var(--rm-border);border-top-color:var(--rm-purple);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .search-results{display:flex;flex-direction:column;gap:2px;margin-top:8px}
-    .result-row{display:flex;align-items:center;gap:10px;padding:10px 6px;border-radius:12px;transition:background 0.15s}
-    .result-row:active{background:var(--rm-surface)}
-    .result-avatar{width:40px;height:40px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .result-info{flex:1;min-width:0}
-    .result-name{font-size:14px;font-weight:700;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .result-email{font-size:12px;color:var(--rm-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .btn-add-user{padding:8px 16px;background:var(--rm-purple);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
-    .btn-add-user:disabled{opacity:0.6;cursor:default}
-    /* My friend code card */
-    .mycode-card{display:flex;align-items:center;gap:10px;margin:12px 16px 0;padding:14px 16px;background:linear-gradient(135deg,var(--rm-purple),#5B7CFF);border-radius:18px;box-shadow:var(--rm-shadow-sm)}
-    .mycode-left{flex:1;min-width:0}
-    .mycode-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px}
-    .mycode-value{font-size:22px;font-weight:800;color:#fff;letter-spacing:2px;font-family:'Courier New',monospace;margin-top:2px}
-    .btn-copy{width:38px;height:38px;border:none;border-radius:11px;background:rgba(255,255,255,0.18);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-    .btn-copy ion-icon{font-size:18px;pointer-events:none}
-    .btn-copy:disabled{opacity:0.5}
-    .btn-share{display:flex;align-items:center;gap:6px;padding:9px 14px;border:none;border-radius:11px;background:#fff;color:var(--rm-purple);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
-    .btn-share ion-icon{font-size:16px}
-    .btn-share:disabled{opacity:0.6}
-    /* Code entry */
-    .code-entry-row{display:flex;gap:8px}
-    .code-input{flex:1;text-transform:uppercase;letter-spacing:2px;font-family:'Courier New',monospace;font-weight:700}
-    .btn-lookup{padding:0 18px;background:var(--rm-purple);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
-    .btn-lookup:disabled{opacity:0.5;cursor:default}
-    .error-hint{color:#DC2626}
-    /* Lookup preview */
-    .preview-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-purple-light)}
-    .preview-avatar{width:48px;height:48px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-    .preview-avatar img{width:100%;height:100%;object-fit:cover}
-    .preview-info{flex:1;min-width:0}
-    .preview-name{font-size:15px;font-weight:700;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .preview-sub{font-size:12px;color:var(--rm-text-muted);margin-top:2px}
-    .rel-pill{padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;background:var(--rm-card);color:var(--rm-text-secondary);display:flex;align-items:center;gap:4px;flex-shrink:0}
-    .rel-pill ion-icon{font-size:15px}
-    .rel-ok{color:#047857;background:rgba(16,185,129,0.12)}
-    .rel-action{color:#C2410C;background:rgba(234,88,12,0.12)}
-    .search-wrap{padding:8px 12px 0}
-    .custom-searchbar{--background:var(--rm-surface);--border-radius:14px;--box-shadow:var(--rm-shadow-sm);--color:var(--rm-text-primary);--placeholder-color:var(--rm-text-muted);padding:0}
-    .requests-banner{margin:12px 16px;background:rgba(234,88,12,0.08);border-radius:16px;padding:14px;border:1.5px solid rgba(234,88,12,0.2)}
-    .requests-title{font-size:13px;font-weight:700;color:#C2410C;display:flex;align-items:center;gap:6px;margin-bottom:10px}
-    .request-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;border-radius:10px;transition:background 0.3s}
-    .request-row.highlight{background:rgba(234,88,12,0.16);box-shadow:0 0 0 2px rgba(234,88,12,0.35);padding:6px}
-    .req-avatar{width:32px;height:32px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-    .req-avatar img{width:100%;height:100%;object-fit:cover}
-    .req-name{flex:1;font-size:14px;font-weight:600}
-    .btn-accept{padding:6px 12px;background:var(--rm-green);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
-    .btn-reject{padding:6px 12px;background:var(--rm-surface);color:var(--rm-text-secondary);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-    .friend-card-skeleton{display:flex;align-items:center;padding:16px;background:var(--rm-card);border-radius:20px;margin:8px 16px;box-shadow:var(--rm-shadow-sm)}
-    .skeleton-avatar{width:52px;height:52px;border-radius:50%;background:var(--rm-surface);flex-shrink:0;animation:pulse 1.5s ease-in-out infinite}
-    .skeleton-lines{flex:1;padding-left:12px}
-    .skeleton-line{height:12px;border-radius:6px;background:var(--rm-surface);margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite}
-    .w70{width:70%}.w40{width:40%}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-    .empty-state{text-align:center;padding:64px 32px}
-    .empty-emoji{font-size:64px;margin-bottom:16px}
+    .friends-header-row{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 12px}
+    .page-title{font-size:26px;font-weight:800;color:var(--rm-text-primary);letter-spacing:-.3px}
+    .btn-add{display:flex;align-items:center;gap:5px;padding:9px 16px;background:var(--rm-purple);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+    .btn-add ion-icon{font-size:17px}
+
+    /* Your Ref ID card */
+    .refid-card{display:flex;align-items:center;gap:12px;margin:4px 16px 4px;padding:16px 18px;background:var(--rm-purple-light);border-radius:16px}
+    .refid-left{flex:1;min-width:0}
+    .refid-label{font-size:11px;font-weight:700;color:var(--rm-purple);text-transform:uppercase;letter-spacing:.6px}
+    .refid-value{font-size:22px;font-weight:800;color:var(--rm-text-primary);letter-spacing:1px;margin-top:3px}
+    .refid-copy{width:40px;height:40px;border:1.5px solid var(--rm-purple);background:transparent;border-radius:11px;color:var(--rm-purple);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .refid-copy ion-icon{font-size:19px;pointer-events:none}
+    .refid-copy:disabled{opacity:.5}
+
+    /* Section labels */
+    .section-label{font-size:12px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.6px;padding:16px 20px 6px}
+
+    /* Shared avatar */
+    .row-avatar{position:relative;width:48px;height:48px;border-radius:50%;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+    .row-avatar img{width:100%;height:100%;object-fit:cover}
+    .row-dot{position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--rm-card);background:var(--rm-border)}
+    .row-dot.online{background:#10B981}
+
+    /* Requests */
+    .req-list{padding:0 8px}
+    .req-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;transition:background .3s}
+    .req-row.highlight{background:var(--rm-purple-light)}
+    .req-info{flex:1;min-width:0}
+    .req-name{font-size:15px;font-weight:700;color:var(--rm-text-primary)}
+    .req-sub{font-size:12.5px;color:var(--rm-text-muted);margin-top:1px}
+    .req-accept{width:38px;height:38px;border:none;border-radius:11px;background:var(--rm-green);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .req-decline{width:38px;height:38px;border:1.5px solid var(--rm-border);border-radius:11px;background:var(--rm-card);color:var(--rm-text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .req-accept ion-icon,.req-decline ion-icon{font-size:19px;pointer-events:none}
+
+    /* Friend rows */
+    .friend-list{padding:0 8px 96px}
+    .friend-row{display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;border-radius:14px}
+    .friend-row:active{background:var(--rm-surface)}
+    .friend-info{flex:1;min-width:0}
+    .friend-name{font-size:16px;font-weight:700;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .friend-status{font-size:13px;color:var(--rm-text-muted);margin-top:1px}
+    .friend-status.online{color:#10B981;font-weight:600}
+    .row-icon{width:36px;height:36px;border:none;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .row-icon ion-icon{font-size:18px;pointer-events:none}
+    .row-icon.blue{background:var(--rm-purple-light);color:var(--rm-purple)}
+    .row-icon.green{background:rgba(16,185,129,.12);color:#0f9d63}
+    .row-end{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+    .row-time{font-size:11px;color:var(--rm-text-muted);white-space:nowrap}
+    .row-badge{min-width:20px;height:20px;padding:0 6px;background:var(--rm-green);color:#fff;border-radius:10px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+
+    /* Skeleton */
+    .friend-row-skel{display:flex;align-items:center;gap:12px;padding:12px 20px}
+    .skel-avatar{width:48px;height:48px;border-radius:50%;background:var(--rm-surface);flex-shrink:0;animation:pulse 1.5s ease-in-out infinite}
+    .skel-lines{flex:1}
+    .skel-line{height:12px;border-radius:6px;background:var(--rm-surface);margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite}
+    .w60{width:60%}.w30{width:30%}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+    /* Empty */
+    .empty-state{text-align:center;padding:56px 32px}
+    .empty-emoji{font-size:60px;margin-bottom:14px}
     .empty-state h3{font-size:18px;font-weight:700;color:var(--rm-text-primary);margin-bottom:8px}
-    .empty-state p{font-size:14px;color:var(--rm-text-muted);margin-bottom:24px}
+    .empty-state p{font-size:14px;color:var(--rm-text-muted);margin-bottom:22px}
     .btn-empty-add{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;background:var(--rm-purple);color:white;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-    .friends-list{padding:8px 16px 24px;display:flex;flex-direction:column;gap:14px}
-    .friend-card{background:var(--rm-card);border-radius:20px;padding:18px;box-shadow:var(--rm-shadow-sm)}
-    .friend-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-    .friend-avatar-wrap{position:relative;flex-shrink:0}
-    .friend-avatar{width:52px;height:52px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center}
-    .status-dot{width:13px;height:13px;border-radius:50%;border:2.5px solid var(--rm-card);position:absolute;bottom:1px;right:1px;background:var(--rm-border)}
-    .status-dot.online{background:#10B981}
-    .friend-name{font-size:16px;font-weight:800;color:var(--rm-text-primary)}
-    .friend-username{font-size:12px;color:var(--rm-text-muted);margin-top:2px}
-    .btn-unfriend{margin-left:auto;flex-shrink:0;width:34px;height:34px;border:none;background:rgba(239,68,68,0.1);color:#EF4444;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;padding:0;transition:background 0.15s}
-    .btn-unfriend:active{background:rgba(239,68,68,0.22)}
-    .friend-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-    .fstat{text-align:center;padding:10px 4px;border-radius:12px}
-    .fstat-num{font-size:18px;font-weight:800;line-height:1}
-    .fstat-label{font-size:10px;color:var(--rm-text-muted);margin-top:3px;font-weight:500}
-    .btn-send-reminder{width:100%;padding:11px 14px;background:var(--rm-purple-light);color:var(--rm-purple);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
-    .btn-send-reminder ion-icon{font-size:16px}
-    .chevron{margin-left:auto;font-size:14px}
-    .reminder-form{margin-top:12px;display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-border)}
+
+    /* Assign reminder form */
+    .reminder-form{margin:2px 12px 10px;display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-border)}
     .rf-input{width:100%;padding:10px 12px;border:1.5px solid var(--rm-border);border-radius:10px;background:var(--rm-card);color:var(--rm-text-primary);font-size:14px;font-family:inherit;outline:none;box-sizing:border-box}
     .rf-input:focus{border-color:var(--rm-purple)}
     .rf-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .rf-half{}
     .rf-priority-row{display:flex;gap:6px;flex-wrap:wrap}
     .rf-priority{padding:6px 12px;border:1.5px solid var(--rm-border);border-radius:8px;background:var(--rm-card);color:var(--rm-text-secondary);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
     .rf-priority.active{border-color:var(--rm-purple);background:var(--rm-purple-light);color:var(--rm-purple)}
     .btn-rf-send{padding:12px;background:var(--rm-purple);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-    .btn-rf-send:disabled{opacity:0.6;cursor:default}
-    .shared-list{margin-top:12px;border-top:1px solid var(--rm-border);padding-top:12px;display:flex;flex-direction:column;gap:10px}
-    .shared-list-title{font-size:11px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
-    .shared-item{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--rm-surface);border-radius:12px}
+    .btn-rf-send:disabled{opacity:.6;cursor:default}
+
+    /* Shared panel */
+    .shared-panel{margin:2px 12px 10px;display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-border)}
+    .shared-list-title{font-size:11px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.5px}
+    .shared-empty{font-size:13px;color:var(--rm-text-muted);text-align:center;padding:6px 0}
+    .shared-item{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--rm-card);border-radius:12px}
     .shared-row{display:flex;align-items:center;gap:8px}
     .shared-info{flex:1;min-width:0}
     .shared-title{font-size:13px;font-weight:600;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -497,41 +426,63 @@ import { ShareService } from '../core/services/share.service';
     .act-done{background:rgba(16,185,129,0.12);color:#047857}
     .act-snooze{background:rgba(234,179,8,0.12);color:#B45309}
     .act-skip{background:rgba(107,114,128,0.12);color:#6B7280}
-    /* Chat button on friend card */
-    .btn-chat{position:relative;margin-left:auto;flex-shrink:0;width:34px;height:34px;border:none;background:rgba(61,90,241,0.1);color:var(--rm-purple);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;padding:0;transition:background 0.15s}
-    .btn-chat:active{background:rgba(61,90,241,0.22)}
-    .chat-unread{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;background:#EF4444;color:#fff;border-radius:8px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--rm-card)}
+    .btn-remove-friend{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px;background:rgba(239,68,68,0.08);color:#EF4444;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+    .btn-remove-friend ion-icon{font-size:16px}
+
+    /* Add-friend sheet */
+    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900;animation:fade .2s ease}
+    @keyframes fade{from{opacity:0}to{opacity:1}}
+    .add-sheet{position:fixed;left:0;right:0;bottom:0;z-index:901;background:var(--rm-card);border-radius:24px 24px 0 0;padding:14px 20px calc(env(safe-area-inset-bottom) + 22px);box-shadow:0 -8px 30px rgba(0,0,0,.18);animation:sheetUp .25s ease}
+    @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--rm-border);margin:0 auto 16px}
+    .sheet-title{font-size:20px;font-weight:800;color:var(--rm-text-primary)}
+    .sheet-sub{font-size:13.5px;color:var(--rm-text-muted);margin-top:6px;line-height:1.45}
+    .sheet-field-label{font-size:11px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 8px}
+    .sheet-input{width:100%;padding:15px 16px;border:1.5px solid var(--rm-border);border-radius:14px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:16px;font-family:inherit;outline:none;box-sizing:border-box;text-transform:uppercase;letter-spacing:1px}
+    .sheet-input:focus{border-color:var(--rm-purple)}
+    .sheet-error{color:#DC2626;font-size:13px;margin-top:8px}
+    .sheet-send{width:100%;margin-top:18px;padding:16px;background:var(--rm-purple);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+    .sheet-send:disabled{opacity:.5}
+
     /* Chat overlay */
-    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn 0.22s ease}
+    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn .22s ease}
     @keyframes chatSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
-    .chat-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:var(--rm-card);box-shadow:var(--rm-shadow-sm);flex-shrink:0}
-    .chat-back{width:38px;height:38px;border:none;background:transparent;color:var(--rm-text-primary);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;padding:0;flex-shrink:0}
-    .chat-head-avatar{position:relative;width:42px;height:42px;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .chat-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:var(--rm-card);box-shadow:0 1px 6px rgba(0,0,0,.05);flex-shrink:0}
+    .chat-back{width:36px;height:36px;border:none;background:transparent;color:var(--rm-text-primary);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+    .chat-head-avatar{position:relative;width:42px;height:42px;border-radius:50%;color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .chat-head-dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid var(--rm-card);background:var(--rm-border)}
     .chat-head-dot.online{background:#10B981}
     .chat-head-meta{flex:1;min-width:0}
     .chat-head-name{font-size:16px;font-weight:800;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .chat-head-status{font-size:12px;margin-top:1px;height:15px}
+    .chat-head-status{font-size:12.5px;margin-top:1px;height:16px}
     .typing-text{color:var(--rm-purple);font-weight:600}
     .online-text{color:#10B981;font-weight:600}
     .offline-text{color:var(--rm-text-muted)}
-    .chat-body{flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:6px;background:var(--rm-bg)}
+    .chat-head-action{width:38px;height:38px;border:none;background:var(--rm-purple-light);color:var(--rm-purple);border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .chat-head-action ion-icon{font-size:19px}
+    .chat-body{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+    .chat-day-pill{align-self:center;background:var(--rm-card);color:var(--rm-text-muted);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:6px}
     .chat-empty{margin:auto;color:var(--rm-text-muted);font-size:14px;text-align:center}
     .bubble-row{display:flex;justify-content:flex-start}
     .bubble-row.mine{justify-content:flex-end}
-    .bubble{max-width:78%;padding:8px 11px 6px;border-radius:14px;background:var(--rm-card);box-shadow:var(--rm-shadow-sm);border-bottom-left-radius:4px}
-    .bubble-mine{background:var(--rm-purple);border-bottom-left-radius:14px;border-bottom-right-radius:4px}
-    .bubble-text{font-size:14.5px;line-height:1.35;color:var(--rm-text-primary);word-break:break-word;white-space:pre-wrap}
+    .bubble{max-width:78%;padding:9px 13px 7px;border-radius:16px;background:var(--rm-card);box-shadow:0 1px 2px rgba(0,0,0,.06);border-top-left-radius:6px}
+    .bubble-mine{background:var(--rm-purple);border-top-left-radius:16px;border-top-right-radius:6px}
+    .bubble-text{font-size:15px;line-height:1.4;color:var(--rm-text-primary);word-break:break-word;white-space:pre-wrap}
     .bubble-mine .bubble-text{color:#fff}
-    .bubble-meta{display:flex;align-items:center;justify-content:flex-end;gap:3px;font-size:10px;color:var(--rm-text-muted);margin-top:3px}
-    .bubble-mine .bubble-meta{color:rgba(255,255,255,0.75)}
+    .bubble-meta{display:flex;align-items:center;justify-content:flex-end;gap:3px;font-size:10.5px;color:var(--rm-text-muted);margin-top:3px}
+    .bubble-mine .bubble-meta{color:rgba(255,255,255,.8)}
     .tick{font-size:14px}
-    .tick-read{color:#38BDF8}
-    .chat-input-bar{display:flex;align-items:center;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);background:var(--rm-card);flex-shrink:0}
-    .chat-input{flex:1;padding:11px 14px;border:1.5px solid var(--rm-border);border-radius:22px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:15px;font-family:inherit;outline:none}
-    .chat-input:focus{border-color:var(--rm-purple)}
-    .chat-send{width:44px;height:44px;border:none;border-radius:50%;background:var(--rm-purple);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px;flex-shrink:0;transition:opacity 0.15s}
-    .chat-send:disabled{opacity:0.45;cursor:default}
+    .tick-read{color:#7DD3FC}
+    .chat-quick{display:flex;gap:12px;padding:10px 14px 4px;background:var(--rm-card);flex-shrink:0}
+    .chat-qa{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+    .chat-qa ion-icon{font-size:17px}
+    .chat-qa.task{background:var(--rm-purple-light);color:var(--rm-purple)}
+    .chat-qa.reminder{background:rgba(245,158,11,.14);color:#D97706}
+    .chat-input-bar{display:flex;align-items:center;gap:10px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:var(--rm-card);flex-shrink:0}
+    .chat-plus{width:42px;height:42px;border:none;border-radius:50%;background:var(--rm-purple);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;flex-shrink:0}
+    .chat-input{flex:1;padding:12px 16px;border:none;border-radius:22px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:15px;font-family:inherit;outline:none}
+    .chat-send{width:44px;height:44px;border:none;border-radius:50%;background:var(--rm-purple);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px;flex-shrink:0}
+    .chat-send:disabled{opacity:.45;cursor:default}
   `],
 })
 export class FriendsComponent implements OnInit, OnDestroy {
@@ -541,20 +492,17 @@ export class FriendsComponent implements OnInit, OnDestroy {
   private authService   = inject(AuthService);
   private shareService  = inject(ShareService);
   private route         = inject(ActivatedRoute);
-  private router        = inject(Router);
+  protected router      = inject(Router);
   private toastCtrl     = inject(ToastController);
   private alertCtrl     = inject(AlertController);
 
   isLoading       = signal(true);
-  searchQuery     = signal('');
   friends         = signal<Friend[]>([]);
   pendingRequests = signal<PendingRequest[]>([]);
 
-  // Add-by-code panel
+  // Add-by-code sheet
   showAddPanel  = signal(false);
   codeInput     = signal('');
-  isLookingUp   = signal(false);
-  lookupResult  = signal<RefIdLookup | null>(null);
   lookupError   = signal<string>('');
   sending       = signal<string | null>(null);
 
@@ -565,8 +513,9 @@ export class FriendsComponent implements OnInit, OnDestroy {
   highlightId    = signal<string | null>(null);
   private pendingAcceptId: string | null = null;
 
-  // Send reminder
+  // Assign reminder / shared activity
   openFormId      = signal<string | null>(null);
+  openSharedId    = signal<string | null>(null);
   sendingReminder = signal(false);
   sharedReminders = signal<Record<string, SharedReminder[]>>({});
   currentUserId   = signal<string>('');
@@ -582,25 +531,23 @@ export class FriendsComponent implements OnInit, OnDestroy {
   @ViewChild('chatBody') private chatBody?: ElementRef<HTMLDivElement>;
   activeChat = signal<Friend | null>(null);
   draft = '';
+  showChatActions = false;
   private typingTimer: ReturnType<typeof setTimeout> | undefined;
 
   private socketSub: Subscription | undefined;
   private socketSub2: Subscription | undefined;
   private querySub: Subscription | undefined;
 
-  readonly filtered = () => {
-    const q = this.searchQuery().toLowerCase();
-    return this.friends().filter(f =>
-      !q || f.name.toLowerCase().includes(q) || f.username.toLowerCase().includes(q)
-    );
-  };
+  // Deterministic avatar colour per name
+  private readonly avatarPalette = ['#D84F7A', '#2F7FD8', '#7A5CD8', '#E07A2F', '#2E9E6A', '#D89B2F', '#C7506B', '#3D5AF1'];
 
   constructor() {
     addIcons({ personAddOutline, personRemoveOutline, closeOutline, searchOutline,
-               addCircleOutline, chevronDownOutline, chevronUpOutline,
+               addOutline, addCircleOutline, chevronDownOutline, chevronUpOutline,
                shareSocialOutline, copyOutline, keyOutline, checkmarkCircle,
                chatbubbleEllipsesOutline, arrowBackOutline, send,
-               checkmarkOutline, checkmarkDoneOutline, timeOutline });
+               checkmarkOutline, checkmarkDoneOutline, timeOutline,
+               createOutline, cubeOutline, notificationsOutline });
 
     // Auto-scroll the chat to the newest message whenever it changes.
     effect(() => {
@@ -702,66 +649,40 @@ export class FriendsComponent implements OnInit, OnDestroy {
     });
   }
 
-  onSearch(event: CustomEvent) {
-    this.searchQuery.set(event.detail.value ?? '');
-  }
-
-  openAddPanel() {
+  // ── Add-friend sheet ────────────────────────────────────────────────────
+  openAddSheet() {
     this.showAddPanel.set(true);
-    this.resetAddPanel();
-    setTimeout(() => {
-      (document.querySelector('.code-input') as HTMLInputElement)?.focus();
-    }, 100);
-  }
-
-  closeAddPanel() {
-    this.showAddPanel.set(false);
-    this.resetAddPanel();
-  }
-
-  private resetAddPanel() {
     this.codeInput.set('');
-    this.lookupResult.set(null);
     this.lookupError.set('');
-    this.isLookingUp.set(false);
     this.sending.set(null);
+    setTimeout(() => {
+      (document.querySelector('.sheet-input') as HTMLInputElement)?.focus();
+    }, 120);
+  }
+
+  closeAddSheet() {
+    this.showAddPanel.set(false);
   }
 
   onCodeInput(event: Event) {
-    // Normalise as the user types: uppercase, strip anything that isn't A–Z/0–9.
+    // Normalise as the user types: uppercase, keep A–Z / 0–9 and dashes.
     const cleaned = (event.target as HTMLInputElement).value
-      .toUpperCase().replace(/[^A-Z0-9]/g, '');
+      .toUpperCase().replace(/[^A-Z0-9-]/g, '');
     this.codeInput.set(cleaned);
-    this.lookupResult.set(null);
     this.lookupError.set('');
   }
 
-  lookup() {
-    const code = this.codeInput();
-    if (code.length < 6 || this.isLookingUp()) return;
-    this.isLookingUp.set(true);
+  submitAdd() {
+    const code = this.codeInput().trim();
+    if (code.length < 4 || this.sending() !== null) return;
+    this.sending.set('sheet');
     this.lookupError.set('');
-    this.lookupResult.set(null);
-    this.friendService.lookupByRefId(code).subscribe({
-      next: (res) => {
-        this.lookupResult.set(res);
-        this.isLookingUp.set(false);
-      },
-      error: (err) => {
-        this.isLookingUp.set(false);
-        this.lookupError.set(err?.error?.message || 'No one found with that code');
-      },
-    });
-  }
-
-  sendRequest(r: RefIdLookup) {
-    this.sending.set(r.user._id);
-    this.friendService.sendRequest(this.codeInput()).subscribe({
+    this.friendService.sendRequest(code).subscribe({
       next: async () => {
         this.sending.set(null);
-        this.closeAddPanel();
+        this.closeAddSheet();
         const toast = await this.toastCtrl.create({
-          message: `Friend request sent to ${r.user.name}!`,
+          message: 'Friend request sent!',
           duration: 2500, color: 'success', position: 'top',
         });
         toast.present();
@@ -769,11 +690,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
       },
       error: async (err) => {
         this.sending.set(null);
-        const toast = await this.toastCtrl.create({
-          message: err?.error?.message || 'Could not send request',
-          duration: 2500, color: 'danger', position: 'top',
-        });
-        toast.present();
+        this.lookupError.set(err?.error?.message || 'Could not send request. Check the Ref ID.');
       },
     });
   }
@@ -792,7 +709,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
     if (!code) return;
     try { await navigator.clipboard.writeText(code); } catch { /* ignore */ }
     const t = await this.toastCtrl.create({
-      message: 'Friend code copied!', duration: 1800, color: 'success', position: 'top',
+      message: 'Ref ID copied!', duration: 1800, color: 'success', position: 'top',
     });
     t.present();
   }
@@ -814,16 +731,17 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   async confirmUnfriend(friend: Friend): Promise<void> {
     const alert = await this.alertCtrl.create({
-      header: 'Unfriend',
+      header: 'Remove friend',
       message: `Remove ${friend.name} from your accountability buddies?`,
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         {
-          text: 'Unfriend',
+          text: 'Remove',
           role: 'destructive',
           handler: () => {
             this.friendService.remove(friend.friendshipId).subscribe({
               next: async () => {
+                this.openSharedId.set(null);
                 this.load();
                 const toast = await this.toastCtrl.create({
                   message: `${friend.name} removed from friends`,
@@ -844,7 +762,17 @@ export class FriendsComponent implements OnInit, OnDestroy {
       this.openFormId.set(null);
     } else {
       this.openFormId.set(friendId);
+      this.openSharedId.set(null);
       this.reminderForm = { title: '', date: this.todayStr(), time: this.nowTimeStr(), priority: 'medium' };
+    }
+  }
+
+  toggleShared(friendId: string): void {
+    if (this.openSharedId() === friendId) {
+      this.openSharedId.set(null);
+    } else {
+      this.openSharedId.set(friendId);
+      this.openFormId.set(null);
       if (!this.sharedReminders()[friendId]) this.loadSharedReminders(friendId);
     }
   }
@@ -928,9 +856,31 @@ export class FriendsComponent implements OnInit, OnDestroy {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
+  avatarColor(name: string): string {
+    let h = 0;
+    for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return this.avatarPalette[h % this.avatarPalette.length];
+  }
+
+  /** Timestamp of the last message with a friend, for the list row. */
+  lastMsgLabel(friendId: string): string {
+    const conv = this.chatService.conversations().find(c => c.friendId === friendId);
+    const iso = conv?.lastMessage?.createdAt;
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+    if (d.toDateString() === yest.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
   // ── Chat ──────────────────────────────────────────────────────────────
   openChat(friend: Friend): void {
     this.draft = '';
+    this.showChatActions = false;
     this.activeChat.set(friend);
     this.chatService.openChat(friend._id);
     setTimeout(() => this.scrollToBottom(), 80);
@@ -940,6 +890,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
     const chat = this.activeChat();
     if (chat) this.chatService.setTyping(chat._id, false);
     clearTimeout(this.typingTimer);
+    this.showChatActions = false;
     this.chatService.closeChat();
     this.activeChat.set(null);
   }
@@ -949,9 +900,32 @@ export class FriendsComponent implements OnInit, OnDestroy {
     if (!chat || !this.draft.trim()) return;
     this.chatService.sendMessage(chat._id, this.draft);
     this.draft = '';
+    this.showChatActions = false;
     this.chatService.setTyping(chat._id, false);
     clearTimeout(this.typingTimer);
     setTimeout(() => this.scrollToBottom(), 50);
+  }
+
+  /** Chat quick action → jump to the assign-reminder form for this friend. */
+  sendReminderFromChat(): void {
+    const chat = this.activeChat();
+    if (!chat) return;
+    this.showChatActions = false;
+    this.closeChat();
+    this.openFormId.set(chat._id);
+    this.openSharedId.set(null);
+    this.reminderForm = { title: '', date: this.todayStr(), time: this.nowTimeStr(), priority: 'medium' };
+    setTimeout(() => {
+      document.querySelector('.reminder-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 180);
+  }
+
+  async sendTaskFromChat(): Promise<void> {
+    this.showChatActions = false;
+    const t = await this.toastCtrl.create({
+      message: 'Sharing tasks in chat is coming soon', duration: 2200, color: 'medium', position: 'top',
+    });
+    t.present();
   }
 
   onDraftInput(): void {

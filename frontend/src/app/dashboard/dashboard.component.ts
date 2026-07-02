@@ -9,6 +9,7 @@ import {
 } from '@ionic/angular/standalone';
 import { AuthService } from '../core/services/auth.service';
 import { ReminderService } from '../core/services/reminder.service';
+import { CountUpDirective } from '../core/directives/count-up.directive';
 
 type DashTab = 'dashboard' | 'today' | 'upcoming';
 
@@ -25,7 +26,7 @@ interface UpcomingItem {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent],
+  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent, CountUpDirective],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -41,6 +42,12 @@ export class DashboardComponent implements OnInit {
   readonly completionRate = this.reminderService.completionRate;
 
   readonly activeTab = signal<DashTab>('dashboard');
+
+  // Replays entrance animations on every tab visit (see .pg-in in global.scss)
+  readonly pageIn = signal(true);
+
+  ionViewWillEnter(): void { this.pageIn.set(true); }
+  ionViewDidLeave(): void  { this.pageIn.set(false); }
 
   readonly firstName = computed(() => {
     const name = this.currentUser()?.name ?? '';

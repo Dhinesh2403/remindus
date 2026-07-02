@@ -37,7 +37,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       <ion-toolbar>
         <div class="settings-header">
           <div class="settings-title">Settings</div>
-          <div class="settings-sub">Customize your RemindUs experience</div>
+          <div class="settings-sub">Customize your Remindus experience</div>
         </div>
       </ion-toolbar>
     </ion-header>
@@ -295,7 +295,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
             <ion-icon name="star-outline"></ion-icon>
           </div>
           <div class="row-text">
-            <div class="row-title">Rate RemindUs</div>
+            <div class="row-title">Rate Remindus</div>
             <div class="row-sub">Enjoying the app? Leave a review</div>
           </div>
           <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
@@ -338,7 +338,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- App version -->
-      <div class="app-version">RemindUs v{{ appVersionLabel() }}</div>
+      <div class="app-version">Remindus v{{ appVersionLabel() }}</div>
       <div style="height:24px"></div>
 
     </ion-content>

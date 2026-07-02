@@ -27,7 +27,7 @@ import { UpdateService } from '../core/services/update.service';
         </h1>
 
         <p class="update-msg">
-          {{ result()?.message ?? 'A new version of RemindUs is available.' }}
+          {{ result()?.message ?? 'A new version of Remindus is available.' }}
         </p>
 
         @if (result()?.latestVersion) {

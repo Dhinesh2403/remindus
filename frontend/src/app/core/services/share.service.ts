@@ -14,10 +14,10 @@ export type ShareOutcome = 'shared' | 'copied' | 'failed';
 export class ShareService {
   buildMessage(refId: string): string {
     return (
-      `Add me on RemindUs! 🔔\n\n` +
+      `Add me on Remindus! 🔔\n\n` +
       `My friend code: ${refId}\n\n` +
       `Don't have the app? Download it here:\n${environment.playStoreUrl}\n\n` +
-      `Already have it? Open RemindUs → Friends → enter my code to send a request.`
+      `Already have it? Open Remindus → Friends → enter my code to send a request.`
     );
   }
 
@@ -27,7 +27,7 @@ export class ShareService {
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
     if (nav.share) {
       try {
-        await nav.share({ title: 'Add me on RemindUs', text });
+        await nav.share({ title: 'Add me on Remindus', text });
         return 'shared';
       } catch (err) {
         // AbortError = user dismissed the sheet; treat as a no-op, not a failure.

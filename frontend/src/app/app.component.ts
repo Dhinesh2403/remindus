@@ -103,7 +103,7 @@ export class AppComponent implements OnInit {
   private async presentOptionalUpdate(latestBuild: number): Promise<void> {
     const alert = await this.alertCtrl.create({
       header: 'Update available',
-      message: this.updateService.result()?.message ?? 'A new version of RemindUs is available.',
+      message: this.updateService.result()?.message ?? 'A new version of Remindus is available.',
       buttons: [
         { text: 'Later', role: 'cancel', handler: () => this.updateService.snooze(latestBuild) },
         { text: 'Update', handler: () => this.updateService.openStore() },
