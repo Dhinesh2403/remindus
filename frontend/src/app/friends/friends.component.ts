@@ -1,5 +1,5 @@
 // src/app/friends/friends.component.ts
-import { Component, inject, OnInit, OnDestroy, signal, effect, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -533,7 +533,9 @@ export class FriendsComponent implements OnInit, OnDestroy {
   openSharedId    = signal<string | null>(null);
   sendingReminder = signal(false);
   sharedReminders = signal<Record<string, SharedReminder[]>>({});
-  currentUserId   = signal<string>('');
+  // Derived from the auth state so it's always current (fixes own messages
+  // rendering on the left when the user was set after the component loaded).
+  currentUserId   = computed(() => this.authService.currentUser()?._id ?? '');
   reminderForm    = { title: '', date: this.todayStr(), time: '09:00', priority: 'medium' };
   priorities      = [
     { value: 'low', label: '🟢 Low' },
@@ -564,11 +566,6 @@ export class FriendsComponent implements OnInit, OnDestroy {
                checkmarkOutline, checkmarkDoneOutline, timeOutline,
                createOutline, cubeOutline, notificationsOutline });
 
-    // Track current user ID changes to ensure messages display on correct side
-    effect(() => {
-      this.updateCurrentUserId();
-    });
-
     // Auto-scroll the chat to the newest message whenever it changes.
     effect(() => {
       const chat = this.activeChat();
@@ -579,13 +576,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
     });
   }
 
-  private updateCurrentUserId(): void {
-    const uid = this.authService.currentUser()?._id;
-    if (uid) this.currentUserId.set(uid);
-  }
-
   ngOnInit() {
-    this.updateCurrentUserId();
     this.load();
 
     // Arriving from a "friend request" notification tap → flash + prompt accept.

@@ -186,6 +186,29 @@ export class PushService {
         return;
       }
 
+      // Create the Android notification channel the backend targets.
+      // Without this, Android 8+ has no 'remindus_default' channel and pushes
+      // sent with that channelId are dropped or degraded.
+      if (Capacitor.getPlatform() === 'android') {
+        try {
+          await PushNotifications.createChannel({
+            id:          'remindus_default',
+            name:        'Reminders & Messages',
+            description: 'Reminders, chat messages and friend activity',
+            importance:  5,           // IMPORTANCE_HIGH → heads-up + sound
+            visibility:  1,           // VISIBILITY_PUBLIC
+            sound:       'default',
+            vibration:   true,
+            lights:      true,
+          });
+          pushLogger.log('✅ Notification channel "remindus_default" created');
+        } catch (chErr) {
+          pushLogger.log('❌ createChannel failed', {
+            message: chErr instanceof Error ? chErr.message : String(chErr),
+          });
+        }
+      }
+
       // Register with FCM — fires the `registration` listener above with the token.
       pushLogger.log('📡 Calling PushNotifications.register()...');
       await PushNotifications.register();

@@ -59,7 +59,8 @@ export class AppComponent implements OnInit {
         this.chatService.reset();
         this.badgeService.clear();
       }
-    });
+    // reset() writes signals — allow it inside this effect (NG0600 otherwise)
+    }, { allowSignalWrites: true });
 
     // Mirror pending friend-requests + unread chat messages onto the app-icon badge.
     effect(() => {
