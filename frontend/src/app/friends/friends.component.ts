@@ -37,9 +37,9 @@ import { ShareService } from '../core/services/share.service';
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar>
-        <div class="friends-header-row">
-          <div class="page-title">Friends</div>
-          <button class="btn-add" (click)="openAddSheet()">
+        <div class="friends-header-row" [class.pg-in]="pageIn()">
+          <div class="page-title a-fd">Friends</div>
+          <button class="btn-add a-fd rm-press" [style.--i]="1" (click)="openAddSheet()">
             <ion-icon name="add-outline"></ion-icon>
             Add
           </button>
@@ -47,28 +47,28 @@ import { ShareService } from '../core/services/share.service';
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="friends-content">
+    <ion-content class="friends-content" [class.pg-in]="pageIn()">
       <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
 
       <!-- Your Ref ID -->
-      <div class="refid-card">
+      <div class="refid-card a-fu" [style.--i]="1">
         <div class="refid-left">
           <div class="refid-label">Your Ref ID</div>
           <div class="refid-value">{{ myRefId() || '••••••••' }}</div>
         </div>
-        <button class="refid-copy" (click)="copyMyCode()" [disabled]="!myRefId()" title="Copy">
+        <button class="refid-copy rm-press" (click)="copyMyCode()" [disabled]="!myRefId()" title="Copy">
           <ion-icon name="copy-outline"></ion-icon>
         </button>
       </div>
 
       <!-- Requests -->
       @if (pendingRequests().length > 0) {
-        <div class="section-label">Requests</div>
+        <div class="section-label a-fu" [style.--i]="2">Requests</div>
         <div class="req-list">
           @for (req of pendingRequests(); track req._id) {
-            <div class="req-row" [class.highlight]="highlightId() === req._id">
+            <div class="req-row a-fu" [style.--i]="$index + 3" [class.highlight]="highlightId() === req._id">
               <div class="row-avatar" [style.background]="avatarColor(req.name)">
                 @if (req.avatar) {
                   <img [src]="req.avatar" [alt]="req.name" />
@@ -80,10 +80,10 @@ import { ShareService } from '../core/services/share.service';
                 <div class="req-name">{{ req.name }}</div>
                 <div class="req-sub">wants to connect</div>
               </div>
-              <button class="req-accept" (click)="accept(req._id)" title="Accept">
+              <button class="req-accept rm-press" (click)="accept(req._id)" title="Accept">
                 <ion-icon name="checkmark-outline"></ion-icon>
               </button>
-              <button class="req-decline" (click)="reject(req._id)" title="Decline">
+              <button class="req-decline rm-press" (click)="reject(req._id)" title="Decline">
                 <ion-icon name="close-outline"></ion-icon>
               </button>
             </div>
@@ -92,7 +92,7 @@ import { ShareService } from '../core/services/share.service';
       }
 
       <!-- All friends -->
-      <div class="section-label">All Friends</div>
+      <div class="section-label a-fu" [style.--i]="3">All Friends</div>
 
       @if (isLoading()) {
         @for (i of [1,2,3]; track i) {
@@ -105,7 +105,7 @@ import { ShareService } from '../core/services/share.service';
           </div>
         }
       } @else if (friends().length === 0) {
-        <div class="empty-state">
+        <div class="empty-state a-fu" [style.--i]="3">
           <div class="empty-emoji">👥</div>
           <h3>No friends yet</h3>
           <p>Add a friend by their Ref ID to hold each other accountable.</p>
@@ -117,7 +117,7 @@ import { ShareService } from '../core/services/share.service';
       } @else {
         <div class="friend-list">
           @for (friend of friends(); track friend._id) {
-            <div class="friend-entry">
+            <div class="friend-entry a-fu" [style.--i]="($index > 6 ? 6 : $index) + 4">
               <div class="friend-row" (click)="openChat(friend)">
                 <div class="row-avatar" [style.background]="avatarColor(friend.name)">
                   @if (friend.avatar) {
@@ -349,7 +349,7 @@ import { ShareService } from '../core/services/share.service';
     .row-avatar{position:relative;width:48px;height:48px;border-radius:50%;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
     .row-avatar img{width:100%;height:100%;object-fit:cover}
     .row-dot{position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--rm-card);background:var(--rm-border)}
-    .row-dot.online{background:#10B981}
+    .row-dot.online{background:#10B981;animation:rmDotPulse 2.4s ease-out infinite}
 
     /* Requests */
     .req-list{padding:0 8px}
@@ -364,8 +364,8 @@ import { ShareService } from '../core/services/share.service';
 
     /* Friend rows */
     .friend-list{padding:0 8px 96px}
-    .friend-row{display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;border-radius:14px}
-    .friend-row:active{background:var(--rm-surface)}
+    .friend-row{display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;border-radius:14px;transition:background .2s,transform .2s var(--rm-ease-spring)}
+    .friend-row:active{background:var(--rm-surface);transform:scale(.985)}
     .friend-info{flex:1;min-width:0}
     .friend-name{font-size:16px;font-weight:700;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .friend-status{font-size:13px;color:var(--rm-text-muted);margin-top:1px}
@@ -376,7 +376,7 @@ import { ShareService } from '../core/services/share.service';
     .row-icon.green{background:rgba(16,185,129,.12);color:#0f9d63}
     .row-end{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
     .row-time{font-size:11px;color:var(--rm-text-muted);white-space:nowrap}
-    .row-badge{min-width:20px;height:20px;padding:0 6px;background:var(--rm-green);color:#fff;border-radius:10px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+    .row-badge{min-width:20px;height:20px;padding:0 6px;background:var(--rm-green);color:#fff;border-radius:10px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:rmBadgePop .35s var(--rm-ease-spring)}
 
     /* Skeleton */
     .friend-row-skel{display:flex;align-items:center;gap:12px;padding:12px 20px}
@@ -430,9 +430,9 @@ import { ShareService } from '../core/services/share.service';
     .btn-remove-friend ion-icon{font-size:16px}
 
     /* Add-friend sheet */
-    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900;animation:fade .2s ease}
+    .sheet-backdrop{position:fixed;inset:0;background:rgba(15,15,26,.45);backdrop-filter:blur(2px);z-index:900;animation:fade .25s ease}
     @keyframes fade{from{opacity:0}to{opacity:1}}
-    .add-sheet{position:fixed;left:0;right:0;bottom:0;z-index:901;background:var(--rm-card);border-radius:24px 24px 0 0;padding:14px 20px calc(env(safe-area-inset-bottom) + 22px);box-shadow:0 -8px 30px rgba(0,0,0,.18);animation:sheetUp .25s ease}
+    .add-sheet{position:fixed;left:0;right:0;bottom:0;z-index:901;background:var(--rm-card);border-radius:24px 24px 0 0;padding:14px 20px calc(env(safe-area-inset-bottom) + 22px);box-shadow:0 -8px 30px rgba(0,0,0,.18);animation:sheetUp .4s var(--rm-ease-out)}
     @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     .sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--rm-border);margin:0 auto 16px}
     .sheet-title{font-size:20px;font-weight:800;color:var(--rm-text-primary)}
