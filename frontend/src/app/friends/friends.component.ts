@@ -445,8 +445,10 @@ import { ShareService } from '../core/services/share.service';
     .sheet-send:disabled{opacity:.5}
 
     /* Chat overlay */
-    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn .22s ease}
-    @keyframes chatSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn .32s var(--rm-ease-out)}
+    @keyframes chatSlideIn{from{transform:translateX(100%);opacity:.6}to{transform:translateX(0);opacity:1}}
+    .bubble{animation:bubbleIn .28s var(--rm-ease-spring) backwards}
+    @keyframes bubbleIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
     .chat-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:var(--rm-card);box-shadow:0 1px 6px rgba(0,0,0,.05);flex-shrink:0}
     .chat-back{width:36px;height:36px;border:none;background:transparent;color:var(--rm-text-primary);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
     .chat-head-avatar{position:relative;width:42px;height:42px;border-radius:50%;color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -499,6 +501,19 @@ export class FriendsComponent implements OnInit, OnDestroy {
   isLoading       = signal(true);
   friends         = signal<Friend[]>([]);
   pendingRequests = signal<PendingRequest[]>([]);
+
+  // Replays entrance animations on every tab visit (see .pg-in in global.scss)
+  readonly pageIn = signal(true);
+
+  ionViewWillEnter(): void {
+    this.pageIn.set(true);
+    this.initializeSocketListeners();
+  }
+  ionViewDidLeave(): void {
+    this.pageIn.set(false);
+    this.socketSub?.unsubscribe();
+    this.socketSub2?.unsubscribe();
+  }
 
   // Add-by-code sheet
   showAddPanel  = signal(false);
@@ -575,6 +590,10 @@ export class FriendsComponent implements OnInit, OnDestroy {
       }
     });
 
+    this.initializeSocketListeners();
+  }
+
+  private initializeSocketListeners(): void {
     // Reload when a new friend request arrives while this tab is open
     this.socketSub = this.socketService.on<{ type: string }>('notification:new').pipe(
       filter(n => n.type === 'friend_request' || n.type === 'friend_accepted')
@@ -597,9 +616,9 @@ export class FriendsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.querySub?.unsubscribe();
     this.socketSub?.unsubscribe();
     this.socketSub2?.unsubscribe();
-    this.querySub?.unsubscribe();
   }
 
   private load() {
