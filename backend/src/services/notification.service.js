@@ -16,6 +16,15 @@ const firebaseReady = process.env.FIREBASE_PROJECT_ID &&
                       process.env.FIREBASE_PRIVATE_KEY;
 if (firebaseReady) {
   try {
+    // Fail fast on truncated env values (Render/Railway paste accidents) so the
+    // health endpoint reports fcmActive:false instead of send() failing later.
+    if (!process.env.FIREBASE_CLIENT_EMAIL.endsWith('.iam.gserviceaccount.com')) {
+      throw new Error(`FIREBASE_CLIENT_EMAIL looks truncated: "${process.env.FIREBASE_CLIENT_EMAIL.slice(0, 20)}…"`);
+    }
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    if (!privateKey.includes('BEGIN PRIVATE KEY') || !privateKey.includes('END PRIVATE KEY')) {
+      throw new Error('FIREBASE_PRIVATE_KEY is malformed (missing BEGIN/END markers)');
+    }
     firebaseAdmin = require('firebase-admin');
     if (!firebaseAdmin.apps.length) {
       firebaseAdmin.initializeApp({
@@ -23,11 +32,11 @@ if (firebaseReady) {
           projectId:   process.env.FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           // Railway env vars strip newlines — restore them
-          privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          privateKey,
         }),
       });
     }
-    logger.info('Firebase Admin SDK initialised.');
+    logger.info(`Firebase Admin SDK initialised for project ${process.env.FIREBASE_PROJECT_ID}.`);
   } catch (err) {
     firebaseAdmin = null;
     logger.warn('Firebase Admin init failed — FCM push disabled:', err.message);
@@ -35,6 +44,9 @@ if (firebaseReady) {
 } else {
   logger.warn('Firebase env vars not set — FCM push notifications disabled.');
 }
+
+/** True when the FCM pipeline is usable (reported by /api/health). */
+exports.isFcmActive = () => !!firebaseAdmin;
 
 // ── Configure web-push (only if valid VAPID keys are present) ────────────
 const vapidReady = process.env.VAPID_PUBLIC_KEY &&
@@ -164,6 +176,8 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
     } catch (err) {
       logger.warn(`[FCM] Send failed for user ${userId}:`, err.message);
     }
+  } else {
+    logger.warn(`[FCM] "${type}" push skipped for ${userId} — Firebase not initialised on this deployment`);
   }
 
   return notif;
@@ -176,11 +190,20 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
  * list stays clean. Gated on the recipient's notifTypes.chat switch.
  */
 exports.pushChatMessage = async ({ recipientId, senderName, text, senderId }) => {
-  if (!firebaseAdmin) return;
+  if (!firebaseAdmin) {
+    logger.warn(`[FCM] Chat push skipped for ${recipientId} — Firebase not initialised on this deployment`);
+    return;
+  }
 
   const user = await User.findById(recipientId).select('fcmToken notifTypes').lean();
-  if (!user?.fcmToken) return;
-  if (user.notifTypes && user.notifTypes.chat === false) return;
+  if (!user?.fcmToken) {
+    logger.warn(`[FCM] Chat push skipped for ${recipientId} — no fcmToken stored`);
+    return;
+  }
+  if (user.notifTypes && user.notifTypes.chat === false) {
+    logger.info(`[FCM] Chat push skipped for ${recipientId} — chat notifications off`);
+    return;
+  }
 
   try {
     await firebaseAdmin.messaging().send({

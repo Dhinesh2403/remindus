@@ -116,6 +116,9 @@ app.get('/api/health', (_req, res) => {
     success: true,
     env:     process.env.NODE_ENV,
     uptime:  process.uptime(),
+    // FCM readiness — false means Firebase env vars are missing/invalid on
+    // this deployment, so pushes are silently skipped while sockets still work.
+    fcmActive: require('./services/notification.service').isFcmActive(),
     timestamp: new Date().toISOString(),
   });
 });
