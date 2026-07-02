@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { AuthService }    from './core/services/auth.service';
 import { ThemeService }   from './core/services/theme.service';
 import { PushService }    from './core/services/push.service';
+import { NotificationService } from './core/services/notification.service';
 import { FriendService }  from './core/services/friend.service';
 import { ChatService }    from './core/services/chat.service';
 import { BadgeService }   from './core/services/badge.service';
@@ -21,18 +22,19 @@ import { ConnectivityService } from './core/services/connectivity.service';
   template:    `<ion-app><ion-router-outlet></ion-router-outlet></ion-app>`,
 })
 export class AppComponent implements OnInit {
-  private authService   = inject(AuthService);
-  private themeService  = inject(ThemeService);
-  private pushService   = inject(PushService);
-  private friendService = inject(FriendService);
-  private chatService   = inject(ChatService);
-  private badgeService  = inject(BadgeService);
-  private logger        = inject(LoggerService);
-  private updateService = inject(UpdateService);
-  private ratingService = inject(RatingService);
-  private connectivity  = inject(ConnectivityService);
-  private router        = inject(Router);
-  private alertCtrl     = inject(AlertController);
+  private authService      = inject(AuthService);
+  private themeService     = inject(ThemeService);
+  private pushService      = inject(PushService);
+  private notificationService = inject(NotificationService);
+  private friendService    = inject(FriendService);
+  private chatService      = inject(ChatService);
+  private badgeService     = inject(BadgeService);
+  private logger           = inject(LoggerService);
+  private updateService    = inject(UpdateService);
+  private ratingService    = inject(RatingService);
+  private connectivity     = inject(ConnectivityService);
+  private router           = inject(Router);
+  private alertCtrl        = inject(AlertController);
 
   private pushInitialised = false;
   private ratingAsked = false;
