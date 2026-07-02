@@ -1,5 +1,5 @@
 // src/app/settings/settings.component.ts
-import { Component, inject, OnInit, signal, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild, ElementRef, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -16,6 +16,7 @@ import {
   copyOutline, shareSocialOutline, notificationsOffOutline,
   alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
   sparklesOutline, informationCircleOutline, cloudDownloadOutline,
+  bugOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../core/services/auth.service';
 import { ThemeService } from '../core/services/theme.service';
@@ -23,6 +24,7 @@ import { ShareService } from '../core/services/share.service';
 import { RatingService } from '../core/services/rating.service';
 import { UpdateService } from '../core/services/update.service';
 import { AppVersionService } from '../core/services/app-version.service';
+import { environment } from '../../environments/environment';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -318,11 +320,47 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
       </div>
 
+      <!-- Debug Section (tap version 5x to show) -->
+      @if (showDebugPanel()) {
+        <div class="settings-section debug-section a-fu" [style.--i]="8">
+          <div class="section-label">
+            <ion-icon name="bug-outline"></ion-icon>
+            Debug Info
+          </div>
+
+          <div class="debug-item">
+            <div class="debug-label">FCM Token</div>
+            <div class="debug-value">{{ fcmToken() || 'Not received yet' }}</div>
+            <button class="debug-btn" (click)="copyFcmToken()">Copy</button>
+          </div>
+
+          <div class="debug-item">
+            <div class="debug-label">Token Synced</div>
+            <div class="debug-value">{{ fcmTokenSynced() ? '✅ Yes' : '❌ No' }}</div>
+          </div>
+
+          <div class="debug-item">
+            <div class="debug-label">Environment</div>
+            <div class="debug-value">{{ environment.apiUrl }}</div>
+          </div>
+
+          <div class="debug-item">
+            <div class="debug-label">Logs ({{ fcmLogs().length }})</div>
+            <div class="debug-logs">
+              @for (log of fcmLogs().slice(-20); track $index) {
+                <div class="debug-log-line">{{ log }}</div>
+              }
+            </div>
+            <button class="debug-btn" (click)="clearFcmLogs()">Clear Logs</button>
+          </div>
+        </div>
+      }
+
       <!-- Sign out (design: big pale-red button) -->
-      <button class="signout-btn a-fu rm-press" [style.--i]="8" (click)="logout()">Sign out</button>
+      <button class="signout-btn a-fu rm-press" [style.--i]="9" (click)="logout()">Sign out</button>
 
       <!-- Danger zone -->
-      <div class="settings-section danger-section a-fu" [style.--i]="9">
+      <div class="settings-section danger-section a-fu" [style.--i]="10">
         <div class="settings-row" (click)="deleteAccount()">
           <div class="row-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
             <ion-icon name="trash-outline"></ion-icon>
@@ -336,7 +374,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- App version -->
-      <div class="app-version a-fu" [style.--i]="10">Remind · Version {{ appVersionLabel() }}</div>
+      <div class="app-version a-fu" [style.--i]="11" (click)="incrementVersionTaps()">Remind · Version {{ appVersionLabel() }}</div>
       <div style="height:24px"></div>
 
     </ion-content>
@@ -436,6 +474,18 @@ type ThemeMode = 'light' | 'dark' | 'system';
     /* Rows: subtle press feedback */
     .settings-row { transition: background .2s; }
     .settings-row:active { background: var(--rm-surface); }
+
+    /* Debug section */
+    .debug-section { background: rgba(239,68,68,0.06) !important; border: 1px solid rgba(239,68,68,0.2) !important; }
+    .debug-item { padding: 12px 16px; border-bottom: 1px solid var(--rm-border); }
+    .debug-item:last-child { border-bottom: none; }
+    .debug-label { font-size: 11px; font-weight: 700; color: var(--rm-text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .debug-value { font-size: 12px; color: var(--rm-text-primary); word-break: break-all; font-family: monospace; }
+    .debug-logs { background: var(--rm-bg); border-radius: 8px; padding: 8px; margin: 8px 0; max-height: 200px; overflow-y: auto; }
+    .debug-log-line { font-size: 10px; color: var(--rm-text-secondary); font-family: monospace; line-height: 1.3; margin-bottom: 2px; }
+    .debug-btn { padding: 6px 10px; background: var(--rm-purple); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 6px; font-family: inherit; }
+    .app-version { cursor: pointer; transition: opacity .2s; }
+    .app-version:active { opacity: 0.7; }
   `],
 })
 export class SettingsComponent implements OnInit {
@@ -454,6 +504,14 @@ export class SettingsComponent implements OnInit {
 
   ionViewWillEnter(): void { this.pageIn.set(true); }
   ionViewDidLeave(): void  { this.pageIn.set(false); }
+
+  // Debug panel
+  private versionTaps = signal(0);
+  readonly showDebugPanel = computed(() => this.versionTaps() >= 5);
+  readonly fcmToken = signal<string>('');
+  readonly fcmTokenSynced = signal<boolean>(false);
+  readonly fcmLogs = signal<string[]>([]);
+  readonly environment = environment;
 
   @ViewChild('photoInput') photoInput!: ElementRef<HTMLInputElement>;
 
@@ -476,6 +534,7 @@ export class SettingsComponent implements OnInit {
       copyOutline, shareSocialOutline, notificationsOffOutline,
       alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
       sparklesOutline, informationCircleOutline, cloudDownloadOutline,
+      bugOutline,
     });
   }
 
@@ -678,4 +737,39 @@ export class SettingsComponent implements OnInit {
       await t.present();
     }
   }
+
+  // ─── Debug Panel ──────────────────────────────────────────────────────────
+  incrementVersionTaps() {
+    this.versionTaps.update(v => v + 1);
+    if (this.versionTaps() === 5) this.refreshDebugInfo();
+  }
+
+  private refreshDebugInfo() {
+    this.fcmToken.set(localStorage.getItem('rm_fcm_token') || '');
+    this.fcmTokenSynced.set(localStorage.getItem('rm_fcm_token_synced') === 'true');
+    try {
+      const logs = JSON.parse(localStorage.getItem('rm_push_logs') || '[]');
+      this.fcmLogs.set(logs);
+    } catch {
+      this.fcmLogs.set([]);
+    }
+  }
+
+  copyFcmToken() {
+    const token = this.fcmToken();
+    if (!token) {
+      this.showToast('No FCM token available', 'danger');
+      return;
+    }
+    navigator.clipboard.writeText(token).then(() => {
+      this.showToast('FCM token copied', 'success');
+    });
+  }
+
+  clearFcmLogs() {
+    localStorage.removeItem('rm_push_logs');
+    this.fcmLogs.set([]);
+    this.showToast('Logs cleared', 'success');
+  }
+}
 }
