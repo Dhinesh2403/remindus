@@ -87,6 +87,8 @@ export class ChatService {
       .subscribe(({ online }) => this._online.set(new Set(online)));
 
     this.loadConversations();
+    // Request initial presence state
+    this.socket.emit('presence:get', {});
   }
 
   /** Reset on logout. */
