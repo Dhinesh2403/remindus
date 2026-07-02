@@ -1,6 +1,7 @@
 // src/app/settings/settings.component.ts
 import { Component, inject, OnInit, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import {
   IonContent, IonHeader, IonToolbar, IonIcon, IonToggle,
   AlertController, ToastController,
@@ -35,23 +36,19 @@ type ThemeMode = 'light' | 'dark' | 'system';
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar>
-        <div class="settings-header">
-          <div class="settings-title">Settings</div>
-          <div class="settings-sub">Customize your Remindus experience</div>
+        <div class="settings-header" [class.pg-in]="pageIn()">
+          <div class="settings-title a-fd">Settings</div>
+          <div class="settings-sub a-fd" [style.--i]="1">Customize your Remind experience</div>
         </div>
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="settings-content">
+    <ion-content class="settings-content" [class.pg-in]="pageIn()">
 
       <!-- Profile section -->
-      <div class="settings-section">
-        <div class="section-label">
-          <ion-icon name="person-outline"></ion-icon>
-          Profile
-        </div>
-        <div class="profile-row">
-          <div class="profile-avatar" (click)="pickPhoto()">
+      <div class="settings-section a-fu" [style.--i]="1">
+        <div class="profile-row" (click)="goToProfile()">
+          <div class="profile-avatar" (click)="pickPhoto(); $event.stopPropagation()">
             @if (user()?.avatar) {
               <img [src]="user()?.avatar" [alt]="user()?.name" class="avatar-img" />
             } @else {
@@ -69,6 +66,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
             <div class="profile-name">{{ user()?.name ?? 'Loading...' }}</div>
             <div class="profile-email">{{ user()?.email }}</div>
           </div>
+          <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
         </div>
         <input #photoInput type="file" accept="image/*" hidden (change)="onPhotoSelected($event)" />
 
@@ -81,36 +79,43 @@ type ThemeMode = 'light' | 'dark' | 'system';
             <div class="row-title">Your Friend Code</div>
             <div class="row-code">{{ user()?.refId ?? '••••••••' }}</div>
           </div>
-          <button class="code-btn" (click)="copyCode()" [disabled]="!user()?.refId" title="Copy">
+          <button class="code-btn rm-press" (click)="copyCode()" [disabled]="!user()?.refId" title="Copy">
             <ion-icon name="copy-outline"></ion-icon>
           </button>
-          <button class="code-btn" (click)="shareCode()" [disabled]="!user()?.refId" title="Share">
+          <button class="code-btn rm-press" (click)="shareCode()" [disabled]="!user()?.refId" title="Share">
             <ion-icon name="share-social-outline"></ion-icon>
           </button>
         </div>
+      </div>
 
-        @if (user()?.isPremium) {
-          <div class="premium-banner">
-            <span>⭐</span>
-            <span>Premium Member</span>
+      <!-- Premium card (design: crown + Upgrade Now) -->
+      <div class="settings-section premium-card a-fu" [style.--i]="2" (click)="goToPremium()">
+        <div class="premium-crown">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-1.6 10H4.6L3 8z" fill="#F59E0B" stroke="#D97706" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="premium-info">
+          <div class="premium-title">Remind Premium</div>
+          <div class="premium-sub">
+            @if (user()?.isPremium) { You're a Premium member ⭐ }
+            @else { Unlimited lists, themes & backup }
           </div>
-        } @else {
-          <div class="upgrade-banner" (click)="goToPremium()">
-            <span>✨ Upgrade to Premium</span>
-            <span class="upgrade-arrow">→</span>
-          </div>
+        </div>
+        @if (!user()?.isPremium) {
+          <button class="premium-cta rm-press">Upgrade Now</button>
         }
       </div>
 
       <!-- Appearance -->
-      <div class="settings-section">
+      <div class="settings-section a-fu" [style.--i]="3">
         <div class="section-label">
           <ion-icon name="color-palette-outline"></ion-icon>
           Appearance
         </div>
         <div class="theme-options">
           <button
-            class="theme-btn"
+            class="theme-btn rm-press"
             [class.active]="activeTheme() === 'light'"
             (click)="setTheme('light')"
           >
@@ -118,7 +123,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
             Light
           </button>
           <button
-            class="theme-btn"
+            class="theme-btn rm-press"
             [class.active]="activeTheme() === 'dark'"
             (click)="setTheme('dark')"
           >
@@ -126,7 +131,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
             Dark
           </button>
           <button
-            class="theme-btn"
+            class="theme-btn rm-press"
             [class.active]="activeTheme() === 'system'"
             (click)="setTheme('system')"
           >
@@ -137,7 +142,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- Notification preferences -->
-      <div class="settings-section">
+      <div class="settings-section a-fu" [style.--i]="4">
         <div class="section-label">
           <ion-icon name="notifications-outline"></ion-icon>
           Notification Preferences
@@ -194,7 +199,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- Notification types — silence whole categories -->
-      <div class="settings-section">
+      <div class="settings-section a-fu" [style.--i]="5">
         <div class="section-label">
           <ion-icon name="notifications-off-outline"></ion-icon>
           What You Get Notified About
@@ -250,7 +255,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- Privacy & Security -->
-      <div class="settings-section">
+      <div class="settings-section a-fu" [style.--i]="6">
         <div class="section-label">
           <ion-icon name="shield-outline"></ion-icon>
           Privacy & Security
@@ -284,7 +289,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- About -->
-      <div class="settings-section">
+      <div class="settings-section a-fu" [style.--i]="7">
         <div class="section-label">
           <ion-icon name="information-circle-outline"></ion-icon>
           About
@@ -295,7 +300,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
             <ion-icon name="star-outline"></ion-icon>
           </div>
           <div class="row-text">
-            <div class="row-title">Rate Remindus</div>
+            <div class="row-title">Rate Remind</div>
             <div class="row-sub">Enjoying the app? Leave a review</div>
           </div>
           <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
@@ -313,18 +318,11 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
       </div>
 
-      <!-- Danger zone -->
-      <div class="settings-section danger-section">
-        <div class="settings-row" (click)="logout()">
-          <div class="row-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
-            <ion-icon name="log-out-outline"></ion-icon>
-          </div>
-          <div class="row-text">
-            <div class="row-title" style="color:#EF4444">Sign Out</div>
-          </div>
-          <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
-        </div>
+      <!-- Sign out (design: big pale-red button) -->
+      <button class="signout-btn a-fu rm-press" [style.--i]="8" (click)="logout()">Sign out</button>
 
+      <!-- Danger zone -->
+      <div class="settings-section danger-section a-fu" [style.--i]="9">
         <div class="settings-row" (click)="deleteAccount()">
           <div class="row-icon" style="background:rgba(239,68,68,0.12);color:#EF4444">
             <ion-icon name="trash-outline"></ion-icon>
@@ -338,7 +336,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- App version -->
-      <div class="app-version">Remindus v{{ appVersionLabel() }}</div>
+      <div class="app-version a-fu" [style.--i]="10">Remind · Version {{ appVersionLabel() }}</div>
       <div style="height:24px"></div>
 
     </ion-content>
@@ -371,8 +369,22 @@ type ThemeMode = 'light' | 'dark' | 'system';
     .profile-info { flex: 1; }
     .profile-name { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); }
     .profile-email { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; }
-    .premium-banner { display: flex; align-items: center; gap: 8px; padding: 10px 16px 14px; font-size: 13px; font-weight: 700; color: #D97706; }
-    .upgrade-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 14px; font-size: 13px; font-weight: 700; color: var(--rm-purple); cursor: pointer; background: var(--rm-purple-light); border-top: 1px solid var(--rm-border); }
+    /* Premium card (design: crown squircle + gold CTA) */
+    .premium-card { display: flex; align-items: center; gap: 12px; padding: 16px; cursor: pointer; }
+    .premium-crown {
+      width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0;
+      background: rgba(245,158,11,0.14);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .premium-info { flex: 1; min-width: 0; }
+    .premium-title { font-size: 15px; font-weight: 800; color: var(--rm-text-primary); }
+    .premium-sub { font-size: 12px; color: var(--rm-text-muted); margin-top: 2px; }
+    .premium-cta {
+      flex-shrink: 0; padding: 9px 14px;
+      background: transparent; color: #D97706;
+      border: 1.5px solid #F59E0B; border-radius: 12px;
+      font-size: 12.5px; font-weight: 800; cursor: pointer; font-family: inherit;
+    }
 
     /* Appearance */
     .theme-options { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 8px 16px 16px; }
@@ -389,22 +401,41 @@ type ThemeMode = 'light' | 'dark' | 'system';
     .row-sub { font-size: 12px; color: var(--rm-text-muted); margin-top: 1px; }
     .chevron { color: var(--rm-text-muted); font-size: 16px; }
 
-    /* Toggle */
-    .toggle { width: 46px; height: 26px; border-radius: 13px; border: none; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; background: #D1D5DB; }
-    .toggle::after { content: ''; width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: left .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+    /* Toggle — springy knob with iOS-style stretch while pressed */
+    .toggle { width: 46px; height: 26px; border-radius: 13px; border: none; cursor: pointer; position: relative; transition: background 0.25s; flex-shrink: 0; background: #D1D5DB; }
+    .toggle::after {
+      content: ''; width: 20px; height: 20px; background: white; border-radius: 10px;
+      position: absolute; top: 3px; left: 3px;
+      transition: left .3s var(--rm-ease-spring), width .15s ease;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .toggle:active:not(:disabled)::after { width: 24px; }
     .toggle.toggle-on { background: var(--rm-purple); }
     .toggle.toggle-on::after { left: 23px; }
+    .toggle.toggle-on:active:not(:disabled)::after { left: 19px; }
     .toggle:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Premium row */
     .premium-row { background: rgba(22,163,74,0.08); }
     .premium-badge { padding: 4px 10px; background: #F59E0B; color: white; border-radius: 20px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 
+    /* Sign out (design: big pale-red button) */
+    .signout-btn {
+      display: block; width: calc(100% - 32px); margin: 16px 16px 0;
+      padding: 15px; border: none; border-radius: 16px;
+      background: rgba(239,68,68,0.10); color: #EF4444;
+      font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
+    }
+
     /* Danger */
     .danger-section { margin-top: 12px; }
 
     /* App version */
     .app-version { text-align: center; font-size: 12px; color: var(--rm-text-muted); padding: 16px; }
+
+    /* Rows: subtle press feedback */
+    .settings-row { transition: background .2s; }
+    .settings-row:active { background: var(--rm-surface); }
   `],
 })
 export class SettingsComponent implements OnInit {
@@ -416,6 +447,13 @@ export class SettingsComponent implements OnInit {
   private appVersion    = inject(AppVersionService);
   private alertCtrl   = inject(AlertController);
   private toastCtrl   = inject(ToastController);
+  private router      = inject(Router);
+
+  // Replays entrance animations on every tab visit (see .pg-in in global.scss)
+  readonly pageIn = signal(true);
+
+  ionViewWillEnter(): void { this.pageIn.set(true); }
+  ionViewDidLeave(): void  { this.pageIn.set(false); }
 
   @ViewChild('photoInput') photoInput!: ElementRef<HTMLInputElement>;
 
@@ -545,8 +583,11 @@ export class SettingsComponent implements OnInit {
   }
 
   goToPremium() {
-    // Navigate to premium upgrade
-    console.log('Go to premium');
+    this.router.navigate(['/app/premium']);
+  }
+
+  goToProfile() {
+    this.router.navigate(['/app/settings/profile']);
   }
 
   async changePassword() {

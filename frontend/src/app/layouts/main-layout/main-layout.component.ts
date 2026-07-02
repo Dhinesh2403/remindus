@@ -80,13 +80,25 @@ import { ChatService } from '../../core/services/chat.service';
       --color-selected: var(--rm-purple);
       --ripple-color: transparent;
     }
-    ion-tab-button svg { transition: stroke .18s; }
-    ion-tab-button.tab-selected svg { stroke: var(--rm-purple); }
+    ion-tab-button svg {
+      transition: stroke .18s, transform .35s var(--rm-ease-spring, cubic-bezier(.34,1.56,.64,1));
+    }
+    ion-tab-button.tab-selected svg {
+      stroke: var(--rm-purple);
+      transform: translateY(-2px) scale(1.12);
+    }
+    ion-tab-button:active svg { transform: scale(0.85); }
     .tab-label {
       font-size: 10.5px;
       font-weight: 600;
       margin-top: 3px;
       font-family: 'DM Sans', sans-serif;
+      transition: opacity .2s, transform .35s var(--rm-ease-spring, cubic-bezier(.34,1.56,.64,1));
+      opacity: .85;
+    }
+    ion-tab-button.tab-selected .tab-label {
+      opacity: 1;
+      font-weight: 800;
     }
     ion-badge {
       position: absolute;
@@ -97,6 +109,11 @@ import { ChatService } from '../../core/services/chat.service';
       height: 17px;
       padding: 0 4px;
       border-radius: 9px;
+      animation: rmBadgePop .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      ion-tab-button svg, .tab-label { transition: none; }
+      ion-badge { animation: none; }
     }
   `],
 })
