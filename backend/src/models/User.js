@@ -29,6 +29,9 @@ const userSchema = new mongoose.Schema(
     lastActiveAt:  { type: Date, default: null },
     completedCount:{ type: Number, default: 0 },
 
+    // Presence — set when the user's last socket disconnects
+    lastSeenAt:    { type: Date, default: null },
+
     // Notification preferences — delivery channels
     notifPrefs: {
       push:      { type: Boolean, default: true },

@@ -215,6 +215,8 @@ function initSocket(httpServer) {
       const wentOffline = removeSocket(uid, socket.id);
       if (wentOffline) {
         try {
+          // Persist "last seen" so friends see it while the user is offline.
+          await User.findByIdAndUpdate(uid, { lastSeenAt: new Date() });
           const friendIds = await acceptedFriendIds(uid);
           friendIds.forEach(fid =>
             io.to(`user:${fid}`).emit('presence:update', { userId: uid, online: false })

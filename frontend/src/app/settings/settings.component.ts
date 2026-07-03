@@ -10,10 +10,10 @@ import { addIcons } from 'ionicons';
 import {
   personOutline, colorPaletteOutline, notificationsOutline,
   shieldOutline, lockClosedOutline, logOutOutline,
-  chevronForwardOutline, mailOutline, phonePortraitOutline,
-  logoWhatsapp, sunnyOutline, moonOutline, desktopOutline,
+  chevronForwardOutline, phonePortraitOutline,
+  sunnyOutline, moonOutline, desktopOutline,
   trashOutline, starOutline, cameraOutline, keyOutline,
-  copyOutline, shareSocialOutline, notificationsOffOutline,
+  copyOutline, shareSocialOutline,
   alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
   sparklesOutline, informationCircleOutline, cloudDownloadOutline,
   bugOutline,
@@ -143,28 +143,11 @@ type ThemeMode = 'light' | 'dark' | 'system';
         </div>
       </div>
 
-      <!-- Notification preferences -->
+      <!-- Notifications — delivery + which categories fire, all in one place -->
       <div class="settings-section a-fu" [style.--i]="4">
         <div class="section-label">
           <ion-icon name="notifications-outline"></ion-icon>
-          Notification Preferences
-        </div>
-
-        <div class="settings-row premium-row">
-          <div class="row-icon" style="background:rgba(59,130,246,0.12);color:#3B82F6">
-            <ion-icon name="mail-outline"></ion-icon>
-          </div>
-          <div class="row-text">
-            <div class="row-title">Email Notifications</div>
-            <div class="row-sub">Premium feature</div>
-          </div>
-          <span class="premium-badge">Premium</span>
-          <button
-            class="toggle"
-            [class.toggle-on]="notifPrefs().email && user()?.isPremium"
-            [disabled]="!user()?.isPremium"
-            (click)="user()?.isPremium && toggleNotif('email')"
-          ></button>
+          Notifications
         </div>
 
         <div class="settings-row">
@@ -180,31 +163,6 @@ type ThemeMode = 'light' | 'dark' | 'system';
             [class.toggle-on]="notifPrefs().push"
             (click)="toggleNotif('push')"
           ></button>
-        </div>
-
-        <div class="settings-row premium-row">
-          <div class="row-icon" style="background:rgba(22,163,74,0.12);color:#16A34A">
-            <ion-icon name="logo-whatsapp"></ion-icon>
-          </div>
-          <div class="row-text">
-            <div class="row-title">WhatsApp Notifications</div>
-            <div class="row-sub">Premium feature</div>
-          </div>
-          <span class="premium-badge">Premium</span>
-          <button
-            class="toggle"
-            [class.toggle-on]="notifPrefs().whatsapp && user()?.isPremium"
-            [disabled]="!user()?.isPremium"
-            (click)="user()?.isPremium && toggleNotif('whatsapp')"
-          ></button>
-        </div>
-      </div>
-
-      <!-- Notification types — silence whole categories -->
-      <div class="settings-section a-fu" [style.--i]="5">
-        <div class="section-label">
-          <ion-icon name="notifications-off-outline"></ion-icon>
-          What You Get Notified About
         </div>
 
         <div class="settings-row">
@@ -257,7 +215,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
       </div>
 
       <!-- Privacy & Security -->
-      <div class="settings-section a-fu" [style.--i]="6">
+      <div class="settings-section a-fu" [style.--i]="5">
         <div class="section-label">
           <ion-icon name="shield-outline"></ion-icon>
           Privacy & Security
@@ -273,25 +231,10 @@ type ThemeMode = 'light' | 'dark' | 'system';
           </div>
           <ion-icon name="chevron-forward-outline" class="chevron"></ion-icon>
         </div>
-
-        <div class="settings-row">
-          <div class="row-icon" style="background:rgba(245,158,11,0.12);color:#F59E0B">
-            <ion-icon name="shield-outline"></ion-icon>
-          </div>
-          <div class="row-text">
-            <div class="row-title">Two-Factor Auth</div>
-            <div class="row-sub">Extra security layer</div>
-          </div>
-          <button
-            class="toggle"
-            [class.toggle-on]="twoFAEnabled()"
-            (click)="toggle2FA()"
-          ></button>
-        </div>
       </div>
 
       <!-- About -->
-      <div class="settings-section a-fu" [style.--i]="7">
+      <div class="settings-section a-fu" [style.--i]="6">
         <div class="section-label">
           <ion-icon name="information-circle-outline"></ion-icon>
           About
@@ -322,7 +265,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
       <!-- Debug Section (tap version 5x to show) -->
       @if (showDebugPanel()) {
-        <div class="settings-section debug-section a-fu" [style.--i]="8">
+        <div class="settings-section debug-section a-fu" [style.--i]="7">
           <div class="section-label">
             <ion-icon name="bug-outline"></ion-icon>
             Debug Info
@@ -517,21 +460,20 @@ export class SettingsComponent implements OnInit {
 
   user          = this.authService.currentUser;
   activeTheme   = signal<ThemeMode>('light');
-  twoFAEnabled  = signal(false);
   uploadingPhoto = signal(false);
   appVersionLabel = signal('1.0.0');
   checkingUpdate  = signal(false);
-  notifPrefs    = signal({ email: true, push: true, sms: false, whatsapp: false });
+  notifPrefs    = signal({ push: true });
   notifTypes    = signal({ reminders: true, chat: true, friendRequests: true, other: true });
 
   constructor() {
     addIcons({
       personOutline, colorPaletteOutline, notificationsOutline,
       shieldOutline, lockClosedOutline, logOutOutline,
-      chevronForwardOutline, mailOutline, phonePortraitOutline,
-      logoWhatsapp, sunnyOutline, moonOutline, desktopOutline,
+      chevronForwardOutline, phonePortraitOutline,
+      sunnyOutline, moonOutline, desktopOutline,
       trashOutline, starOutline, cameraOutline, keyOutline,
-      copyOutline, shareSocialOutline, notificationsOffOutline,
+      copyOutline, shareSocialOutline,
       alarmOutline, chatbubbleEllipsesOutline, personAddOutline,
       sparklesOutline, informationCircleOutline, cloudDownloadOutline,
       bugOutline,
@@ -543,7 +485,7 @@ export class SettingsComponent implements OnInit {
     const saved = localStorage.getItem('rm_theme') as ThemeMode ?? 'light';
     this.activeTheme.set(saved);
     const prefs = this.user()?.notifPrefs;
-    if (prefs) this.notifPrefs.set({ email: prefs.email ?? true, push: prefs.push ?? true, sms: prefs.sms ?? false, whatsapp: prefs.whatsapp ?? false });
+    if (prefs) this.notifPrefs.set({ push: prefs.push ?? true });
     const types = this.user()?.notifTypes;
     if (types) this.notifTypes.set({
       reminders:      types.reminders ?? true,
@@ -559,7 +501,7 @@ export class SettingsComponent implements OnInit {
     localStorage.setItem('rm_theme', mode);
   }
 
-  toggleNotif(key: 'email' | 'push' | 'sms' | 'whatsapp') {
+  toggleNotif(key: 'push') {
     this.notifPrefs.update(p => ({ ...p, [key]: !p[key] }));
     this.authService.updateNotifPrefs({ notifPrefs: this.notifPrefs() }).subscribe({
       error: () => {
@@ -579,8 +521,6 @@ export class SettingsComponent implements OnInit {
       },
     });
   }
-
-  toggle2FA() { this.twoFAEnabled.update(v => !v); }
 
   pickPhoto() {
     if (this.uploadingPhoto()) return;
@@ -649,30 +589,8 @@ export class SettingsComponent implements OnInit {
     this.router.navigate(['/app/settings/profile']);
   }
 
-  async changePassword() {
-    const alert = await this.alertCtrl.create({
-      header: 'Change Password',
-      inputs: [
-        { name: 'current',  type: 'password', placeholder: 'Current password' },
-        { name: 'newPass',  type: 'password', placeholder: 'New password (min 8 chars)' },
-        { name: 'confirm',  type: 'password', placeholder: 'Confirm new password' },
-      ],
-      buttons: [
-        { text: 'Cancel', role: 'cancel' },
-        {
-          text: 'Update',
-          handler: async (data) => {
-            if (data.newPass !== data.confirm) {
-              const t = await this.toastCtrl.create({ message: 'Passwords do not match', duration: 2000, color: 'danger', position: 'top' });
-              t.present(); return false;
-            }
-            // TODO: call UserService.changePassword(data.current, data.newPass)
-            return true;
-          },
-        },
-      ],
-    });
-    await alert.present();
+  changePassword() {
+    this.router.navigate(['/app/settings/change-password']);
   }
 
   async logout() {

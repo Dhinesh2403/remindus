@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const User          = require('../models/User');
 const notifService  = require('../services/notification.service');
 const { asyncHandler, AppError } = require('../utils/helpers');
+const { duePhrase } = require('../utils/reminder-text');
 const { getIO, emitToUser } = require('../sockets');
 
 // ── GET /api/reminders ────────────────────────────────────────────────────
@@ -118,8 +119,8 @@ exports.create = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  assignedTo,
       type:    'reminder_assigned',
-      title:   'New reminder assigned',
-      message: `${req.user.name} assigned "${reminder.title}" to you`,
+      title:   `📌 New task from ${req.user.name}`,
+      message: `"${reminder.title}" — ${duePhrase(reminder)}`,
       data:    { reminderId: reminder._id },
     });
   }
@@ -222,8 +223,8 @@ exports.assign = asyncHandler(async (req, res) => {
   await notifService.createAndPush({
     userId:  friendId,
     type:    'reminder_assigned',
-    title:   'Reminder assigned to you',
-    message: `${req.user.name} assigned "${reminder.title}" to you`,
+    title:   `📌 New task from ${req.user.name}`,
+    message: `"${reminder.title}" — ${duePhrase(reminder)}`,
     data:    { reminderId: reminder._id },
   });
 

@@ -13,6 +13,9 @@ export interface Friend {
   email:        string;
   username:     string;
   avatar?:      string;
+  gender?:      'male' | 'female' | 'other' | null;
+  refId?:       string | null;
+  lastSeenAt?:  string | null;
   isOnline:     boolean;
   completedCount: number;
   sharedCount:    number;
@@ -24,6 +27,7 @@ export interface PendingRequest {
   name:   string;
   email:  string;
   avatar?: string | null;
+  gender?: 'male' | 'female' | 'other' | null;
 }
 
 export type FriendRelationship = 'none' | 'friends' | 'request_sent' | 'request_received';
@@ -42,9 +46,29 @@ export interface SharedReminder {
   time:         string;
   status:       string;
   sharedStatus: SharedStatus | null;
+  priority?:    string;
   assignedTo:   string;
   assignedBy:   string;
   userId:       string;
+  createdAt?:   string;
+}
+
+export interface SharedTask {
+  _id:        string;
+  title:      string;
+  status:     'active' | 'done';
+  dueDate:    string | null;
+  startTime:  string | null;
+  priority:   string;
+  category?:  string;
+  userId:     string;
+  assignedTo: string;
+  createdAt?: string;
+}
+
+export interface SharedActivity {
+  reminders: SharedReminder[];
+  tasks:     SharedTask[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -106,6 +130,22 @@ export class FriendService {
 
   getSharedReminders(friendId: string): Observable<{ data: SharedReminder[] }> {
     return this.http.get<{ data: SharedReminder[] }>(`${environment.apiUrl}/reminders/shared/${friendId}`);
+  }
+
+  /** Everything shared with one friend — tasks + reminders, both directions. */
+  getSharedActivity(friendId: string): Observable<SharedActivity> {
+    return this.http.post<SharedActivity>(`${this.API}/shared-activity`, { friendId });
+  }
+
+  sendTask(friendId: string, payload: { title: string; dueDate: string | null; startTime: string | null; priority: string }): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/tasks`, {
+      ...payload,
+      assignedTo: friendId,
+    });
+  }
+
+  toggleTask(taskId: string): Observable<{ data: SharedTask }> {
+    return this.http.patch<{ data: SharedTask }>(`${environment.apiUrl}/tasks/${taskId}/toggle`, {});
   }
 
   updateSharedStatus(reminderId: string, status: SharedStatus): Observable<any> {

@@ -64,27 +64,16 @@
 }
 
 // ─── Dark mode overrides ─────────────────────────────────────────────────────
-@media (prefers-color-scheme: dark) {
-  :root {
-    --rm-bg:            #0F0F1A;
-    --rm-card:          #1A1A2E;
-    --rm-surface:       #16213E;
-    --rm-text-primary:  #F9FAFB;
-    --rm-text-secondary:#9CA3AF;
-    --rm-text-muted:    #6B7280;
-    --rm-border:        #374151;
-    --rm-shadow-md:     0 4px 16px rgba(0,0,0,0.4);
-    --rm-purple-light:  rgba(61,90,241,0.2);
-    --rm-birthday-bg:   rgba(236,72,153,0.15);
-    --rm-work-bg:       rgba(245,158,11,0.15);
-    --rm-medicine-bg:   rgba(239,68,68,0.15);
-    --rm-bill-bg:       rgba(59,130,246,0.15);
-    --rm-study-bg:      rgba(16,185,129,0.15);
-    --rm-wedding-bg:    rgba(139,92,246,0.15);
-  }
-}
-
-.dark-theme {
+// Two activation paths, both required:
+//   1. `.dark-theme` class on <body> — set by ThemeService for explicit
+//      "dark" (and for "system" when the OS is dark).
+//   2. OS media query, but ONLY while the user hasn't explicitly chosen
+//      light: `body:not(.light-theme)` covers the pre-bootstrap window so a
+//      dark device doesn't flash white at launch, yet lets an explicit
+//      "light" choice win over the OS preference.
+// Never target bare `:root` inside the media query — that made the OS theme
+// override the in-app Light setting on dark devices.
+@mixin rm-dark-tokens {
   --rm-bg:            #0F0F1A;
   --rm-card:          #1A1A2E;
   --rm-surface:       #16213E;
@@ -92,6 +81,7 @@
   --rm-text-secondary:#9CA3AF;
   --rm-text-muted:    #6B7280;
   --rm-border:        #374151;
+  --rm-shadow-md:     0 4px 16px rgba(0,0,0,0.4);
   --rm-purple-light:  rgba(61,90,241,0.2);
   --rm-birthday-bg:   rgba(236,72,153,0.15);
   --rm-work-bg:       rgba(245,158,11,0.15);
@@ -100,6 +90,17 @@
   --rm-study-bg:      rgba(16,185,129,0.15);
   --rm-wedding-bg:    rgba(139,92,246,0.15);
 }
+
+@media (prefers-color-scheme: dark) {
+  body:not(.light-theme) { @include rm-dark-tokens; }
+}
+
+.dark-theme { @include rm-dark-tokens; }
+
+// Keep UA-rendered pieces (scrollbars, form controls, autofill) on the
+// user-chosen scheme instead of the OS one.
+body.light-theme { color-scheme: light; }
+body.dark-theme  { color-scheme: dark; }
 
 // ─── Ionic variable overrides ─────────────────────────────────────────────────
 :root {

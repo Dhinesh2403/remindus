@@ -19,6 +19,8 @@ const notificationSchema = new mongoose.Schema(
         'reminder_response',
         'reminder_pre_alert',
         'reminder_status_update',
+        'task_assigned',
+        'task_status_update',
         'friend_reminder_due',
         'friend_request',
         'friend_accepted',

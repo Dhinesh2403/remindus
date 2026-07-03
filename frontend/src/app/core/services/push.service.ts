@@ -7,6 +7,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { environment } from '../../../environments/environment';
 import { ChatService } from './chat.service';
+import { TokenService } from './token.service';
 
 // Persistent logging for debugging
 class PushLogger {
@@ -49,6 +50,7 @@ export class PushService {
   private http   = inject(HttpClient);
   private router = inject(Router);
   private chat   = inject(ChatService);
+  private tokens = inject(TokenService);
   private readonly API = `${environment.apiUrl}/users/me/fcm-token`;
 
   constructor() {
@@ -91,6 +93,13 @@ export class PushService {
     }
 
     try {
+      // init() runs again on every login (logout resets the guard in
+      // AppComponent). Drop any listeners from a previous session first —
+      // otherwise each login stacks another pushNotificationReceived handler
+      // and every foreground push gets mirrored twice, three times, …
+      await PushNotifications.removeAllListeners();
+      await LocalNotifications.removeAllListeners();
+
       // Attach listeners BEFORE register() — register() fires the `registration`
       // event asynchronously, and any listener added afterwards would miss the
       // token entirely (it would never reach the backend).
@@ -134,6 +143,10 @@ export class PushService {
           body: notification.body,
           data: notification.data,
         });
+        if (!this.tokens.getAccessToken()) {
+          pushLogger.log('⏭️ Push received while logged out — not shown');
+          return;
+        }
         const type = String(notification.data?.['type'] ?? '');
         if (type === 'chat_message') {
           // App is in the foreground — the user sees messages live in the UI,
@@ -214,15 +227,33 @@ export class PushService {
     }
   }
 
-  /** Navigate based on the push payload's `type` (shared by FCM + local taps). */
+  /**
+   * Navigate to the page a notification is about (shared by FCM + local taps).
+   *
+   * Convention for ALL notification types, current and future:
+   *  - the payload's `data.type` picks the destination, and the entity id in
+   *    the payload (`reminderId` / `senderId` / `friendshipId`) deep-links to
+   *    the specific record, falling back to the section list without one;
+   *  - alternatively the backend can set `data.route` to an absolute app path
+   *    (e.g. "/app/goals/123") and get deep-linking with no app update.
+   */
   private routeFromData(data: Record<string, unknown>): void {
     const type         = String(data['type'] ?? '');
-    const reminderId   = data['reminderId'];
-    const friendshipId = data['friendshipId'];
+    const reminderId   = data['reminderId'] ? String(data['reminderId']) : null;
+    const friendshipId = data['friendshipId'] ? String(data['friendshipId']) : null;
+    const senderId     = data['senderId'] ? String(data['senderId']) : null;
+    const route        = data['route'] ? String(data['route']) : null;
 
-    pushLogger.log('📱 Routing notification', { type, reminderId, friendshipId });
+    pushLogger.log('📱 Routing notification', { type, reminderId, friendshipId, senderId, route });
+
+    // Explicit backend-provided destination wins.
+    if (route && route.startsWith('/')) {
+      this.router.navigateByUrl(route);
+      return;
+    }
 
     switch (type) {
+      // Incoming request → Friends tab + auto-prompt to accept the sender.
       case 'friend_request':
         this.router.navigate(['/app/friends'],
           friendshipId ? { queryParams: { accept: friendshipId } } : undefined);
@@ -230,18 +261,19 @@ export class PushService {
       case 'friend_accepted':
         this.router.navigate(['/app/friends']);
         break;
+      // Chat → open the conversation with the sender directly.
       case 'chat_message':
-        this.router.navigate(['/app/friends']);
+        this.router.navigate(['/app/friends'],
+          senderId ? { queryParams: { chat: senderId } } : undefined);
         break;
+      // All reminder events → that reminder's detail page (list as fallback).
       case 'reminder_due':
-        this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
-        break;
       case 'reminder_assigned':
       case 'reminder_pre_alert':
       case 'friend_reminder_due':
       case 'reminder_response':
       case 'reminder_status_update':
-        this.router.navigate(['/app/reminders']);
+        this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
         break;
       default:
         this.router.navigate(['/app/home']);
@@ -273,10 +305,35 @@ export class PushService {
     }
   }
 
-  /** Call on logout to remove the token from the backend */
+  /**
+   * Call on logout — BEFORE tokens are cleared, so the PATCH below still goes
+   * out authenticated (the interceptor reads the token synchronously when the
+   * request is dispatched). Clears the token server-side, invalidates the
+   * device's FCM token, and detaches all listeners.
+   */
   async deregister(): Promise<void> {
     if (!Capacitor.isNativePlatform()) return;
-    this.http.patch(this.API, { token: null }).subscribe();
+    pushLogger.log('🚪 deregister() — logout push cleanup');
+
+    this.http.patch(this.API, { token: null }).subscribe({
+      next:  () => pushLogger.log('✅ FCM token cleared on backend'),
+      error: (e) => pushLogger.log('❌ Backend token clear failed', { status: e?.status }),
+    });
+
+    localStorage.removeItem('rm_fcm_token');
+    localStorage.removeItem('rm_fcm_token_synced');
+
+    try {
+      // Invalidates this device's FCM token entirely — even a token the server
+      // failed to forget can no longer be delivered to.
+      await PushNotifications.unregister();
+      pushLogger.log('✅ FCM unregistered (device token invalidated)');
+    } catch (err) {
+      pushLogger.log('❌ FCM unregister failed', {
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     await PushNotifications.removeAllListeners();
     await LocalNotifications.removeAllListeners();
   }

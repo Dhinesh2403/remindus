@@ -10,10 +10,11 @@ export class ThemeService {
   private _mode = signal<ThemeMode>('light');
   readonly mode = this._mode.asReadonly();
 
+  private osDark = window.matchMedia('(prefers-color-scheme: dark)');
+
   apply(mode: ThemeMode): void {
     this._mode.set(mode);
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark      = mode === 'dark' || (mode === 'system' && prefersDark);
+    const isDark = mode === 'dark' || (mode === 'system' && this.osDark.matches);
 
     document.body.classList.toggle('dark-theme',  isDark);
     document.body.classList.toggle('light-theme', !isDark);
@@ -35,5 +36,10 @@ export class ThemeService {
   init(): void {
     const saved = (localStorage.getItem('rm_theme') as ThemeMode) ?? 'light';
     this.apply(saved);
+
+    // In "system" mode, follow the device theme live (e.g. OS auto dark at night)
+    this.osDark.addEventListener('change', () => {
+      if (this._mode() === 'system') this.apply('system');
+    });
   }
 }

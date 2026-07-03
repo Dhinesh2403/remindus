@@ -11,6 +11,11 @@ router.use(authenticate);
 
 router.get('/',                                         ctrl.getFriends);
 router.get('/lookup',                                   ctrl.lookupByRefId);
+router.post('/shared-activity',
+  [body('friendId').trim().notEmpty().withMessage('friendId is required')],
+  validate,
+  ctrl.getSharedActivity
+);
 router.post('/request',
   [body('refId').trim().notEmpty().withMessage('Friend code is required')],
   validate,

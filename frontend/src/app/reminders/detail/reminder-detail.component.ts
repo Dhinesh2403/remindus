@@ -148,16 +148,6 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .meta-item { background:#F3F4F6; padding:10px 12px; border-radius:12px; font-size:13px; color:#374151; display:flex; align-items:center; gap:6px; text-transform:capitalize; }
     .meta-icon { font-size:16px; }
 
-    /* Dark mode — via OS preference */
-    @media (prefers-color-scheme: dark) {
-      .detail-card { background:#1A1A2E; box-shadow:0 1px 6px rgba(0,0,0,0.4); }
-      .detail-title { color:#F9FAFB; }
-      .detail-desc { color:#9CA3AF; }
-      .meta-item { background:#16213E; color:#D1D5DB; }
-      .from-row, .from-text { color:#9CA3AF; }
-      .friend-status-label { color:#6B7280; }
-    }
-
     .status-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; margin-top:4px; }
     .status-pending { background:rgba(59,130,246,0.12); color:#3B82F6; }
     .status-done    { background:rgba(16,185,129,0.12); color:#10B981; }
@@ -173,7 +163,8 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .friend-status-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
     .friend-status-label { font-size:12px; color:#9CA3AF; }
 
-    /* Dark mode — class toggle fallback (in case theme is forced via .dark-theme) */
+    /* Dark mode — driven solely by the .dark-theme body class (ThemeService),
+       so the in-app theme choice wins over the OS preference */
     :host-context(.dark-theme) .detail-card { background:#1A1A2E; box-shadow:0 1px 6px rgba(0,0,0,0.4); }
     :host-context(.dark-theme) .detail-title { color:#F9FAFB; }
     :host-context(.dark-theme) .detail-desc { color:#9CA3AF; }

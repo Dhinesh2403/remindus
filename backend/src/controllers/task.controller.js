@@ -2,6 +2,8 @@
 'use strict';
 
 const Task = require('../models/Task');
+const notifService = require('../services/notification.service');
+const { emitToUser } = require('../sockets');
 const { asyncHandler, AppError } = require('../utils/helpers');
 
 // ── GET /api/tasks ────────────────────────────────────────────────────────
@@ -49,6 +51,25 @@ exports.create = asyncHandler(async (req, res) => {
     subtasks:     sub,
     assignedTo:   assignedTo || null,
   });
+
+  // Assigned to a friend → real-time event + push, mirroring reminders
+  if (assignedTo) {
+    emitToUser(String(assignedTo), 'task:received', {
+      _id:      String(task._id),
+      title:    task.title,
+      dueDate:  task.dueDate,
+      priority: task.priority,
+      assignedBy: { _id: String(req.user._id), name: req.user.name, avatar: req.user.avatar },
+    });
+    await notifService.createAndPush({
+      userId:  assignedTo,
+      type:    'task_assigned',
+      title:   'New task assigned',
+      message: `${req.user.name} assigned "${task.title}" to you`,
+      data:    { taskId: String(task._id) },
+    });
+  }
+
   res.status(201).json({ success: true, data: task });
 });
 
@@ -77,11 +98,34 @@ exports.update = asyncHandler(async (req, res) => {
 });
 
 // ── PATCH /api/tasks/:id/toggle ───────────────────────────────────────────
+// Owner or assignee may toggle; the other party is notified on completion.
 exports.toggle = asyncHandler(async (req, res) => {
-  const task = await Task.findOne({ _id: req.params.id, userId: req.user._id });
+  const uid = req.user._id;
+  const task = await Task.findOne({
+    _id: req.params.id,
+    $or: [{ userId: uid }, { assignedTo: uid }],
+  });
   if (!task) throw new AppError('Task not found', 404);
   task.status = task.status === 'done' ? 'active' : 'done';
   await task.save();
+
+  if (task.assignedTo) {
+    const otherParty = String(task.userId) === String(uid) ? task.assignedTo : task.userId;
+    emitToUser(String(otherParty), 'task:sharedStatus', {
+      _id:    String(task._id),
+      status: task.status,
+    });
+    if (task.status === 'done') {
+      await notifService.createAndPush({
+        userId:  otherParty,
+        type:    'task_status_update',
+        title:   `${req.user.name} completed a shared task`,
+        message: `"${task.title}"`,
+        data:    { taskId: String(task._id), type: 'task_status_update' },
+      });
+    }
+  }
+
   res.json({ success: true, data: task });
 });
 

@@ -105,11 +105,6 @@ export const routes: Routes = [
               import('./friends/friends.component').then((m) => m.FriendsComponent),
           },
           {
-            path: ':id/chat',
-            loadComponent: () =>
-              import('./chat/chat.component').then((m) => m.ChatComponent),
-          },
-          {
             path: ':id/activity',
             loadComponent: () =>
               import('./friends/friend-activity/friend-activity.component').then((m) => m.FriendActivityComponent),
@@ -138,6 +133,11 @@ export const routes: Routes = [
             path: 'notifications',
             loadComponent: () =>
               import('./settings/notifications-settings/notifications-settings.component').then((m) => m.NotificationsSettingsComponent),
+          },
+          {
+            path: 'change-password',
+            loadComponent: () =>
+              import('./settings/change-password/change-password.component').then((m) => m.ChangePasswordComponent),
           },
           {
             path: 'help',
