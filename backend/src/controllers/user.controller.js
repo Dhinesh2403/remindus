@@ -120,3 +120,12 @@ exports.updateFcmToken = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(req.user._id, { fcmToken: token || null });
   res.json({ success: true, message: 'FCM token updated' });
 });
+
+// ── POST /api/users/me/test-push ──────────────────────────────────────────
+// Diagnostic: sends a real FCM push to the caller's own stored token and
+// returns the raw FCM outcome so failures aren't swallowed into server logs.
+exports.testPush = asyncHandler(async (req, res) => {
+  const notifService = require('../services/notification.service');
+  const result = await notifService.sendTestPush(req.user._id);
+  res.json({ success: true, result });
+});

@@ -119,6 +119,9 @@ app.get('/api/health', (_req, res) => {
     // FCM readiness — false means Firebase env vars are missing/invalid on
     // this deployment, so pushes are silently skipped while sockets still work.
     fcmActive: require('./services/notification.service').isFcmActive(),
+    // Which Firebase project this deployment's credentials belong to. Must
+    // match the app's google-services.json (remindus-24) or every send fails.
+    fcmProjectId: process.env.FIREBASE_PROJECT_ID || null,
     timestamp: new Date().toISOString(),
   });
 });
