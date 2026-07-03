@@ -91,6 +91,20 @@ export class ChatService {
     this.socket.emit('presence:get', {});
   }
 
+  /**
+   * Catch up after the app returns to the foreground (or a push arrived while
+   * the socket was down): reload conversations/unread counts, and if a chat is
+   * open, its messages too.
+   */
+  refresh(): void {
+    this.loadConversations();
+    const active = this.activeFriendId();
+    if (active) {
+      this.loadMessages(active);
+      this.markRead(active);
+    }
+  }
+
   /** Reset on logout. */
   reset(): void {
     this._messages.set({});

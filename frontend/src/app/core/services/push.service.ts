@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { environment } from '../../../environments/environment';
+import { ChatService } from './chat.service';
 
 // Persistent logging for debugging
 class PushLogger {
@@ -47,6 +48,7 @@ const pushLogger = new PushLogger();
 export class PushService {
   private http   = inject(HttpClient);
   private router = inject(Router);
+  private chat   = inject(ChatService);
   private readonly API = `${environment.apiUrl}/users/me/fcm-token`;
 
   constructor() {
@@ -132,6 +134,15 @@ export class PushService {
           body: notification.body,
           data: notification.data,
         });
+        const type = String(notification.data?.['type'] ?? '');
+        if (type === 'chat_message') {
+          // App is in the foreground — the user sees messages live in the UI,
+          // so no notification. This push means the socket was down when the
+          // server sent it, so pull the missed message(s) into the chat state.
+          pushLogger.log('💬 Chat push in foreground — refreshing chat instead of notifying');
+          this.chat.refresh();
+          return;
+        }
         this.showForegroundNotification(notification.title, notification.body, notification.data);
       });
 
