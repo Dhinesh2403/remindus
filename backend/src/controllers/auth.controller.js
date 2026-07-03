@@ -116,10 +116,13 @@ exports.refresh = asyncHandler(async (req, res) => {
 // ── POST /api/auth/logout ──────────────────────────────────────────────────
 exports.logout = asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
-  if (refreshToken && req.user) {
-    await User.findByIdAndUpdate(req.user._id, {
-      $pull: { refreshTokens: refreshToken },
-    });
+  if (req.user) {
+    // Clearing fcmToken here (not just client-side) guarantees this device
+    // stops receiving pushes after logout even if the app's own token-clear
+    // request never reaches the server.
+    const update = { $set: { fcmToken: null } };
+    if (refreshToken) update.$pull = { refreshTokens: refreshToken };
+    await User.findByIdAndUpdate(req.user._id, update);
   }
   res.json({ success: true, message: 'Logged out' });
 });

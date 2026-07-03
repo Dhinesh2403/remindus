@@ -10,27 +10,26 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { addIcons } from 'ionicons';
 import {
-  personAddOutline, personRemoveOutline, closeOutline, searchOutline,
-  addOutline, addCircleOutline, chevronDownOutline, chevronUpOutline,
-  shareSocialOutline, copyOutline, keyOutline, checkmarkCircle,
+  personAddOutline, closeOutline, addOutline, copyOutline,
   chatbubbleEllipsesOutline, arrowBackOutline, send,
   checkmarkOutline, checkmarkDoneOutline, timeOutline,
-  createOutline, cubeOutline, notificationsOutline,
+  createOutline, notificationsOutline, checkboxOutline,
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { FriendService, Friend, PendingRequest, RefIdLookup, FriendRelationship, SharedReminder, SharedStatus } from '../core/services/friend.service';
-import { TimeAmPmPipe } from '../core/pipes/time-ampm.pipe';
+import { FriendService, Friend, PendingRequest } from '../core/services/friend.service';
+import { FriendAvatarComponent } from '../core/components/friend-avatar.component';
 import { SocketService } from '../core/services/socket.service';
 import { ChatService, ChatMessage } from '../core/services/chat.service';
 import { AuthService } from '../core/services/auth.service';
 import { ShareService } from '../core/services/share.service';
+import { UiService } from '../core/services/ui.service';
 
 @Component({
   selector: 'app-friends',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, TimeAmPmPipe,
+    CommonModule, FormsModule, FriendAvatarComponent,
     IonContent, IonHeader, IonToolbar,
     IonIcon, IonRefresher, IonRefresherContent,
   ],
@@ -66,16 +65,10 @@ import { ShareService } from '../core/services/share.service';
       <!-- Requests -->
       @if (pendingRequests().length > 0) {
         <div class="section-label a-fu" [style.--i]="2">Requests</div>
-        <div class="req-list">
+        <div class="list-card a-fu" [style.--i]="2">
           @for (req of pendingRequests(); track req._id) {
-            <div class="req-row a-fu" [style.--i]="$index + 3" [class.highlight]="highlightId() === req._id">
-              <div class="row-avatar" [style.background]="avatarColor(req.name)">
-                @if (req.avatar) {
-                  <img [src]="req.avatar" [alt]="req.name" />
-                } @else {
-                  {{ getInitials(req.name) }}
-                }
-              </div>
+            <div class="req-row" [class.highlight]="highlightId() === req._id">
+              <app-friend-avatar [name]="req.name" [avatar]="req.avatar" [gender]="req.gender" [size]="46" />
               <div class="req-info">
                 <div class="req-name">{{ req.name }}</div>
                 <div class="req-sub">wants to connect</div>
@@ -95,15 +88,17 @@ import { ShareService } from '../core/services/share.service';
       <div class="section-label a-fu" [style.--i]="3">All Friends</div>
 
       @if (isLoading()) {
-        @for (i of [1,2,3]; track i) {
-          <div class="friend-row-skel">
-            <div class="skel-avatar"></div>
-            <div class="skel-lines">
-              <div class="skel-line w60"></div>
-              <div class="skel-line w30"></div>
+        <div class="list-card">
+          @for (i of [1,2,3]; track i) {
+            <div class="friend-row-skel">
+              <div class="skel-avatar"></div>
+              <div class="skel-lines">
+                <div class="skel-line w60"></div>
+                <div class="skel-line w30"></div>
+              </div>
             </div>
-          </div>
-        }
+          }
+        </div>
       } @else if (friends().length === 0) {
         <div class="empty-state a-fu" [style.--i]="3">
           <div class="empty-emoji">👥</div>
@@ -115,108 +110,35 @@ import { ShareService } from '../core/services/share.service';
           </button>
         </div>
       } @else {
-        <div class="friend-list">
+        <div class="list-card">
           @for (friend of friends(); track friend._id) {
-            <div class="friend-entry a-fu" [style.--i]="($index > 6 ? 6 : $index) + 4">
-              <div class="friend-row" (click)="openChat(friend)">
-                <div class="row-avatar" [style.background]="avatarColor(friend.name)">
-                  @if (friend.avatar) {
-                    <img [src]="friend.avatar" [alt]="friend.name" />
-                  } @else {
-                    {{ getInitials(friend.name) }}
-                  }
-                  <span class="row-dot" [class.online]="chatService.isOnline(friend._id)"></span>
-                </div>
-                <div class="friend-info">
-                  <div class="friend-name">{{ friend.name }}</div>
-                  <div class="friend-status" [class.online]="chatService.isOnline(friend._id)">
-                    {{ chatService.isOnline(friend._id) ? 'Online' : 'Offline' }}
-                  </div>
-                </div>
-                <button class="row-icon blue" title="Assign reminder"
-                  (click)="toggleReminderForm(friend._id); $event.stopPropagation()">
-                  <ion-icon name="create-outline"></ion-icon>
-                </button>
-                <button class="row-icon green" title="Shared activity"
-                  (click)="toggleShared(friend._id); $event.stopPropagation()">
-                  <ion-icon name="cube-outline"></ion-icon>
-                </button>
-                <div class="row-end">
-                  @if (lastMsgLabel(friend._id); as t) {
-                    <div class="row-time">{{ t }}</div>
-                  }
-                  @if (chatService.unreadFor(friend._id) > 0) {
-                    <span class="row-badge">{{ chatService.unreadFor(friend._id) }}</span>
-                  }
+            <div class="friend-row a-fu" [style.--i]="($index > 6 ? 6 : $index) + 4"
+              (click)="openChat(friend)">
+              <div class="avatar-wrap">
+                <app-friend-avatar [name]="friend.name" [avatar]="friend.avatar" [gender]="friend.gender" [size]="50" />
+                <span class="row-dot" [class.online]="chatService.isOnline(friend._id)"></span>
+              </div>
+              <div class="friend-info">
+                <div class="friend-name">{{ friend.name }}</div>
+                <div class="friend-status" [class.online]="chatService.isOnline(friend._id)">
+                  {{ presenceLabel(friend) }}
                 </div>
               </div>
-
-              <!-- Assign reminder (blue icon) -->
-              @if (openFormId() === friend._id) {
-                <div class="reminder-form">
-                  <input class="rf-input" type="text" placeholder="Reminder title..."
-                    [(ngModel)]="reminderForm.title" />
-                  <div class="rf-row">
-                    <input class="rf-input rf-half" type="date" [(ngModel)]="reminderForm.date" />
-                    <input class="rf-input rf-half" type="time" [(ngModel)]="reminderForm.time" />
-                  </div>
-                  <div class="rf-priority-row">
-                    @for (p of priorities; track p.value) {
-                      <button class="rf-priority"
-                        [class.active]="reminderForm.priority === p.value"
-                        (click)="reminderForm.priority = p.value">
-                        {{ p.label }}
-                      </button>
-                    }
-                  </div>
-                  <button class="btn-rf-send" [disabled]="sendingReminder()"
-                    (click)="submitReminder(friend)">
-                    {{ sendingReminder() ? 'Sending...' : 'Send to ' + friend.name.split(' ')[0] }}
-                  </button>
-                </div>
+              @if (chatService.unreadFor(friend._id) > 0) {
+                <span class="unread-badge">{{ chatService.unreadFor(friend._id) }}</span>
               }
-
-              <!-- Shared activity (green icon) -->
-              @if (openSharedId() === friend._id) {
-                <div class="shared-panel">
-                  <div class="shared-list-title">Shared Reminders</div>
-                  @if (sharedFor(friend._id).length) {
-                    @for (r of sharedFor(friend._id); track r._id) {
-                      <div class="shared-item">
-                        <div class="shared-row">
-                          <div class="shared-info">
-                            <div class="shared-title">{{ r.title }}</div>
-                            <div class="shared-date">{{ r.date | date:'MMM d' }} · {{ r.time | timeAmPm }}</div>
-                          </div>
-                          <span class="status-badge" [class]="'status-' + (r.sharedStatus || 'sent')">
-                            {{ statusLabel(r.sharedStatus) }}
-                          </span>
-                        </div>
-
-                        @if (r.assignedTo === currentUserId() && r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
-                          <div class="action-row">
-                            <button class="act-btn act-start" (click)="onStatusChange(r, 'processing')">▶ Start</button>
-                            <button class="act-btn act-done" (click)="onStatusChange(r, 'completed')">✅ Done</button>
-                            <button class="act-btn act-snooze" (click)="snooze(r, 10)">⏰ 10 min</button>
-                            <button class="act-btn act-snooze" (click)="snooze(r, 60)">⏰ 1 hr</button>
-                            <button class="act-btn act-skip" (click)="onStatusChange(r, 'skipped')">⏭ Skip</button>
-                          </div>
-                        }
-                      </div>
-                    }
-                  } @else {
-                    <div class="shared-empty">Nothing shared with {{ friend.name.split(' ')[0] }} yet.</div>
-                  }
-                  <button class="btn-remove-friend" (click)="confirmUnfriend(friend)">
-                    <ion-icon name="person-remove-outline"></ion-icon>
-                    Remove friend
-                  </button>
-                </div>
-              }
+              <button class="assign-btn rm-press" title="Shared tasks & reminders"
+                (click)="goToActivity(friend); $event.stopPropagation()">
+                <ion-icon name="checkbox-outline"></ion-icon>
+                @if (friend.pendingCount > 0) {
+                  <span class="assign-badge">{{ friend.pendingCount > 99 ? '99+' : friend.pendingCount }}</span>
+                }
+              </button>
             </div>
           }
         </div>
       }
+      <div class="list-bottom-space"></div>
     </ion-content>
 
     <!-- ── Add a friend (bottom sheet) ─────────────────────────────────── -->
@@ -254,8 +176,8 @@ import { ShareService } from '../core/services/share.service';
           <button class="chat-back" (click)="closeChat()">
             <ion-icon name="arrow-back-outline"></ion-icon>
           </button>
-          <div class="chat-head-avatar" [style.background]="avatarColor(chat.name)">
-            {{ getInitials(chat.name) }}
+          <div class="avatar-wrap">
+            <app-friend-avatar [name]="chat.name" [avatar]="chat.avatar" [gender]="chat.gender" [size]="42" />
             <span class="chat-head-dot" [class.online]="chatService.isOnline(chat._id)"></span>
           </div>
           <div class="chat-head-meta">
@@ -266,13 +188,13 @@ import { ShareService } from '../core/services/share.service';
               } @else if (chatService.isOnline(chat._id)) {
                 <span class="online-text">Online</span>
               } @else {
-                <span class="offline-text">Offline</span>
+                <span class="offline-text">{{ presenceLabel(chat) }}</span>
               }
             </div>
           </div>
-          <button class="chat-head-action" title="Shared activity"
-            (click)="router.navigate(['/app/friends', chat._id, 'activity'])">
-            <ion-icon name="cube-outline"></ion-icon>
+          <button class="chat-head-action" title="Shared tasks & reminders"
+            (click)="goToActivityFromChat(chat)">
+            <ion-icon name="checkbox-outline"></ion-icon>
           </button>
         </div>
 
@@ -300,11 +222,11 @@ import { ShareService } from '../core/services/share.service';
 
         @if (showChatActions) {
           <div class="chat-quick">
-            <button class="chat-qa task" (click)="sendTaskFromChat()">
+            <button class="chat-qa task" (click)="assignFromChat(chat, 'task')">
               <ion-icon name="create-outline"></ion-icon>
               Send task
             </button>
-            <button class="chat-qa reminder" (click)="sendReminderFromChat()">
+            <button class="chat-qa reminder" (click)="assignFromChat(chat, 'reminder')">
               <ion-icon name="notifications-outline"></ion-icon>
               Send reminder
             </button>
@@ -312,7 +234,7 @@ import { ShareService } from '../core/services/share.service';
         }
 
         <div class="chat-input-bar">
-          <button class="chat-plus" (click)="showChatActions = !showChatActions">
+          <button class="chat-plus" [class.open]="showChatActions" (click)="showChatActions = !showChatActions">
             <ion-icon [name]="showChatActions ? 'close-outline' : 'add-outline'"></ion-icon>
           </button>
           <input class="chat-input" type="text" placeholder="Message…"
@@ -328,13 +250,13 @@ import { ShareService } from '../core/services/share.service';
   styles: [`
     .friends-content{--background:var(--rm-bg)}
     ion-toolbar{--background:var(--rm-card);--padding-start:0;--padding-end:0;--padding-top:0;--padding-bottom:0}
-    .friends-header-row{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 12px}
+    .friends-header-row{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px}
     .page-title{font-size:26px;font-weight:800;color:var(--rm-text-primary);letter-spacing:-.3px}
     .btn-add{display:flex;align-items:center;gap:5px;padding:9px 16px;background:var(--rm-purple);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
     .btn-add ion-icon{font-size:17px}
 
     /* Your Ref ID card */
-    .refid-card{display:flex;align-items:center;gap:12px;margin:4px 16px 4px;padding:16px 18px;background:var(--rm-purple-light);border-radius:16px}
+    .refid-card{display:flex;align-items:center;gap:12px;margin:4px 20px 4px;padding:16px 18px;background:var(--rm-purple-light);border-radius:16px}
     .refid-left{flex:1;min-width:0}
     .refid-label{font-size:11px;font-weight:700;color:var(--rm-purple);text-transform:uppercase;letter-spacing:.6px}
     .refid-value{font-size:22px;font-weight:800;color:var(--rm-text-primary);letter-spacing:1px;margin-top:3px}
@@ -343,44 +265,48 @@ import { ShareService } from '../core/services/share.service';
     .refid-copy:disabled{opacity:.5}
 
     /* Section labels */
-    .section-label{font-size:12px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.6px;padding:16px 20px 6px}
+    .section-label{font-size:12px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.6px;padding:16px 24px 8px}
 
-    /* Shared avatar */
-    .row-avatar{position:relative;width:48px;height:48px;border-radius:50%;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-    .row-avatar img{width:100%;height:100%;object-fit:cover}
-    .row-dot{position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;border:2.5px solid var(--rm-card);background:var(--rm-border)}
+    /* Card that wraps each list — gives the page its premium feel */
+    .list-card{margin:0 16px;background:var(--rm-card);border-radius:18px;box-shadow:var(--rm-shadow-sm);overflow:hidden}
+    .list-bottom-space{height:96px}
+
+    /* Avatar + presence dot */
+    .avatar-wrap{position:relative;flex-shrink:0}
+    .row-dot{position:absolute;bottom:1px;right:1px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--rm-card);background:var(--rm-border)}
     .row-dot.online{background:#10B981;animation:rmDotPulse 2.4s ease-out infinite}
 
     /* Requests */
-    .req-list{padding:0 8px}
-    .req-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;transition:background .3s}
+    .req-row{display:flex;align-items:center;gap:12px;padding:12px 14px;transition:background .3s}
+    .req-row:not(:last-child){border-bottom:1px solid var(--rm-border)}
     .req-row.highlight{background:var(--rm-purple-light)}
     .req-info{flex:1;min-width:0}
     .req-name{font-size:15px;font-weight:700;color:var(--rm-text-primary)}
     .req-sub{font-size:12.5px;color:var(--rm-text-muted);margin-top:1px}
-    .req-accept{width:38px;height:38px;border:none;border-radius:11px;background:var(--rm-green);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .req-accept{width:38px;height:38px;border:none;border-radius:11px;background:var(--rm-success);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .req-decline{width:38px;height:38px;border:1.5px solid var(--rm-border);border-radius:11px;background:var(--rm-card);color:var(--rm-text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .req-accept ion-icon,.req-decline ion-icon{font-size:19px;pointer-events:none}
 
-    /* Friend rows */
-    .friend-list{padding:0 8px 96px}
-    .friend-row{display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;border-radius:14px;transition:background .2s,transform .2s var(--rm-ease-spring)}
-    .friend-row:active{background:var(--rm-surface);transform:scale(.985)}
+    /* Friend rows — WhatsApp-style: the row opens the chat */
+    .friend-row{display:flex;align-items:center;gap:13px;padding:13px 14px;cursor:pointer;transition:background .2s}
+    .friend-row:not(:last-child){border-bottom:1px solid var(--rm-border)}
+    .friend-row:active{background:var(--rm-surface)}
     .friend-info{flex:1;min-width:0}
     .friend-name{font-size:16px;font-weight:700;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .friend-status{font-size:13px;color:var(--rm-text-muted);margin-top:1px}
+    .friend-status{font-size:13px;color:var(--rm-text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .friend-status.online{color:#10B981;font-weight:600}
-    .row-icon{width:36px;height:36px;border:none;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-    .row-icon ion-icon{font-size:18px;pointer-events:none}
-    .row-icon.blue{background:var(--rm-purple-light);color:var(--rm-purple)}
-    .row-icon.green{background:rgba(16,185,129,.12);color:#0f9d63}
-    .row-end{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-    .row-time{font-size:11px;color:var(--rm-text-muted);white-space:nowrap}
-    .row-badge{min-width:20px;height:20px;padding:0 6px;background:var(--rm-green);color:#fff;border-radius:10px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:rmBadgePop .35s var(--rm-ease-spring)}
+
+    /* Unread chat count — green, WhatsApp style */
+    .unread-badge{min-width:22px;height:22px;padding:0 6px;background:var(--rm-success);color:#fff;border-radius:11px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:rmBadgePop .35s var(--rm-ease-spring)}
+
+    /* Assign button — opens the shared tasks & reminders page */
+    .assign-btn{position:relative;width:40px;height:40px;border:none;border-radius:12px;background:var(--rm-purple-light);color:var(--rm-purple);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .assign-btn ion-icon{font-size:20px;pointer-events:none}
+    .assign-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;background:var(--rm-warning);color:#fff;border-radius:9px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--rm-card);pointer-events:none}
 
     /* Skeleton */
-    .friend-row-skel{display:flex;align-items:center;gap:12px;padding:12px 20px}
-    .skel-avatar{width:48px;height:48px;border-radius:50%;background:var(--rm-surface);flex-shrink:0;animation:pulse 1.5s ease-in-out infinite}
+    .friend-row-skel{display:flex;align-items:center;gap:12px;padding:13px 14px}
+    .skel-avatar{width:50px;height:50px;border-radius:50%;background:var(--rm-surface);flex-shrink:0;animation:pulse 1.5s ease-in-out infinite}
     .skel-lines{flex:1}
     .skel-line{height:12px;border-radius:6px;background:var(--rm-surface);margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite}
     .w60{width:60%}.w30{width:30%}
@@ -392,42 +318,6 @@ import { ShareService } from '../core/services/share.service';
     .empty-state h3{font-size:18px;font-weight:700;color:var(--rm-text-primary);margin-bottom:8px}
     .empty-state p{font-size:14px;color:var(--rm-text-muted);margin-bottom:22px}
     .btn-empty-add{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;background:var(--rm-purple);color:white;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-
-    /* Assign reminder form */
-    .reminder-form{margin:2px 12px 10px;display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-border)}
-    .rf-input{width:100%;padding:10px 12px;border:1.5px solid var(--rm-border);border-radius:10px;background:var(--rm-card);color:var(--rm-text-primary);font-size:14px;font-family:inherit;outline:none;box-sizing:border-box}
-    .rf-input:focus{border-color:var(--rm-purple)}
-    .rf-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .rf-priority-row{display:flex;gap:6px;flex-wrap:wrap}
-    .rf-priority{padding:6px 12px;border:1.5px solid var(--rm-border);border-radius:8px;background:var(--rm-card);color:var(--rm-text-secondary);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-    .rf-priority.active{border-color:var(--rm-purple);background:var(--rm-purple-light);color:var(--rm-purple)}
-    .btn-rf-send{padding:12px;background:var(--rm-purple);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-    .btn-rf-send:disabled{opacity:.6;cursor:default}
-
-    /* Shared panel */
-    .shared-panel{margin:2px 12px 10px;display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--rm-surface);border-radius:14px;border:1.5px solid var(--rm-border)}
-    .shared-list-title{font-size:11px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.5px}
-    .shared-empty{font-size:13px;color:var(--rm-text-muted);text-align:center;padding:6px 0}
-    .shared-item{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--rm-card);border-radius:12px}
-    .shared-row{display:flex;align-items:center;gap:8px}
-    .shared-info{flex:1;min-width:0}
-    .shared-title{font-size:13px;font-weight:600;color:var(--rm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .shared-date{font-size:11px;color:var(--rm-text-muted);margin-top:1px}
-    .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}
-    .status-sent{background:rgba(234,179,8,0.15);color:#B45309}
-    .status-received{background:rgba(59,130,246,0.15);color:#1D4ED8}
-    .status-acknowledged{background:rgba(61,90,241,0.15);color:var(--rm-purple)}
-    .status-processing{background:rgba(234,88,12,0.15);color:#C2410C}
-    .status-skipped{background:rgba(107,114,128,0.15);color:#6B7280}
-    .status-completed{background:rgba(16,185,129,0.15);color:#047857}
-    .action-row{display:flex;gap:6px;flex-wrap:wrap}
-    .act-btn{padding:6px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
-    .act-start{background:rgba(61,90,241,0.12);color:var(--rm-purple)}
-    .act-done{background:rgba(16,185,129,0.12);color:#047857}
-    .act-snooze{background:rgba(234,179,8,0.12);color:#B45309}
-    .act-skip{background:rgba(107,114,128,0.12);color:#6B7280}
-    .btn-remove-friend{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px;background:rgba(239,68,68,0.08);color:#EF4444;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-    .btn-remove-friend ion-icon{font-size:16px}
 
     /* Add-friend sheet */
     .sheet-backdrop{position:fixed;inset:0;background:rgba(15,15,26,.45);backdrop-filter:blur(2px);z-index:900;animation:fade .25s ease}
@@ -444,14 +334,13 @@ import { ShareService } from '../core/services/share.service';
     .sheet-send{width:100%;margin-top:18px;padding:16px;background:var(--rm-purple);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
     .sheet-send:disabled{opacity:.5}
 
-    /* Chat overlay */
-    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-bg);display:flex;flex-direction:column;animation:chatSlideIn .32s var(--rm-ease-out)}
+    /* Chat overlay — full-screen, WhatsApp-style */
+    .chat-overlay{position:fixed;inset:0;z-index:1000;background:var(--rm-surface);display:flex;flex-direction:column;animation:chatSlideIn .32s var(--rm-ease-out)}
     @keyframes chatSlideIn{from{transform:translateX(100%);opacity:.6}to{transform:translateX(0);opacity:1}}
     .bubble{animation:bubbleIn .28s var(--rm-ease-spring) backwards}
     @keyframes bubbleIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
-    .chat-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:var(--rm-card);box-shadow:0 1px 6px rgba(0,0,0,.05);flex-shrink:0}
+    .chat-head{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:var(--rm-card);box-shadow:0 1px 8px rgba(0,0,0,.06);flex-shrink:0}
     .chat-back{width:36px;height:36px;border:none;background:transparent;color:var(--rm-text-primary);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-    .chat-head-avatar{position:relative;width:42px;height:42px;border-radius:50%;color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .chat-head-dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid var(--rm-card);background:var(--rm-border)}
     .chat-head-dot.online{background:#10B981}
     .chat-head-meta{flex:1;min-width:0}
@@ -467,24 +356,26 @@ import { ShareService } from '../core/services/share.service';
     .chat-empty{margin:auto;color:var(--rm-text-muted);font-size:14px;text-align:center}
     .bubble-row{display:flex;justify-content:flex-start}
     .bubble-row.mine{justify-content:flex-end}
-    .bubble{max-width:78%;padding:9px 13px 7px;border-radius:16px;background:var(--rm-card);box-shadow:0 1px 2px rgba(0,0,0,.06);border-top-left-radius:6px}
-    .bubble-mine{background:var(--rm-purple);border-top-left-radius:16px;border-top-right-radius:6px}
+    .bubble{max-width:78%;padding:9px 13px 7px;border-radius:16px;background:var(--rm-card);box-shadow:0 1px 2px rgba(0,0,0,.05);border-top-left-radius:6px}
+    .bubble-mine{background:linear-gradient(135deg,#4F6BFF,var(--rm-purple));border-top-left-radius:16px;border-top-right-radius:6px;box-shadow:0 2px 8px rgba(61,90,241,.25)}
     .bubble-text{font-size:15px;line-height:1.4;color:var(--rm-text-primary);word-break:break-word;white-space:pre-wrap}
     .bubble-mine .bubble-text{color:#fff}
     .bubble-meta{display:flex;align-items:center;justify-content:flex-end;gap:3px;font-size:10.5px;color:var(--rm-text-muted);margin-top:3px}
     .bubble-mine .bubble-meta{color:rgba(255,255,255,.8)}
     .tick{font-size:14px}
     .tick-read{color:#7DD3FC}
-    .chat-quick{display:flex;gap:12px;padding:10px 14px 4px;background:var(--rm-card);flex-shrink:0}
+    .chat-quick{display:flex;gap:12px;padding:10px 14px 4px;background:var(--rm-card);flex-shrink:0;animation:quickUp .25s var(--rm-ease-out)}
+    @keyframes quickUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .chat-qa{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
     .chat-qa ion-icon{font-size:17px}
     .chat-qa.task{background:var(--rm-purple-light);color:var(--rm-purple)}
     .chat-qa.reminder{background:rgba(245,158,11,.14);color:#D97706}
     .chat-input-bar{display:flex;align-items:center;gap:10px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:var(--rm-card);flex-shrink:0}
-    .chat-plus{width:42px;height:42px;border:none;border-radius:50%;background:var(--rm-purple);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;flex-shrink:0}
+    .chat-plus{width:42px;height:42px;border:none;border-radius:50%;background:var(--rm-purple-light);color:var(--rm-purple);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;flex-shrink:0;transition:transform .25s var(--rm-ease-spring),background .2s,color .2s}
+    .chat-plus.open{background:var(--rm-purple);color:#fff;transform:rotate(90deg)}
     .chat-input{flex:1;padding:12px 16px;border:none;border-radius:22px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:15px;font-family:inherit;outline:none}
-    .chat-send{width:44px;height:44px;border:none;border-radius:50%;background:var(--rm-purple);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px;flex-shrink:0}
-    .chat-send:disabled{opacity:.45;cursor:default}
+    .chat-send{width:44px;height:44px;border:none;border-radius:50%;background:linear-gradient(135deg,#4F6BFF,var(--rm-purple));color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:19px;flex-shrink:0;box-shadow:0 3px 10px rgba(61,90,241,.35)}
+    .chat-send:disabled{opacity:.45;cursor:default;box-shadow:none}
   `],
 })
 export class FriendsComponent implements OnInit, OnDestroy {
@@ -493,6 +384,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
   protected chatService = inject(ChatService);
   private authService   = inject(AuthService);
   private shareService  = inject(ShareService);
+  private ui            = inject(UiService);
   private route         = inject(ActivatedRoute);
   protected router      = inject(Router);
   private toastCtrl     = inject(ToastController);
@@ -507,12 +399,16 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   ionViewWillEnter(): void {
     this.pageIn.set(true);
+    this.load();   // refresh pending counts when returning from the activity page
     this.initializeSocketListeners();
   }
   ionViewDidLeave(): void {
     this.pageIn.set(false);
     this.socketSub?.unsubscribe();
-    this.socketSub2?.unsubscribe();
+    // Always return to the friends list when the tab is next opened — close any
+    // chat that was left open (and the add sheet) so we never re-show it.
+    if (this.activeChat()) this.closeChat();
+    this.showAddPanel.set(false);
   }
 
   // Add-by-code sheet
@@ -527,22 +423,12 @@ export class FriendsComponent implements OnInit, OnDestroy {
   // A pending request to flash when arriving via a notification tap
   highlightId    = signal<string | null>(null);
   private pendingAcceptId: string | null = null;
+  // A chat to open when arriving via a chat-message notification tap
+  private pendingChatId: string | null = null;
 
-  // Assign reminder / shared activity
-  openFormId      = signal<string | null>(null);
-  openSharedId    = signal<string | null>(null);
-  sendingReminder = signal(false);
-  sharedReminders = signal<Record<string, SharedReminder[]>>({});
   // Derived from the auth state so it's always current (fixes own messages
   // rendering on the left when the user was set after the component loaded).
-  currentUserId   = computed(() => this.authService.currentUser()?._id ?? '');
-  reminderForm    = { title: '', date: this.todayStr(), time: '09:00', priority: 'medium' };
-  priorities      = [
-    { value: 'low', label: '🟢 Low' },
-    { value: 'medium', label: '🟡 Medium' },
-    { value: 'high', label: '🔴 High' },
-    { value: 'urgent', label: '🚨 Urgent' },
-  ];
+  currentUserId = computed(() => this.authService.currentUser()?._id ?? '');
 
   // Chat
   @ViewChild('chatBody') private chatBody?: ElementRef<HTMLDivElement>;
@@ -552,19 +438,13 @@ export class FriendsComponent implements OnInit, OnDestroy {
   private typingTimer: ReturnType<typeof setTimeout> | undefined;
 
   private socketSub: Subscription | undefined;
-  private socketSub2: Subscription | undefined;
   private querySub: Subscription | undefined;
 
-  // Deterministic avatar colour per name
-  private readonly avatarPalette = ['#D84F7A', '#2F7FD8', '#7A5CD8', '#E07A2F', '#2E9E6A', '#D89B2F', '#C7506B', '#3D5AF1'];
-
   constructor() {
-    addIcons({ personAddOutline, personRemoveOutline, closeOutline, searchOutline,
-               addOutline, addCircleOutline, chevronDownOutline, chevronUpOutline,
-               shareSocialOutline, copyOutline, keyOutline, checkmarkCircle,
+    addIcons({ personAddOutline, closeOutline, addOutline, copyOutline,
                chatbubbleEllipsesOutline, arrowBackOutline, send,
                checkmarkOutline, checkmarkDoneOutline, timeOutline,
-               createOutline, cubeOutline, notificationsOutline });
+               createOutline, notificationsOutline, checkboxOutline });
 
     // Auto-scroll the chat to the newest message whenever it changes.
     effect(() => {
@@ -579,13 +459,22 @@ export class FriendsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.load();
 
-    // Arriving from a "friend request" notification tap → flash + prompt accept.
+    // Arriving from a notification tap:
+    //   ?accept=<friendshipId> → flash + prompt to accept the request
+    //   ?chat=<friendId>       → open that conversation
     this.querySub = this.route.queryParams.subscribe(params => {
       const acceptId = params['accept'];
+      const chatId   = params['chat'];
       if (acceptId) {
         this.pendingAcceptId = acceptId;
         this.maybePromptAccept();
-        // Clear the param so a refresh doesn't re-trigger the prompt.
+      }
+      if (chatId) {
+        this.pendingChatId = chatId;
+        this.maybeOpenPendingChat();
+      }
+      if (acceptId || chatId) {
+        // Clear the params so a refresh doesn't re-trigger.
         this.router.navigate([], { queryParams: {}, replaceUrl: true });
       }
     });
@@ -595,43 +484,38 @@ export class FriendsComponent implements OnInit, OnDestroy {
 
   private initializeSocketListeners(): void {
     // Reload when a new friend request arrives while this tab is open
+    this.socketSub?.unsubscribe();
     this.socketSub = this.socketService.on<{ type: string }>('notification:new').pipe(
       filter(n => n.type === 'friend_request' || n.type === 'friend_accepted')
     ).subscribe(() => this.load());
-
-    // Update shared reminder status in real-time when a friend changes it
-    this.socketSub2 = this.socketService
-      .on<{ _id: string; sharedStatus: string }>('reminder:sharedStatus')
-      .subscribe(({ _id, sharedStatus }) => {
-        this.sharedReminders.update(prev => {
-          const next = { ...prev };
-          for (const friendId of Object.keys(next)) {
-            next[friendId] = next[friendId].map(r =>
-              r._id === _id ? { ...r, sharedStatus: sharedStatus as SharedStatus } : r
-            );
-          }
-          return next;
-        });
-      });
   }
 
   ngOnDestroy() {
     this.querySub?.unsubscribe();
     this.socketSub?.unsubscribe();
-    this.socketSub2?.unsubscribe();
   }
 
   private load() {
-    this.isLoading.set(true);
     this.friendService.getFriends().subscribe({
       next: ({ friends, pending }) => {
         this.friends.set(friends);
         this.pendingRequests.set(pending);
         this.isLoading.set(false);
         this.maybePromptAccept();
+        this.maybeOpenPendingChat();
       },
       error: () => this.isLoading.set(false),
     });
+  }
+
+  // If we arrived via a chat notification and that friend is loaded, open it.
+  private maybeOpenPendingChat(): void {
+    const id = this.pendingChatId;
+    if (!id) return;
+    const friend = this.friends().find(f => f._id === id);
+    if (!friend) return;       // not loaded yet — load() will retry
+    this.pendingChatId = null;
+    this.openChat(friend);
   }
 
   // If we arrived via a notification and the matching request is loaded, prompt.
@@ -666,6 +550,26 @@ export class FriendsComponent implements OnInit, OnDestroy {
       },
       error: () => (event.target as HTMLIonRefresherElement).complete(),
     });
+  }
+
+  /** "Online" / "Last seen 2h ago" / "Offline" for a friend row. */
+  presenceLabel(friend: Friend): string {
+    if (this.chatService.isOnline(friend._id)) return 'Online';
+    const iso = friend.lastSeenAt;
+    if (!iso) return 'Offline';
+    const seen = new Date(iso);
+    const mins = Math.floor((Date.now() - seen.getTime()) / 60000);
+    if (mins < 1)   return 'Last seen just now';
+    if (mins < 60)  return `Last seen ${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Last seen ${hours}h ago`;
+    const yest = new Date(); yest.setDate(yest.getDate() - 1);
+    if (seen.toDateString() === yest.toDateString()) return 'Last seen yesterday';
+    return `Last seen ${seen.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  }
+
+  goToActivity(friend: Friend): void {
+    this.router.navigate(['/app/friends', friend._id, 'activity']);
   }
 
   // ── Add-friend sheet ────────────────────────────────────────────────────
@@ -714,15 +618,6 @@ export class FriendsComponent implements OnInit, OnDestroy {
     });
   }
 
-  relationshipLabel(rel: FriendRelationship): string {
-    switch (rel) {
-      case 'friends':          return 'Already your buddy';
-      case 'request_sent':     return 'Request already sent';
-      case 'request_received': return 'They already requested you';
-      default:                 return 'Send a buddy request';
-    }
-  }
-
   async copyMyCode() {
     const code = this.myRefId();
     if (!code) return;
@@ -748,159 +643,12 @@ export class FriendsComponent implements OnInit, OnDestroy {
   accept(id: string) { this.friendService.accept(id).subscribe(() => this.load()); }
   reject(id: string) { this.friendService.reject(id).subscribe(() => this.load()); }
 
-  async confirmUnfriend(friend: Friend): Promise<void> {
-    const alert = await this.alertCtrl.create({
-      header: 'Remove friend',
-      message: `Remove ${friend.name} from your accountability buddies?`,
-      buttons: [
-        { text: 'Cancel', role: 'cancel' },
-        {
-          text: 'Remove',
-          role: 'destructive',
-          handler: () => {
-            this.friendService.remove(friend.friendshipId).subscribe({
-              next: async () => {
-                this.openSharedId.set(null);
-                this.load();
-                const toast = await this.toastCtrl.create({
-                  message: `${friend.name} removed from friends`,
-                  duration: 2500, color: 'medium', position: 'top',
-                });
-                toast.present();
-              },
-            });
-          },
-        },
-      ],
-    });
-    await alert.present();
-  }
-
-  toggleReminderForm(friendId: string): void {
-    if (this.openFormId() === friendId) {
-      this.openFormId.set(null);
-    } else {
-      this.openFormId.set(friendId);
-      this.openSharedId.set(null);
-      this.reminderForm = { title: '', date: this.todayStr(), time: this.nowTimeStr(), priority: 'medium' };
-    }
-  }
-
-  toggleShared(friendId: string): void {
-    if (this.openSharedId() === friendId) {
-      this.openSharedId.set(null);
-    } else {
-      this.openSharedId.set(friendId);
-      this.openFormId.set(null);
-      if (!this.sharedReminders()[friendId]) this.loadSharedReminders(friendId);
-    }
-  }
-
-  sharedFor(friendId: string): SharedReminder[] {
-    return this.sharedReminders()[friendId] ?? [];
-  }
-
-  private loadSharedReminders(friendId: string): void {
-    this.friendService.getSharedReminders(friendId).subscribe({
-      next: ({ data }) => {
-        this.sharedReminders.update(prev => ({ ...prev, [friendId]: data }));
-      },
-    });
-  }
-
-  async submitReminder(friend: Friend): Promise<void> {
-    if (!this.reminderForm.title.trim()) {
-      const t = await this.toastCtrl.create({ message: 'Please enter a title', duration: 2000, color: 'warning', position: 'top' });
-      t.present(); return;
-    }
-    this.sendingReminder.set(true);
-    this.friendService.sendReminder(friend._id, this.reminderForm).subscribe({
-      next: async () => {
-        this.sendingReminder.set(false);
-        this.openFormId.set(null);
-        this.loadSharedReminders(friend._id);
-        this.load();
-        const t = await this.toastCtrl.create({ message: `Reminder sent to ${friend.name}!`, duration: 2500, color: 'success', position: 'top' });
-        t.present();
-      },
-      error: async () => {
-        this.sendingReminder.set(false);
-        const t = await this.toastCtrl.create({ message: 'Failed to send reminder', duration: 2500, color: 'danger', position: 'top' });
-        t.present();
-      },
-    });
-  }
-
-  onStatusChange(reminder: SharedReminder, status: SharedStatus): void {
-    this.friendService.updateSharedStatus(reminder._id, status).subscribe({
-      next: () => { reminder.sharedStatus = status; },
-    });
-  }
-
-  snooze(reminder: SharedReminder, minutes: number): void {
-    this.friendService.snoozeAssigned(reminder._id, minutes).subscribe({
-      next: async () => {
-        const label = minutes < 60 ? `${minutes} min` : `${minutes / 60} hr`;
-        const t = await this.toastCtrl.create({
-          message: `Snoozed for ${label}`, duration: 2000, color: 'warning', position: 'top',
-        });
-        t.present();
-      },
-    });
-  }
-
-  statusLabel(status: SharedStatus | null): string {
-    const map: Record<string, string> = {
-      sent:         '📤 Sent',
-      received:     '📬 Received',
-      acknowledged: '👀 Acknowledged',
-      processing:   '🔄 In Progress',
-      skipped:      '⏭ Skipped',
-      completed:    '✅ Completed',
-    };
-    return map[status ?? 'sent'] ?? '📤 Sent';
-  }
-
-  private todayStr(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  private nowTimeStr(): string {
-    const d = new Date(); d.setHours(d.getHours() + 1, 0);
-    return `${String(d.getHours()).padStart(2,'0')}:00`;
-  }
-
-  getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  avatarColor(name: string): string {
-    let h = 0;
-    for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    return this.avatarPalette[h % this.avatarPalette.length];
-  }
-
-  /** Timestamp of the last message with a friend, for the list row. */
-  lastMsgLabel(friendId: string): string {
-    const conv = this.chatService.conversations().find(c => c.friendId === friendId);
-    const iso = conv?.lastMessage?.createdAt;
-    if (!iso) return '';
-    const d = new Date(iso);
-    const now = new Date();
-    if (d.toDateString() === now.toDateString()) {
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    const yest = new Date(now); yest.setDate(now.getDate() - 1);
-    if (d.toDateString() === yest.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  }
-
   // ── Chat ──────────────────────────────────────────────────────────────
   openChat(friend: Friend): void {
     this.draft = '';
     this.showChatActions = false;
     this.activeChat.set(friend);
+    this.ui.overlayOpen.set(true);   // hide the bottom tab bar behind the chat
     this.chatService.openChat(friend._id);
     setTimeout(() => this.scrollToBottom(), 80);
   }
@@ -912,6 +660,7 @@ export class FriendsComponent implements OnInit, OnDestroy {
     this.showChatActions = false;
     this.chatService.closeChat();
     this.activeChat.set(null);
+    this.ui.overlayOpen.set(false);  // restore the bottom tab bar
   }
 
   send(): void {
@@ -925,26 +674,18 @@ export class FriendsComponent implements OnInit, OnDestroy {
     setTimeout(() => this.scrollToBottom(), 50);
   }
 
-  /** Chat quick action → jump to the assign-reminder form for this friend. */
-  sendReminderFromChat(): void {
-    const chat = this.activeChat();
-    if (!chat) return;
-    this.showChatActions = false;
+  /** Header button in chat → the friend's shared activity page. */
+  goToActivityFromChat(friend: Friend): void {
     this.closeChat();
-    this.openFormId.set(chat._id);
-    this.openSharedId.set(null);
-    this.reminderForm = { title: '', date: this.todayStr(), time: this.nowTimeStr(), priority: 'medium' };
-    setTimeout(() => {
-      document.querySelector('.reminder-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 180);
+    this.router.navigate(['/app/friends', friend._id, 'activity']);
   }
 
-  async sendTaskFromChat(): Promise<void> {
-    this.showChatActions = false;
-    const t = await this.toastCtrl.create({
-      message: 'Sharing tasks in chat is coming soon', duration: 2200, color: 'medium', position: 'top',
+  /** Chat quick actions → activity page with the assign sheet pre-opened. */
+  assignFromChat(friend: Friend, kind: 'task' | 'reminder'): void {
+    this.closeChat();
+    this.router.navigate(['/app/friends', friend._id, 'activity'], {
+      queryParams: { assign: kind },
     });
-    t.present();
   }
 
   onDraftInput(): void {

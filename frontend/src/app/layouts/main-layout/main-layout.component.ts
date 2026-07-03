@@ -1,11 +1,13 @@
 // src/app/layouts/main-layout/main-layout.component.ts
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { IonTabs, IonTabBar, IonTabButton, IonBadge } from '@ionic/angular/standalone';
 import { FriendService } from '../../core/services/friend.service';
 import { ReminderService } from '../../core/services/reminder.service';
 import { ChatService } from '../../core/services/chat.service';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -13,7 +15,7 @@ import { ChatService } from '../../core/services/chat.service';
   imports: [CommonModule, RouterLink, RouterLinkActive, IonTabs, IonTabBar, IonTabButton, IonBadge],
   template: `
     <ion-tabs>
-      <ion-tab-bar slot="bottom">
+      <ion-tab-bar slot="bottom" [class.rm-tabbar-hidden]="!showTabBar()">
 
         <ion-tab-button tab="home" href="/app/home">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -75,6 +77,7 @@ import { ChatService } from '../../core/services/chat.service';
       padding-bottom: env(safe-area-inset-bottom);
       padding-top: 4px;
     }
+    ion-tab-bar.rm-tabbar-hidden { display: none; }
     ion-tab-button {
       --color: var(--rm-text-muted);
       --color-selected: var(--rm-purple);
@@ -121,13 +124,34 @@ export class MainLayoutComponent implements OnInit {
   private friendService   = inject(FriendService);
   private reminderService = inject(ReminderService);
   private chatService     = inject(ChatService);
+  private router          = inject(Router);
+  private ui              = inject(UiService);
 
   readonly reminderBadgeCount = this.reminderService.reminderBadgeCount;
   readonly friendsBadge = computed(() =>
     this.friendService.pendingCount() + this.chatService.totalUnread()
   );
 
+  // Current router URL, kept in sync so the tab bar can hide on nested pages.
+  private readonly currentUrl = signal(this.router.url);
+
+  /**
+   * Show the tab bar only on a top-level tab (`/app/<tab>`), and never while a
+   * full-screen overlay (e.g. the inline chat) is covering the tab. Nested
+   * pages like `/app/friends/:id/chat` or `/app/reminders/:id` hide it.
+   */
+  readonly showTabBar = computed(() => {
+    const path = this.currentUrl().split('?')[0].split('#')[0];
+    const segments = path.split('/').filter(Boolean);   // e.g. ['app','friends']
+    const isTopLevelTab = segments[0] === 'app' && segments.length === 2;
+    return isTopLevelTab && !this.ui.overlayOpen();
+  });
+
   ngOnInit() {
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e) => this.currentUrl.set(e.urlAfterRedirects));
+
     this.friendService.getFriends().subscribe();
     this.reminderService.getAll({ limit: 100 }).subscribe();
     this.reminderService.getReceived().subscribe();

@@ -6,6 +6,7 @@ const Reminder      = require('../models/Reminder');
 const User          = require('../models/User');
 const notifService  = require('../services/notification.service');
 const logger        = require('../utils/logger');
+const { duePhrase, sentenceCase } = require('../utils/reminder-text');
 
 /**
  * Start all cron jobs.
@@ -58,32 +59,40 @@ function startJobs() {
       const now   = new Date();
       const soon  = new Date(now.getTime() + 2 * 60 * 1000); // exactly 2 min from now
       const delta = 60 * 1000; // ±30s window to avoid missing a tick
+      let   sent  = 0;
 
-      const upcoming = await Reminder.find({
-        assignedTo:   { $ne: null },
-        status:       'pending',
-        preAlertSent: false,
-        nextFireAt:   { $gte: new Date(soon.getTime() - delta), $lt: new Date(soon.getTime() + delta) },
-      }).populate('userId', 'name').populate('assignedTo', 'name fcmToken pushSubscription');
+      // Atomic claim loop (same pattern as the fire loop above): flipping
+      // preAlertSent inside findOneAndUpdate guarantees each reminder is
+      // claimed exactly once, even when a tick overruns into the next one or
+      // two server instances overlap during a deploy — the old find-then-save
+      // version could send the same pre-alert twice.
+      while (true) {
+        const reminder = await Reminder.findOneAndUpdate(
+          {
+            assignedTo:   { $ne: null },
+            status:       'pending',
+            preAlertSent: false,
+            nextFireAt:   { $gte: new Date(soon.getTime() - delta), $lt: new Date(soon.getTime() + delta) },
+          },
+          { $set: { preAlertSent: true } },
+          { new: false },
+        ).populate('userId', 'name').populate('assignedTo', 'name fcmToken pushSubscription');
 
-      for (const reminder of upcoming) {
-        const assignedTo = reminder.assignedTo;
-        if (!assignedTo) continue;
+        if (!reminder) break;
+        if (!reminder.assignedTo) continue;   // assignee deleted — already claimed, skip
 
         await notifService.createAndPush({
-          userId:  assignedTo._id,
+          userId:  reminder.assignedTo._id,
           type:    'reminder_pre_alert',
-          title:   'Reminder in 2 minutes',
-          message: `"${reminder.title}" set by ${reminder.userId?.name} is due soon`,
-          data:    { reminderId: String(reminder._id), type: 'reminder_assigned' },
+          title:   `⏳ In 2 min: ${reminder.title}`,
+          message: `Heads-up — ${reminder.userId?.name || 'A friend'}'s reminder fires in 2 minutes (task ${duePhrase(reminder, now)}).`,
+          data:    { reminderId: String(reminder._id), type: 'reminder_pre_alert' },
         });
-
-        reminder.preAlertSent = true;
-        await reminder.save();
+        sent++;
       }
 
-      if (upcoming.length > 0) {
-        logger.info(`[Cron] Sent ${upcoming.length} pre-alert(s)`);
+      if (sent > 0) {
+        logger.info(`[Cron] Sent ${sent} pre-alert(s)`);
       }
     } catch (err) {
       logger.error('[Cron] pre-alert error:', err.message);
@@ -158,13 +167,17 @@ async function fireReminder(reminder) {
     ? reminder.notificationTypes
     : ['push'];
 
-  // Notify the reminder owner
+  // Notify the reminder owner. "Due in 30 min" (the reminder window) vs the
+  // pre-alert's "⏳ In 2 min:" prefix is what tells the two apart on the phone.
+  const due = duePhrase(reminder);
   await notifService.send({ user, reminder, channels: notifTypes });
   await notifService.createAndPush({
     userId:  user._id,
     type:    'reminder_due',
-    title:   reminder.title,
-    message: reminder.description || 'Your reminder is due now!',
+    title:   `🔔 ${reminder.title}`,
+    message: reminder.description
+      ? `${sentenceCase(due)} · ${reminder.description}`
+      : sentenceCase(due),
     data:    { reminderId: String(reminder._id), type: 'reminder_due' },
   });
 
@@ -173,8 +186,8 @@ async function fireReminder(reminder) {
     await notifService.createAndPush({
       userId:  reminder.assignedTo._id,
       type:    'friend_reminder_due',
-      title:   reminder.title,
-      message: `Reminder from ${user.name} is due now! Tap to take action.`,
+      title:   `🔔 ${reminder.title}`,
+      message: `From ${user.name} — ${due}. Tap to mark done or snooze.`,
       data:    {
         reminderId:  String(reminder._id),
         type:        'friend_reminder_due',

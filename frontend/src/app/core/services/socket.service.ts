@@ -10,6 +10,8 @@ export type SocketEvent =
   | 'reminder:received'
   | 'reminder:response'
   | 'reminder:sharedStatus'
+  | 'task:received'
+  | 'task:sharedStatus'
   | 'friend:request'
   | 'friend:accepted'
   | 'notification:new'
@@ -62,6 +64,8 @@ export class SocketService {
       'reminder:received',
       'reminder:response',
       'reminder:sharedStatus',
+      'task:received',
+      'task:sharedStatus',
       'friend:request',
       'friend:accepted',
       'notification:new',

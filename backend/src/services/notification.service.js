@@ -159,7 +159,8 @@ exports.send = async ({ user, reminder, channels }) => {
 function categoryForType(type) {
   if (type === 'friend_request' || type === 'friend_accepted') return 'friendRequests';
   if (type === 'system') return 'other';
-  if (type?.startsWith('reminder_') || type === 'friend_reminder_due') return 'reminders';
+  // Assigned tasks ride the same switch as assigned reminders.
+  if (type?.startsWith('reminder_') || type?.startsWith('task_') || type === 'friend_reminder_due') return 'reminders';
   return 'other';
 }
 

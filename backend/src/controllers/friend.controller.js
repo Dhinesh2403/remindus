@@ -3,9 +3,19 @@
 
 const User       = require('../models/User');
 const Reminder    = require('../models/Reminder');
+const Task       = require('../models/Task');
 const Friendship = require('../models/Friendship');
 const notifService = require('../services/notification.service');
+const { isOnline } = require('../sockets');
 const { asyncHandler, AppError } = require('../utils/helpers');
+
+// All shared items between two users, regardless of who assigned whom.
+const betweenPair = (a, b) => ({
+  $or: [
+    { userId: a, assignedTo: b },
+    { userId: b, assignedTo: a },
+  ],
+});
 
 // ── GET /api/friends ──────────────────────────────────────────────────────
 exports.getFriends = asyncHandler(async (req, res) => {
@@ -14,11 +24,11 @@ exports.getFriends = asyncHandler(async (req, res) => {
   // Accepted friendships
   const accepted = await Friendship.find({
     $or: [{ requester: uid, status: 'accepted' }, { recipient: uid, status: 'accepted' }],
-  }).populate('requester recipient', 'name email avatar');
+  }).populate('requester recipient', 'name email avatar gender refId lastSeenAt');
 
   // Pending requests sent TO this user
   const pending = await Friendship.find({ recipient: uid, status: 'pending' })
-    .populate('requester', 'name email avatar');
+    .populate('requester', 'name email avatar gender');
 
 
   const friends = await Promise.all(
@@ -26,11 +36,14 @@ exports.getFriends = asyncHandler(async (req, res) => {
       const friend = String(f.requester._id) === String(uid) ? f.recipient : f.requester;
       const friendId = friend._id;
 
-      const [sharedCount, pendingCount, doneCount, totalCount] = await Promise.all([
-        Reminder.countDocuments({ userId: uid, assignedTo: friendId }),
-        Reminder.countDocuments({ userId: uid, assignedTo: friendId, status: 'pending' }),
-        Reminder.countDocuments({ assignedTo: friendId, assignedBy: uid, status: 'done' }),
-        Reminder.countDocuments({ assignedTo: friendId, assignedBy: uid }),
+      // Counts span both directions (assigned by me OR by them) and both kinds.
+      const [remShared, remPending, remDone, taskShared, taskPending, taskDone] = await Promise.all([
+        Reminder.countDocuments(betweenPair(uid, friendId)),
+        Reminder.countDocuments({ ...betweenPair(uid, friendId), status: 'pending' }),
+        Reminder.countDocuments({ ...betweenPair(uid, friendId), status: 'done' }),
+        Task.countDocuments(betweenPair(uid, friendId)),
+        Task.countDocuments({ ...betweenPair(uid, friendId), status: 'active' }),
+        Task.countDocuments({ ...betweenPair(uid, friendId), status: 'done' }),
       ]);
 
       return {
@@ -39,11 +52,14 @@ exports.getFriends = asyncHandler(async (req, res) => {
         name:         friend.name,
         email:        friend.email,
         avatar:       friend.avatar,
+        gender:       friend.gender || null,
+        refId:        friend.refId || null,
+        lastSeenAt:   friend.lastSeenAt || null,
         username:     friend.email.split('@')[0],
-        isOnline:     false,   // enhanced via Socket.IO room check
-        completedCount: doneCount,
-        sharedCount,
-        pendingCount,
+        isOnline:     isOnline(friendId),
+        completedCount: remDone + taskDone,
+        sharedCount:    remShared + taskShared,
+        pendingCount:   remPending + taskPending,
       };
     })
   );
@@ -56,8 +72,43 @@ exports.getFriends = asyncHandler(async (req, res) => {
       name:   p.requester.name,
       email:  p.requester.email,
       avatar: p.requester.avatar || null,
+      gender: p.requester.gender || null,
     })),
   });
+});
+
+// ── POST /api/friends/shared-activity ─────────────────────────────────────
+// Everything shared between the current user and one friend: tasks and
+// reminders assigned in either direction. Body: { friendId }
+exports.getSharedActivity = asyncHandler(async (req, res) => {
+  const uid        = req.user._id;
+  const { friendId } = req.body;
+  if (!friendId) throw new AppError('friendId is required', 400);
+
+  // Only accepted friends may see each other's shared items.
+  const friendship = await Friendship.findOne({
+    status: 'accepted',
+    $or: [
+      { requester: uid, recipient: friendId },
+      { requester: friendId, recipient: uid },
+    ],
+  }).lean();
+  if (!friendship) throw new AppError('Not friends with this user', 403);
+
+  const [reminders, tasks] = await Promise.all([
+    Reminder.find(betweenPair(uid, friendId))
+      .select('title date time status sharedStatus priority assignedTo assignedBy userId createdAt')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean(),
+    Task.find(betweenPair(uid, friendId))
+      .select('title status dueDate startTime priority category userId assignedTo createdAt')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean(),
+  ]);
+
+  res.json({ success: true, reminders, tasks });
 });
 
 // ── Normalise a typed/shared friend code to its canonical stored form ──────

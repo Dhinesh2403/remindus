@@ -1,5 +1,5 @@
 // src/app/core/services/auth.service.ts
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, Injector } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError } from 'rxjs';
@@ -8,6 +8,7 @@ import { TokenService } from './token.service';
 import { SocketService } from './socket.service';
 import { ConnectivityService } from './connectivity.service';
 import { GoogleCredential } from './social-auth.service';
+import { PushService } from './push.service';
 
 export interface User {
   _id: string;
@@ -59,6 +60,7 @@ export class AuthService {
   private tokenService = inject(TokenService);
   private socketService = inject(SocketService);
   private connectivity = inject(ConnectivityService);
+  private injector = inject(Injector);
 
   private readonly API = `${environment.apiUrl}/auth`;
 
@@ -264,6 +266,12 @@ export class AuthService {
 
   // ─── Logout ───────────────────────────────────────────────────────────────
   logout(): void {
+    // Stop pushes to this device. Must run before clearTokens() so the
+    // token-clear request inside deregister() goes out authenticated. Lazy
+    // Injector lookup — a field-level inject(PushService) would be a circular
+    // DI (PushService → ChatService → AuthService).
+    this.injector.get(PushService).deregister().catch(() => {});
+
     const refreshToken = this.tokenService.getRefreshToken();
     if (refreshToken) {
       // Fire and forget — don't wait for server response
