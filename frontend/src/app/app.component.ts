@@ -3,7 +3,9 @@ import { Component, inject, OnInit, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonApp, IonRouterOutlet, AlertController } from '@ionic/angular/standalone';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { AuthService }    from './core/services/auth.service';
+import { SocketService }  from './core/services/socket.service';
 import { ThemeService }   from './core/services/theme.service';
 import { PushService }    from './core/services/push.service';
 import { NotificationService } from './core/services/notification.service';
@@ -23,6 +25,7 @@ import { ConnectivityService } from './core/services/connectivity.service';
 })
 export class AppComponent implements OnInit {
   private authService      = inject(AuthService);
+  private socketService    = inject(SocketService);
   private themeService     = inject(ThemeService);
   private pushService      = inject(PushService);
   private notificationService = inject(NotificationService);
@@ -89,6 +92,27 @@ export class AppComponent implements OnInit {
     this.ratingService.registerOpen();
     this.runLifecycleChecks();
     this.authService.restoreSession();
+    this.wireAppStateListener();
+  }
+
+  /**
+   * Native only: drop the socket the moment the app leaves the foreground so
+   * the server marks us offline and sends chat messages as FCM pushes instead
+   * of into a dead socket. On resume, reconnect (refreshing the access token
+   * if needed) and pull anything we missed.
+   */
+  private wireAppStateListener(): void {
+    if (!Capacitor.isNativePlatform()) return;
+    CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (!this.authService.isAuthenticated()) return;
+      if (isActive) {
+        this.authService.resumeSession();
+        this.chatService.refresh();
+        this.friendService.getFriends().subscribe({ error: () => {} });
+      } else {
+        this.socketService.disconnect();
+      }
+    });
   }
 
   /** Boot-time version + maintenance check. Blocking screens are handled by the effect above. */

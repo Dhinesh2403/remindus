@@ -247,6 +247,21 @@ export class AuthService {
       );
   }
 
+  // ─── App resumed from background (native) ─────────────────────────────────
+  // The socket is disconnected while backgrounded (so the server sends chat
+  // pushes instead). Fetching the profile first lets the auth interceptor
+  // transparently refresh an expired access token, then we reconnect with it.
+  resumeSession(): void {
+    if (!this.isAuthenticated()) return;
+    this.fetchCurrentUser().subscribe({
+      next: () => {
+        const token = this.tokenService.getAccessToken();
+        if (token) this.socketService.connect(token);
+      },
+      error: () => {},
+    });
+  }
+
   // ─── Logout ───────────────────────────────────────────────────────────────
   logout(): void {
     const refreshToken = this.tokenService.getRefreshToken();

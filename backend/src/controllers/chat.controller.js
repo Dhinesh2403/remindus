@@ -6,7 +6,8 @@ const Message    = require('../models/Message');
 const { conversationKey } = require('../models/Message');
 const Friendship = require('../models/Friendship');
 const User       = require('../models/User');
-const { emitToUser } = require('../sockets');
+const { emitToUser, isOnline } = require('../sockets');
+const notifService = require('../services/notification.service');
 const { asyncHandler, AppError } = require('../utils/helpers');
 
 // ── Authorisation: the two users must be accepted friends ──────────────────
@@ -117,14 +118,28 @@ exports.sendMessage = asyncHandler(async (req, res) => {
 
   await assertFriends(uid, friendId);
 
+  const recipientOnline = isOnline(String(friendId));
+
   const msg = await Message.create({
     conversationId: conversationKey(uid, friendId),
     sender:    uid,
     recipient: friendId,
     text,
+    status:      recipientOnline ? 'delivered' : 'sent',
+    deliveredAt: recipientOnline ? new Date() : null,
   });
 
   emitToUser(String(friendId), 'chat:message', { message: shape(msg) });
+
+  // Same rule as the socket path: push only when the recipient isn't connected.
+  if (!recipientOnline) {
+    notifService.pushChatMessage({
+      recipientId: friendId,
+      senderName:  req.user.name || 'A friend',
+      text,
+      senderId:    String(uid),
+    }).catch(() => {});
+  }
 
   res.status(201).json({ success: true, message: shape(msg) });
 });
