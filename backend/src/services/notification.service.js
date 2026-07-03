@@ -37,6 +37,17 @@ if (firebaseReady) {
       });
     }
     logger.info(`Firebase Admin SDK initialised for project ${process.env.FIREBASE_PROJECT_ID}.`);
+
+    // Verify the credentials actually work by fetching an OAuth token now,
+    // instead of letting every send() fail quietly later. Catches truncated
+    // FIREBASE_CLIENT_EMAIL / revoked keys (invalid_grant: account not found).
+    firebaseAdmin.app().options.credential.getAccessToken()
+      .then(() => logger.info('[FCM] Service-account credential VERIFIED — pushes enabled.'))
+      .catch((err) => {
+        logger.error(`[FCM] Service-account credential INVALID — pushes DISABLED: ${err.message}`);
+        logger.error(`[FCM] Check FIREBASE_CLIENT_EMAIL ("${(process.env.FIREBASE_CLIENT_EMAIL || '').slice(0, 15)}…") and FIREBASE_PRIVATE_KEY in the deployment env vars.`);
+        firebaseAdmin = null;
+      });
   } catch (err) {
     firebaseAdmin = null;
     logger.warn('Firebase Admin init failed — FCM push disabled:', err.message);

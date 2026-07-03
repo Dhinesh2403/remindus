@@ -122,6 +122,9 @@ app.get('/api/health', (_req, res) => {
     // Which Firebase project this deployment's credentials belong to. Must
     // match the app's google-services.json (remindus-24) or every send fails.
     fcmProjectId: process.env.FIREBASE_PROJECT_ID || null,
+    // Masked service-account email — makes a truncated env value visible here.
+    // The correct value starts with "firebase-adminsdk".
+    fcmClientEmail: (process.env.FIREBASE_CLIENT_EMAIL || '').slice(0, 17) + '…',
     timestamp: new Date().toISOString(),
   });
 });
