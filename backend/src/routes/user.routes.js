@@ -25,6 +25,7 @@ router.patch('/me/password',
 router.put('/me/notif-prefs',   ctrl.updateNotifPrefs);
 router.post('/me/avatar',       ctrl.uploadAvatar);
 router.patch('/me/fcm-token',   ctrl.updateFcmToken);
+router.post('/me/test-push',    ctrl.testPush);
 router.delete('/me',            ctrl.deleteAccount);
 
 module.exports = router;

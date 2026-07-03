@@ -48,6 +48,41 @@ if (firebaseReady) {
 /** True when the FCM pipeline is usable (reported by /api/health). */
 exports.isFcmActive = () => !!firebaseAdmin;
 
+/**
+ * Diagnostic send to a user's stored token that RETURNS the raw FCM outcome
+ * instead of swallowing errors into logs (POST /api/users/me/test-push).
+ */
+exports.sendTestPush = async (userId) => {
+  if (!firebaseAdmin) {
+    return { sent: false, reason: 'firebase_not_initialised', projectId: process.env.FIREBASE_PROJECT_ID || null };
+  }
+  const user = await User.findById(userId).select('fcmToken').lean();
+  if (!user?.fcmToken) {
+    return { sent: false, reason: 'no_fcm_token_stored' };
+  }
+  try {
+    const id = await firebaseAdmin.messaging().send({
+      token:        user.fcmToken,
+      notification: { title: '🔔 Remindus server test', body: `Sent from the server at ${new Date().toISOString()}` },
+      data:         { type: 'reminder_due' },
+      android: {
+        priority: 'high',
+        notification: { sound: 'default', channelId: 'remindus_default' },
+      },
+    });
+    return { sent: true, messageId: id, projectId: process.env.FIREBASE_PROJECT_ID };
+  } catch (err) {
+    return {
+      sent: false,
+      reason: 'fcm_send_failed',
+      code: err.code || null,
+      message: err.message,
+      projectId: process.env.FIREBASE_PROJECT_ID || null,
+      tokenPrefix: user.fcmToken.slice(0, 12),
+    };
+  }
+};
+
 // ── Configure web-push (only if valid VAPID keys are present) ────────────
 const vapidReady = process.env.VAPID_PUBLIC_KEY &&
                    process.env.VAPID_PRIVATE_KEY &&
