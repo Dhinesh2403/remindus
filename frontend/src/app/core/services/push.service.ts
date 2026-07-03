@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { environment } from '../../../environments/environment';
 
 // Persistent logging for debugging
@@ -122,13 +123,16 @@ export class PushService {
       });
 
       pushLogger.log('📍 Adding pushNotificationReceived listener...');
-      // Foreground notification received
+      // Foreground push received. Android does NOT display FCM notifications
+      // while the app is in the foreground (presentationOptions is iOS-only),
+      // so mirror it as a local notification or the user sees nothing.
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         pushLogger.log('✅ Foreground notification received', {
-          title: notification.notification?.title,
-          body: notification.notification?.body,
-          data: notification.notification?.data,
+          title: notification.title,
+          body: notification.body,
+          data: notification.data,
         });
+        this.showForegroundNotification(notification.title, notification.body, notification.data);
       });
 
       pushLogger.log('📍 Adding pushNotificationActionPerformed listener...');
@@ -138,36 +142,13 @@ export class PushService {
           title: action.notification?.title,
           data: action.notification?.data,
         });
-        const data         = action.notification?.data ?? {};
-        const type         = String(data['type'] ?? '');
-        const reminderId   = data['reminderId'];
-        const friendshipId = data['friendshipId'];
+        this.routeFromData(action.notification?.data ?? {});
+      });
 
-        pushLogger.log('📱 Routing notification', { type, reminderId, friendshipId });
-
-        switch (type) {
-          case 'friend_request':
-            this.router.navigate(['/app/friends'],
-              friendshipId ? { queryParams: { accept: friendshipId } } : undefined);
-            break;
-          case 'friend_accepted':
-            this.router.navigate(['/app/friends']);
-            break;
-          case 'reminder_due':
-            this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
-            break;
-          case 'reminder_assigned':
-          case 'reminder_pre_alert':
-          case 'friend_reminder_due':
-            this.router.navigate(['/app/reminders']);
-            break;
-          case 'reminder_response':
-          case 'reminder_status_update':
-            this.router.navigate(['/app/reminders']);
-            break;
-          default:
-            this.router.navigate(['/app/home']);
-        }
+      // Taps on the local notifications we mirror in the foreground.
+      await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+        pushLogger.log('✅ Local notification tapped', { extra: action.notification?.extra });
+        this.routeFromData(action.notification?.extra ?? {});
       });
 
       // Listeners are attached — now request permission and register with FCM.
@@ -222,10 +203,70 @@ export class PushService {
     }
   }
 
+  /** Navigate based on the push payload's `type` (shared by FCM + local taps). */
+  private routeFromData(data: Record<string, unknown>): void {
+    const type         = String(data['type'] ?? '');
+    const reminderId   = data['reminderId'];
+    const friendshipId = data['friendshipId'];
+
+    pushLogger.log('📱 Routing notification', { type, reminderId, friendshipId });
+
+    switch (type) {
+      case 'friend_request':
+        this.router.navigate(['/app/friends'],
+          friendshipId ? { queryParams: { accept: friendshipId } } : undefined);
+        break;
+      case 'friend_accepted':
+        this.router.navigate(['/app/friends']);
+        break;
+      case 'chat_message':
+        this.router.navigate(['/app/friends']);
+        break;
+      case 'reminder_due':
+        this.router.navigate(reminderId ? ['/app/reminders', reminderId] : ['/app/reminders']);
+        break;
+      case 'reminder_assigned':
+      case 'reminder_pre_alert':
+      case 'friend_reminder_due':
+      case 'reminder_response':
+      case 'reminder_status_update':
+        this.router.navigate(['/app/reminders']);
+        break;
+      default:
+        this.router.navigate(['/app/home']);
+    }
+  }
+
+  /** Mirror a foreground FCM push as a local notification (Android shows nothing otherwise). */
+  private async showForegroundNotification(
+    title?: string,
+    body?: string,
+    data?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!title && !body) return;   // data-only message — nothing to show
+    try {
+      await LocalNotifications.schedule({
+        notifications: [{
+          id:        Date.now() % 2147483647,   // Android needs a Java-int id
+          title:     title ?? 'Remindus',
+          body:      body ?? '',
+          extra:     data ?? {},
+          channelId: 'remindus_default',
+        }],
+      });
+      pushLogger.log('✅ Foreground push mirrored as local notification', { title });
+    } catch (err) {
+      pushLogger.log('❌ Local notification failed', {
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   /** Call on logout to remove the token from the backend */
   async deregister(): Promise<void> {
     if (!Capacitor.isNativePlatform()) return;
     this.http.patch(this.API, { token: null }).subscribe();
     await PushNotifications.removeAllListeners();
+    await LocalNotifications.removeAllListeners();
   }
 }
