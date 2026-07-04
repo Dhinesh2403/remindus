@@ -50,7 +50,7 @@ export class UpdateService {
           platform: info.platform,
           versionCode: info.build,
           versionName: info.versionName,
-        })
+        }, { headers: { 'X-Skip-Loading': '1' } })
       );
       const data = res.data;
       this.result.set(data);

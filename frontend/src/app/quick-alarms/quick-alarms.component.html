@@ -62,39 +62,16 @@
       <div class="qa-sheet-handle"></div>
       <h2 class="qa-sheet-title">New Alarm</h2>
 
-      <!-- Spinner -->
-      <div class="qa-spinner">
-        <div class="qa-spinner-col">
-          <button class="qa-spin-btn" (click)="adjustHour(1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 15l-6-6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          </button>
-          <div class="qa-spin-val">{{ newAlarm().hour.toString().padStart(2,'0') }}</div>
-          <button class="qa-spin-btn" (click)="adjustHour(-1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          </button>
-          <div class="qa-spin-lbl">Hr</div>
-        </div>
-        <div class="qa-spin-colon">:</div>
-        <div class="qa-spinner-col">
-          <button class="qa-spin-btn" (click)="adjustMinute(1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 15l-6-6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          </button>
-          <div class="qa-spin-val">{{ newAlarm().minute.toString().padStart(2,'0') }}</div>
-          <button class="qa-spin-btn" (click)="adjustMinute(-1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          </button>
-          <div class="qa-spin-lbl">Min</div>
-        </div>
-        <div class="qa-ampm">
-          <div class="qa-ampm-btn" [class.active]="newAlarm().hour < 12">AM</div>
-          <div class="qa-ampm-btn" [class.active]="newAlarm().hour >= 12">PM</div>
-        </div>
-      </div>
+      <!-- Time (shared picker — opens the system clock, AM/PM handled there) -->
+      <div class="qa-time-big">{{ formatTime(newAlarm().hour, newAlarm().minute) }}</div>
+      <rm-time-field label="Alarm time" [value]="timeValue()" (valueChange)="setTime($event)"></rm-time-field>
 
-      <div class="qa-fires-in">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="#3D5AF1" stroke-width="1.7"/></svg>
-        Alarm fires in 16h 23m
-      </div>
+      @if (firesIn()) {
+        <div class="qa-fires-in">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="#3D5AF1" stroke-width="1.7"/></svg>
+          Alarm fires in {{ firesIn() }}
+        </div>
+      }
 
       <!-- Label -->
       <div class="qa-label-row">

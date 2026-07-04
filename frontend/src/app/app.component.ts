@@ -16,12 +16,13 @@ import { LoggerService }  from './core/services/logger.service';
 import { UpdateService }  from './core/services/update.service';
 import { RatingService }  from './core/services/rating.service';
 import { ConnectivityService } from './core/services/connectivity.service';
+import { RmLoaderComponent } from './core/components/rm-loader.component';
 
 @Component({
   selector:    'app-root',
   standalone:  true,
-  imports:     [IonApp, IonRouterOutlet],
-  template:    `<ion-app><ion-router-outlet></ion-router-outlet></ion-app>`,
+  imports:     [IonApp, IonRouterOutlet, RmLoaderComponent],
+  template:    `<ion-app><ion-router-outlet></ion-router-outlet><rm-loader></rm-loader></ion-app>`,
 })
 export class AppComponent implements OnInit {
   private authService      = inject(AuthService);

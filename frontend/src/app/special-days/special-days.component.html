@@ -77,7 +77,7 @@
         <p>Never miss the moment</p>
         <button class="sd-sheet-close" (click)="showForm.set(false)">×</button>
       </div>
-      <input class="sd-input" placeholder="Name *"
+      <input class="sd-input" placeholder="Name *" [value]="form().name"
              (input)="updateForm('name', $any($event.target).value)" />
       <div class="sd-type-row">
         @for (t of ['birthday','anniversary','event']; track t) {
@@ -88,20 +88,9 @@
         }
       </div>
       <div class="sd-date-row">
-        <div class="sd-month-chips">
-          @for (m of months; track m; let i = $index) {
-            <button class="sd-month-chip" [class.active]="form().month === i + 1"
-                    (click)="updateForm('month', i + 1)">{{ m }}</button>
-          }
-        </div>
-        <div class="sd-day-row">
-          <span>Day</span>
-          <button class="sd-day-btn" (click)="updateForm('day', Math.max(1, form().day - 1))">−</button>
-          <span class="sd-day-val">{{ form().day }}</span>
-          <button class="sd-day-btn" (click)="updateForm('day', Math.min(31, form().day + 1))">+</button>
-        </div>
+        <rm-date-field label="Date" [value]="dateValue()" (valueChange)="onDateChange($event)"></rm-date-field>
       </div>
-      <input class="sd-input" placeholder="Note – e.g. Turning 30"
+      <input class="sd-input" placeholder="Note – e.g. Turning 30" [value]="form().note"
              (input)="updateForm('note', $any($event.target).value)" />
       <div class="sd-color-row">
         @for (c of colors; track c) {
@@ -113,9 +102,9 @@
           </button>
         }
       </div>
-      <button class="sd-save-btn" (click)="saveSpecialDay()">
+      <button class="sd-save-btn" [disabled]="saving()" (click)="saveSpecialDay()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-        Save Special Day
+        {{ saving() ? 'Saving…' : 'Save Special Day' }}
       </button>
     </div>
   }

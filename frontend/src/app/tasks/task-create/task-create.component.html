@@ -68,20 +68,10 @@
     <p class="tc-hint">Tap + to add a subtask · press Enter to confirm</p>
   </div>
 
-  <!-- Date & Time -->
-  <div class="tc-section tc-row-section">
-    <div class="tc-row-item">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-      <span>Due Date</span>
-      <input class="tc-date-input" type="date" [value]="dueDate()"
-             (change)="dueDate.set($any($event.target).value)" />
-    </div>
-    <div class="tc-row-item">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-      <span>Start time</span>
-      <input class="tc-time-input" type="time" [value]="startTime()"
-             (change)="startTime.set($any($event.target).value)" />
-    </div>
+  <!-- Date & Time (shared pickers) -->
+  <div class="tc-section tc-dt-row">
+    <rm-date-field label="Due Date" [value]="dueDate()" (valueChange)="dueDate.set($event)"></rm-date-field>
+    <rm-time-field label="Start time" [value]="startTime()" (valueChange)="startTime.set($event)"></rm-time-field>
   </div>
 
   <!-- Estimated time chips -->

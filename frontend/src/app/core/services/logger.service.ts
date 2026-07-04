@@ -92,7 +92,7 @@ export class LoggerService {
     const batch = this.buffer.slice(0, MAX_BUFFER);
     const device = await this.deviceMeta();
 
-    this.http.post(this.API, { device, logs: batch }).subscribe({
+    this.http.post(this.API, { device, logs: batch }, { headers: { 'X-Skip-Loading': '1' } }).subscribe({
       next: () => { this.buffer.splice(0, batch.length); this.flushing = false; },
       // Keep the buffer for a later retry. NEVER log this failure (would recurse).
       error: () => { this.flushing = false; },

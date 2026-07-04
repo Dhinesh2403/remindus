@@ -90,7 +90,10 @@ export class FriendService {
   }
 
   getFriends(): Observable<{ friends: Friend[]; pending: PendingRequest[] }> {
-    return this.http.get<{ friends: Friend[]; pending: PendingRequest[] }>(this.API).pipe(
+    // Also fired on app boot/resume for the badge — keep the global loader out of it.
+    return this.http.get<{ friends: Friend[]; pending: PendingRequest[] }>(this.API, {
+      headers: { 'X-Skip-Loading': '1' },
+    }).pipe(
       tap(({ pending }) => this._pendingCount.set(pending.length))
     );
   }

@@ -85,6 +85,28 @@ export class AlarmService {
     await LocalNotifications.schedule(options);
   }
 
+  /**
+   * One-shot alarm at an exact date+time (used by Alarm-type reminders).
+   * No-op on web; silently skips past dates.
+   */
+  async scheduleAt(id: number, title: string, at: Date): Promise<void> {
+    if (!this.isNative) return;
+    if (at.getTime() <= Date.now()) return;
+    const granted = await this.ensurePermission();
+    if (!granted) throw new Error('Notification permission denied');
+
+    await LocalNotifications.schedule({
+      notifications: [{
+        id,
+        title: title || 'Alarm',
+        body: this.formatTime(at.getHours(), at.getMinutes()),
+        schedule: { at, allowWhileIdle: true },
+        sound: 'beep.wav',
+        smallIcon: 'ic_stat_icon',
+      }],
+    });
+  }
+
   /** Cancel every notification associated with an alarm id. */
   async cancel(alarmId: number): Promise<void> {
     if (!this.isNative) return;

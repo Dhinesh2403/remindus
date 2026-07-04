@@ -17,12 +17,13 @@ const reminderSchema = new mongoose.Schema(
     time: { type: String, required: true, match: /^\d{2}:\d{2}$/ },
     type: {
       type: String,
-      enum: ['general','birthday','wedding','medicine','study','bill','work','custom'],
+      enum: ['general','birthday','wedding','medicine','study','bill','work','custom',
+             'personal','health','finance','family','travel','shopping'],
       default: 'general',
     },
     repeatType: {
       type: String,
-      enum: ['none','daily','weekly','monthly','yearly'],
+      enum: ['none','daily','weekly','weekdays','monthly','yearly'],
       default: 'none',
     },
     priority: {
@@ -31,9 +32,10 @@ const reminderSchema = new mongoose.Schema(
       default: 'medium',
     },
     reminderWindowMinutes: { type: Number, default: 30 },
+    durationMinutes:       { type: Number, default: null },
     notificationTypes: [{
       type: String,
-      enum: ['push','email','sms','whatsapp'],
+      enum: ['push','email','sms','whatsapp','alarm'],
     }],
     status: {
       type: String,

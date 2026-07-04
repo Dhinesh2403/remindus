@@ -55,12 +55,28 @@ describe('QuickAlarmsComponent', () => {
     expect(component.daysLabel([true, false, true, false, false, false, false])).toBe('Mon, Wed');
   });
 
-  it('adjustHour()/adjustMinute() wrap around correctly', () => {
-    component.newAlarm.set({ hour: 23, minute: 59, label: 'x', days: component.newAlarm().days });
-    component.adjustHour(1);
-    expect(component.newAlarm().hour).toBe(0);
-    component.adjustMinute(1);
-    expect(component.newAlarm().minute).toBe(0);
+  it('setTime() parses "HH:mm" into hour/minute and ignores junk', () => {
+    component.setTime('18:30');
+    expect(component.newAlarm().hour).toBe(18);
+    expect(component.newAlarm().minute).toBe(30);
+    component.setTime('');
+    expect(component.newAlarm().hour).toBe(18); // unchanged
+  });
+
+  it('timeValue() renders the draft as zero-padded "HH:mm"', () => {
+    component.newAlarm.set({ hour: 6, minute: 5, label: 'x', days: component.newAlarm().days });
+    expect(component.timeValue()).toBe('06:05');
+  });
+
+  it('firesIn() counts down to the next enabled day', () => {
+    // Wed 2026-07-01 10:00 local time
+    const now = new Date(2026, 6, 1, 10, 0, 0);
+    component.newAlarm.set({ hour: 12, minute: 30, label: 'x', days: [true, true, true, true, true, true, true] });
+    expect(component.firesIn(now)).toBe('2h 30m');
+
+    // Only Monday enabled → Wed 10:00 → Mon 09:00 is 4d 23h away
+    component.newAlarm.set({ hour: 9, minute: 0, label: 'x', days: [true, false, false, false, false, false, false] });
+    expect(component.firesIn(now)).toBe('4d 23h');
   });
 
   it('addAlarm() appends, persists to localStorage and schedules via AlarmService', async () => {

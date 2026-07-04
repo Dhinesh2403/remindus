@@ -117,21 +117,6 @@
 }
 .sd-type-btn.active { border-color: #E85D9A; background: #E85D9A; color: #fff; }
 .sd-date-row { margin-bottom: 14px; }
-.sd-month-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 12px; padding-bottom: 2px; &::-webkit-scrollbar { display: none; } }
-.sd-month-chip {
-  height: 30px; padding: 0 12px; border-radius: 15px; border: none;
-  background: var(--rm-surface); font-size: 12px; font-weight: 700; color: var(--rm-text-muted);
-  cursor: pointer; white-space: nowrap; font-family: inherit; flex-shrink: 0;
-}
-.sd-month-chip.active { background: #E85D9A; color: #fff; }
-.sd-day-row { display: flex; align-items: center; gap: 14px; font-size: 15px; font-weight: 700; color: var(--rm-text-primary); }
-.sd-day-row span { flex: 1; }
-.sd-day-btn {
-  width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--rm-border);
-  background: var(--rm-surface); font-size: 18px; color: var(--rm-text-primary);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
-.sd-day-val { font-size: 22px; font-weight: 900; color: #E85D9A; min-width: 30px; text-align: center; }
 .sd-color-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
 .sd-color-dot {
   width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid transparent;
@@ -143,4 +128,5 @@
   width: 100%; height: 54px; border-radius: 14px; border: none;
   background: #E85D9A; color: #fff; font-size: 16px; font-weight: 700;
   cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;
+  &:disabled { opacity: .6; }
 }

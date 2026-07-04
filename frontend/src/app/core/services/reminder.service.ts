@@ -13,12 +13,18 @@ export type ReminderType =
   | 'study'
   | 'bill'
   | 'work'
-  | 'custom';
+  | 'custom'
+  | 'personal'
+  | 'health'
+  | 'finance'
+  | 'family'
+  | 'travel'
+  | 'shopping';
 
-export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type RepeatType = 'none' | 'daily' | 'weekly' | 'weekdays' | 'monthly' | 'yearly';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type ReminderStatus = 'pending' | 'done' | 'snoozed' | 'missed';
-export type NotificationType = 'push' | 'email' | 'sms' | 'whatsapp';
+export type NotificationType = 'push' | 'email' | 'sms' | 'whatsapp' | 'alarm';
 
 export interface AssignedUser {
   _id: string;
@@ -72,6 +78,7 @@ export interface CreateReminderDto {
   repeatType?: RepeatType;
   priority?: Priority;
   reminderWindowMinutes?: number;
+  durationMinutes?: number;
   notificationTypes?: NotificationType[];
   assignedTo?: string;
   nextFireAt?: string; // UTC ISO — computed from user's local date+time on the frontend

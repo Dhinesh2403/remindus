@@ -27,6 +27,9 @@ export interface Conversation {
   unreadCount: number;
 }
 
+// Chat renders its own optimistic/sending states — never trigger the global loader.
+const SKIP_LOADER = { headers: { 'X-Skip-Loading': '1' } };
+
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   private http   = inject(HttpClient);
@@ -123,7 +126,7 @@ export class ChatService {
 
   // ── Loading ───────────────────────────────────────────────────────────
   loadConversations(): void {
-    this.http.get<{ conversations: Conversation[] }>(`${this.API}/conversations`).subscribe({
+    this.http.get<{ conversations: Conversation[] }>(`${this.API}/conversations`, SKIP_LOADER).subscribe({
       next: ({ conversations }) => {
         this._conversations.set(conversations);
         const unread: Record<string, number> = {};
@@ -135,7 +138,7 @@ export class ChatService {
   }
 
   loadMessages(friendId: string): void {
-    this.http.get<{ messages: ChatMessage[] }>(`${this.API}/${friendId}/messages`).subscribe({
+    this.http.get<{ messages: ChatMessage[] }>(`${this.API}/${friendId}/messages`, SKIP_LOADER).subscribe({
       next: ({ messages }) => {
         this._messages.update(prev => ({ ...prev, [friendId]: messages }));
       },
@@ -175,7 +178,7 @@ export class ChatService {
       this.socket.emit('chat:send', { toUserId: friendId, tempId, text });
     } else {
       // REST fallback when the socket is unavailable.
-      this.http.post<{ message: ChatMessage }>(`${this.API}/${friendId}/messages`, { text }).subscribe({
+      this.http.post<{ message: ChatMessage }>(`${this.API}/${friendId}/messages`, { text }, SKIP_LOADER).subscribe({
         next: ({ message }) => this.onAck(tempId, message),
         error: () => {},
       });
@@ -192,7 +195,7 @@ export class ChatService {
     this.clearUnread(friendId);
     this.socket.emit('chat:read', { fromUserId: friendId });
     // Belt-and-braces REST call (covers a missed socket emit).
-    this.http.patch(`${this.API}/${friendId}/read`, {}).subscribe({ error: () => {} });
+    this.http.patch(`${this.API}/${friendId}/read`, {}, SKIP_LOADER).subscribe({ error: () => {} });
   }
 
   // ── Socket event handlers ─────────────────────────────────────────────
