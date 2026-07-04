@@ -170,7 +170,7 @@ function categoryForType(type) {
  * Respects the recipient's per-category notifTypes switches — a disabled
  * category is skipped entirely (no DB doc, no socket event, no FCM).
  */
-exports.createAndPush = async ({ userId, type, title, message, data = {}, push = true }) => {
+exports.createAndPush = async ({ userId, type, title, message, data = {}, push = true, senderName = null, avatar = null }) => {
   // ── 0. Honour the user's per-category notification switch ───────────────
   try {
     const prefUser = await User.findById(userId).select('notifTypes').lean();
@@ -208,17 +208,40 @@ exports.createAndPush = async ({ userId, type, title, message, data = {}, push =
     try {
       const user = await User.findById(userId).select('fcmToken').lean();
       if (user?.fcmToken) {
-        await firebaseAdmin.messaging().send({
-          token:        user.fcmToken,
-          notification: { title, body: message },
-          data:         { type, ...Object.fromEntries(
-            Object.entries(data).map(([k, v]) => [k, String(v)])
-          )},
-          android: {
-            priority: 'high',
-            notification: { sound: 'default', channelId: 'remindus_default' },
-          },
-        });
+        const baseData = { type, ...Object.fromEntries(
+          Object.entries(data).map(([k, v]) => [k, String(v)])
+        )};
+
+        if (senderName) {
+          // WhatsApp-style push: sent DATA-ONLY (no `notification` block) so the
+          // native RemindusMessagingService renders a NotificationCompat.
+          // MessagingStyle notification — circular sender avatar, sender name as
+          // the title, and an expandable full-text body — in every app state.
+          // (FCM's notification payload can't do the circular avatar; only the
+          // client can.) High priority so it still wakes a killed app.
+          await firebaseAdmin.messaging().send({
+            token: user.fcmToken,
+            data: {
+              ...baseData,
+              style:      'messaging',
+              title:      title   || '',
+              body:       message || '',
+              senderName: String(senderName),
+              avatar:     avatar ? String(avatar) : '',
+            },
+            android: { priority: 'high' },
+          });
+        } else {
+          await firebaseAdmin.messaging().send({
+            token:        user.fcmToken,
+            notification: { title, body: message },
+            data:         baseData,
+            android: {
+              priority: 'high',
+              notification: { sound: 'default', channelId: 'remindus_default' },
+            },
+          });
+        }
         logger.info(`[FCM] Sent "${type}" to user ${userId}`);
       } else {
         logger.warn(`[FCM] No token for user ${userId} — skipping`);

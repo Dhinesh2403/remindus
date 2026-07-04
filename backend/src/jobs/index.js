@@ -32,7 +32,7 @@ function startJobs() {
           { $set: { nextFireAt: maxDate } },
           { new: false },            // return the original doc so we know who to notify
         )
-          .populate('userId',     'name email phone notifPrefs pushSubscription fcmToken')
+          .populate('userId',     'name avatar email phone notifPrefs pushSubscription fcmToken')
           .populate('assignedTo', 'name fcmToken pushSubscription');
 
         if (!reminder) break;       // no more due reminders this tick
@@ -199,6 +199,8 @@ async function fireReminder(reminder) {
         type:        'friend_reminder_due',
         senderName:  user.name,
       },
+      senderName: user.name,
+      avatar:     user.avatar,
     });
 
     // Update sharedStatus to 'received' if still at 'sent'

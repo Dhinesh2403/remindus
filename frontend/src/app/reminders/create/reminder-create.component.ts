@@ -14,6 +14,7 @@ import {
 } from '../../core/services/reminder.service';
 import { FriendService, Friend } from '../../core/services/friend.service';
 import { AlarmService } from '../../core/services/alarm.service';
+import { TimeService } from '../../core/services/time.service';
 
 type NotifType = 'push' | 'alarm';
 interface CatChip { key: string; type: ReminderType; label: string; color: string }
@@ -609,11 +610,14 @@ export class ReminderCreateComponent implements OnInit {
   private toast   = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private sheetCtrl = inject(ActionSheetController);
+  private time    = inject(TimeService);
 
   // ── Form state ────────────────────────────────────────────────────────
   titleVal = '';
-  readonly dateVal   = signal(this.localDateStr(new Date()));
-  readonly timeVal   = signal(this.defaultTime());
+  // Preload with trusted now + 5 min (server-synced, not the raw device clock).
+  private readonly initAt = this.time.plusMinutes(5);
+  readonly dateVal   = signal(this.initAt.date);
+  readonly timeVal   = signal(this.initAt.time);
   readonly quickSel  = signal<string | null>(null);
   readonly repeatVal = signal<RepeatType>('none');
   readonly notifType = signal<NotifType>('push');
@@ -669,12 +673,12 @@ export class ReminderCreateComponent implements OnInit {
   readonly draftOffset  = signal(0);
   readonly draftRepeat  = signal<RepeatType>('none');
   readonly draftDuration = signal<number | null>(null);
-  readonly viewYear  = signal(new Date().getFullYear());
-  readonly viewMonth = signal(new Date().getMonth());
+  readonly viewYear  = signal(this.time.now().getFullYear());
+  readonly viewMonth = signal(this.time.now().getMonth());
 
   readonly dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  readonly todayStr = this.localDateStr(new Date());
-  readonly tomorrowStr = this.localDateStr(this.addDays(new Date(), 1));
+  readonly todayStr = this.localDateStr(this.time.now());
+  readonly tomorrowStr = this.localDateStr(this.addDays(this.time.now(), 1));
   readonly nextMondayStr = this.computeNextMonday();
 
   readonly monthLabel = computed(() =>
@@ -730,7 +734,7 @@ export class ReminderCreateComponent implements OnInit {
   close(): void { this.router.navigate(['/app/reminders']); }
 
   applyQuick(q: QuickChip): void {
-    const now = new Date();
+    const now = this.time.now();
     if (q.absTime) {
       this.dateVal.set(this.localDateStr(now));
       this.timeVal.set(q.absTime);
@@ -841,7 +845,7 @@ export class ReminderCreateComponent implements OnInit {
     this.viewMonth.set(d.getMonth());
   }
 
-  resetDraftTime(): void { this.draftTime.set(this.defaultTime()); }
+  resetDraftTime(): void { this.draftTime.set(this.time.plusMinutes(5).time); }
 
   async chooseOffset(): Promise<void> {
     const sheet = await this.sheetCtrl.create({
@@ -987,14 +991,8 @@ export class ReminderCreateComponent implements OnInit {
     return `${hr}:${this.pad(m)} ${h >= 12 ? 'PM' : 'AM'}`;
   }
 
-  private defaultTime(): string {
-    const d = new Date();
-    d.setHours(d.getHours() + 1, 0, 0, 0);
-    return `${this.pad(d.getHours())}:00`;
-  }
-
   private computeNextMonday(): string {
-    const d = new Date();
+    const d = this.time.now();
     const delta = ((8 - d.getDay()) % 7) || 7;
     return this.localDateStr(this.addDays(d, delta));
   }

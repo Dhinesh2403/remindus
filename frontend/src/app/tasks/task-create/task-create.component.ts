@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent, ToastController } from '@ionic/angular/standalone';
 import { TaskService } from '../../core/services/task.service';
+import { TimeService } from '../../core/services/time.service';
 import { RmDateFieldComponent } from '../../core/components/rm-date-field.component';
 import { RmTimeFieldComponent } from '../../core/components/rm-time-field.component';
 
@@ -22,13 +23,16 @@ export class TaskCreateComponent {
   protected nav    = inject(Router);
   private taskSvc = inject(TaskService);
   private toast  = inject(ToastController);
+  private time   = inject(TimeService);
 
+  // Preload with trusted now + 5 min (server-synced, not the raw device clock).
+  private readonly initAt = this.time.plusMinutes(5);
   title       = signal('');
   notes       = signal('');
   priority    = signal<Priority>('medium');
   category    = signal('Personal');
-  dueDate     = signal('');
-  startTime   = signal('');
+  dueDate     = signal(this.initAt.date);
+  startTime   = signal(this.initAt.time);
   estimatedTime = signal<number | null>(null);
   reminderType  = signal<'notification' | 'alarm' | 'none'>('notification');
   repeat        = signal<RepeatOpt>('Does not repeat');

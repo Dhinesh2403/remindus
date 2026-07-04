@@ -122,6 +122,8 @@ exports.create = asyncHandler(async (req, res) => {
       title:   `📌 New task from ${req.user.name}`,
       message: `"${reminder.title}" — ${duePhrase(reminder)}`,
       data:    { reminderId: reminder._id },
+      senderName: req.user.name,
+      avatar:     req.user.avatar,
     });
   }
 
@@ -226,6 +228,8 @@ exports.assign = asyncHandler(async (req, res) => {
     title:   `📌 New task from ${req.user.name}`,
     message: `"${reminder.title}" — ${duePhrase(reminder)}`,
     data:    { reminderId: reminder._id },
+    senderName: req.user.name,
+    avatar:     req.user.avatar,
   });
 
   res.json({ success: true, data: reminder });
