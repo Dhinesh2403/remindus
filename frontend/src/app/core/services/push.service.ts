@@ -56,6 +56,17 @@ export class PushService {
   constructor() {
     pushLogger.log('🔧 PushService constructor called');
 
+    // Taps on the native MessagingStyle notifications (Android
+    // RemindusMessagingService) open MainActivity, which calls this global with
+    // the push `data`. Route it through the same deep-link logic as Capacitor
+    // taps. A pending copy set by MainActivity is drained in init() for cold
+    // starts, where this handler isn't registered yet when the tap fires.
+    (window as any).__rmNotificationTap = (data: Record<string, unknown>) => {
+      pushLogger.log('✅ Native messaging notification tapped', { data });
+      (window as any).__rmPendingNotificationTap = undefined;   // routed live — don't re-drain in init()
+      this.routeFromData(data ?? {});
+    };
+
     // Expose debugging functions to window
     (window as any).rmPushDebug = {
       getFcmToken: () => localStorage.getItem('rm_fcm_token') || 'Not set yet',
@@ -90,6 +101,15 @@ export class PushService {
     if (!Capacitor.isNativePlatform()) {
       pushLogger.log('⏭️ Skipping — not a native platform');
       return;
+    }
+
+    // Cold start via a native notification tap: MainActivity stashed the push
+    // data before Angular was ready. Drain it now that the router is up.
+    const pending = (window as any).__rmPendingNotificationTap;
+    if (pending) {
+      (window as any).__rmPendingNotificationTap = undefined;
+      pushLogger.log('📨 Draining pending notification tap', { pending });
+      this.routeFromData(pending);
     }
 
     try {

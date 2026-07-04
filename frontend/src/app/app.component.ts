@@ -16,6 +16,7 @@ import { LoggerService }  from './core/services/logger.service';
 import { UpdateService }  from './core/services/update.service';
 import { RatingService }  from './core/services/rating.service';
 import { ConnectivityService } from './core/services/connectivity.service';
+import { TimeService }     from './core/services/time.service';
 import { RmLoaderComponent } from './core/components/rm-loader.component';
 
 @Component({
@@ -37,6 +38,7 @@ export class AppComponent implements OnInit {
   private updateService    = inject(UpdateService);
   private ratingService    = inject(RatingService);
   private connectivity     = inject(ConnectivityService);
+  private timeService      = inject(TimeService);
   private router           = inject(Router);
   private alertCtrl        = inject(AlertController);
 
@@ -91,6 +93,9 @@ export class AppComponent implements OnInit {
     this.themeService.init();
     this.logger.init();
     this.ratingService.registerOpen();
+    // Reconcile our clock with the server early so "now" is trusted before the
+    // user opens any create screen (doesn't need auth — /health is public).
+    this.timeService.sync();
     this.runLifecycleChecks();
     this.authService.restoreSession();
     this.wireAppStateListener();
@@ -110,6 +115,8 @@ export class AppComponent implements OnInit {
         this.authService.resumeSession();
         this.chatService.refresh();
         this.friendService.getFriends().subscribe({ error: () => {} });
+        // Re-check the offset in case the device clock changed while backgrounded.
+        this.timeService.sync();
       } else {
         this.socketService.disconnect();
       }
