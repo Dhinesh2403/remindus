@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent, IonToggle } from '@ionic/angular/standalone';
 import { AlarmService } from '../core/services/alarm.service';
+import { RmTimeFieldComponent } from '../core/components/rm-time-field.component';
 
 export interface QuickAlarm {
   id: string;
@@ -20,7 +21,7 @@ const STORAGE_KEY = 'rm_quick_alarms';
 @Component({
   selector: 'app-quick-alarms',
   standalone: true,
-  imports: [CommonModule, FormsModule, IonContent, IonToggle],
+  imports: [CommonModule, FormsModule, IonContent, IonToggle, RmTimeFieldComponent],
   templateUrl: './quick-alarms.component.html',
   styleUrl: './quick-alarms.component.scss',
 })
@@ -107,12 +108,34 @@ export class QuickAlarmsComponent implements OnInit {
     this.persist();
   }
 
-  adjustHour(delta: number): void {
-    this.newAlarm.update(a => ({ ...a, hour: (a.hour + delta + 24) % 24 }));
+  /** Draft time as "HH:mm" for the shared time field. */
+  timeValue(): string {
+    const a = this.newAlarm();
+    return `${String(a.hour).padStart(2, '0')}:${String(a.minute).padStart(2, '0')}`;
   }
 
-  adjustMinute(delta: number): void {
-    this.newAlarm.update(a => ({ ...a, minute: (a.minute + delta + 60) % 60 }));
+  setTime(v: string): void {
+    const [h, m] = v.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return;
+    this.newAlarm.update(a => ({ ...a, hour: h, minute: m }));
+  }
+
+  /** Time until the draft alarm would first fire, e.g. "16h 23m" or "2d 4h". */
+  firesIn(now = new Date()): string {
+    const a = this.newAlarm();
+    const anyDay = !a.days.some(Boolean);
+    for (let off = 0; off <= 7; off++) {
+      const cand = new Date(now.getFullYear(), now.getMonth(), now.getDate() + off, a.hour, a.minute, 0, 0);
+      if (cand <= now) continue;
+      const dayIdx = (cand.getDay() + 6) % 7; // days[] is Monday-first
+      if (!anyDay && !a.days[dayIdx]) continue;
+      const mins = Math.round((cand.getTime() - now.getTime()) / 60000);
+      const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+      if (d > 0) return `${d}d ${h}h`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+    return '';
   }
 
   formatTime(h: number, m: number): string {

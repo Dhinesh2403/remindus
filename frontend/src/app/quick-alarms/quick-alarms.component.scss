@@ -79,25 +79,11 @@
 .qa-sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--rm-border); margin: 0 auto 16px; }
 .qa-sheet-title { font-size: 20px; font-weight: 900; color: var(--rm-text-primary); margin: 0 0 20px; font-family: 'Nunito', sans-serif; }
 
-.qa-spinner { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
-.qa-spinner-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.qa-spin-btn {
-  width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--rm-surface);
-  color: var(--rm-text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer;
+.qa-time-big {
+  font-size: 52px; font-weight: 900; color: var(--rm-text-primary); text-align: center;
+  font-family: 'Nunito', sans-serif; line-height: 1; margin-bottom: 16px;
 }
-.qa-spin-val {
-  font-size: 52px; font-weight: 900; color: var(--rm-text-primary); min-width: 70px; text-align: center;
-  font-family: 'Nunito', sans-serif; line-height: 1;
-}
-.qa-spin-lbl { font-size: 11px; color: var(--rm-text-muted); font-weight: 600; }
-.qa-spin-colon { font-size: 48px; font-weight: 900; color: var(--rm-text-primary); margin-bottom: 24px; font-family: 'Nunito', sans-serif; }
-.qa-ampm { display: flex; flex-direction: column; gap: 6px; margin-left: 8px; }
-.qa-ampm-btn {
-  height: 36px; padding: 0 14px; border-radius: 8px; border: none;
-  background: var(--rm-surface); font-size: 13px; font-weight: 700; color: var(--rm-text-muted);
-  cursor: pointer; font-family: inherit;
-}
-.qa-ampm-btn.active { background: var(--rm-purple); color: #fff; }
+rm-time-field { display: block; margin-bottom: 12px; }
 
 .qa-fires-in {
   display: flex; align-items: center; gap: 6px; background: var(--rm-purple-light);

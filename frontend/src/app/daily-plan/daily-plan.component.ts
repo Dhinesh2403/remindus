@@ -7,8 +7,9 @@ import {
   IonModal,
   IonInput,
   IonTextarea,
-  IonSpinner,
 } from '@ionic/angular/standalone';
+import { RmSpinnerComponent } from '../core/components/rm-spinner.component';
+import { RmTimeFieldComponent } from '../core/components/rm-time-field.component';
 import { addIcons } from 'ionicons';
 import {
   chevronBackOutline,
@@ -25,7 +26,7 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
 @Component({
   selector: 'app-daily-plan',
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, IonSpinner],
+  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, RmSpinnerComponent, RmTimeFieldComponent],
   template: `
     <ion-content [scrollY]="true" class="page">
       <!-- Header -->
@@ -55,7 +56,7 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
       </div>
 
       <div class="body">
-        <div class="loading" *ngIf="loading()"><ion-spinner name="crescent"></ion-spinner></div>
+        <div class="loading" *ngIf="loading()"><rm-spinner></rm-spinner></div>
 
         <div class="empty" *ngIf="!loading() && acts().length === 0 && view() !== 'timeline'">
           No activities for this day. Tap + to plan one.
@@ -140,6 +141,8 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
                 </div>
               </div>
 
+              <rm-time-field label="Start Time" [value]="dStart()" (valueChange)="dStart.set($event)"></rm-time-field>
+
               <div>
                 <div class="field-label">Duration</div>
                 <div class="chips">
@@ -150,8 +153,8 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
               <ion-textarea class="ta" placeholder="Notes (optional)" [rows]="3"
                 [value]="dNote()" (ionInput)="dNote.set($any($event.target).value)"></ion-textarea>
 
-              <button class="save-btn" (click)="save()">
-                <ion-icon name="checkmark-outline"></ion-icon> Save Activity
+              <button class="save-btn" [disabled]="saving()" (click)="save()">
+                <ion-icon name="checkmark-outline"></ion-icon> {{ saving() ? 'Saving…' : 'Save Activity' }}
               </button>
             </div>
           </ion-content>
@@ -233,6 +236,7 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
     .chip.on { border-color: var(--rm-purple); background: var(--rm-purple-light); color: var(--rm-purple); }
     .ta { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 14px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 500; }
     .save-btn { width: 100%; height: 56px; border-radius: 16px; border: none; background: var(--rm-purple); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .save-btn:disabled { opacity: .6; }
   `],
 })
 export class DailyPlanComponent implements OnInit {
@@ -251,8 +255,10 @@ export class DailyPlanComponent implements OnInit {
   readonly dayOff = signal(0);
 
   readonly adding = signal(false);
+  readonly saving = signal(false);
   readonly dTitle = signal('');
   readonly dColor = signal('#3257EE');
+  readonly dStart = signal('10:00');
   readonly dDur = signal(30);
   readonly dNote = signal('');
 
@@ -350,15 +356,23 @@ export class DailyPlanComponent implements OnInit {
   openAdd(): void {
     this.dTitle.set('');
     this.dColor.set('#3257EE');
+    // Default to the next full hour so new activities start "soon", not at a fixed 10:00.
+    const next = new Date();
+    next.setMinutes(0, 0, 0);
+    next.setHours(next.getHours() + 1);
+    this.dStart.set(`${String(next.getHours()).padStart(2, '0')}:00`);
     this.dDur.set(30);
     this.dNote.set('');
+    this.saving.set(false);
     this.adding.set(true);
   }
   save(): void {
     const title = this.dTitle().trim();
-    if (!title) return;
-    const startTotal = 10 * 60;
-    const endTotal = startTotal + this.dDur();
+    if (!title || this.saving()) return;
+    const [sh, sm] = this.dStart().split(':').map(Number);
+    const startTotal = (sh || 0) * 60 + (sm || 0);
+    const endTotal = Math.min(startTotal + this.dDur(), 24 * 60 - 1);
+    this.saving.set(true);
     this.activityService
       .create({
         title,
@@ -372,9 +386,13 @@ export class DailyPlanComponent implements OnInit {
         note: this.dNote(),
         cat: 'None',
       })
-      .subscribe((created) => {
-        this.acts.update((list) => [...list, created].sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM)));
-        this.adding.set(false);
+      .subscribe({
+        next: (created) => {
+          this.acts.update((list) => [...list, created].sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM)));
+          this.saving.set(false);
+          this.adding.set(false);
+        },
+        error: () => this.saving.set(false),
       });
   }
 }

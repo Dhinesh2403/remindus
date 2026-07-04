@@ -8,6 +8,7 @@ import {
 import { addIcons } from 'ionicons';
 import { chevronBackOutline, chevronForwardOutline } from 'ionicons/icons';
 import { ReminderService, Reminder, ReceivedReminder, ReminderType, RepeatType } from '../core/services/reminder.service';
+import { SpecialDayService, SpecialDay } from '../core/services/special-day.service';
 
 interface CalReminder {
   _id:          string;
@@ -29,7 +30,18 @@ interface CalendarDay {
   isSelected:  boolean;
   isOtherMonth:boolean;
   reminders:   CalReminder[];
+  specials:    SpecialDay[];
 }
+
+const SPECIAL_EMOJI: Record<string, string> = {
+  birthday: '🎂', anniversary: '💍', event: '✨',
+};
+const SPECIAL_COLOR: Record<string, string> = {
+  birthday: '#EC4899', anniversary: '#8B5CF6', event: '#3D5AF1',
+};
+const SPECIAL_LABEL: Record<string, string> = {
+  birthday: 'Birthday', anniversary: 'Anniversary', event: 'Event',
+};
 
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['January','February','March','April','May','June',
@@ -39,16 +51,22 @@ const CAT_COLOR: Record<string, string> = {
   birthday: '#EC4899', wedding: '#8B5CF6', medicine: '#EF4444',
   bill: '#3B82F6', study: '#10B981', work: '#F59E0B',
   general: '#6B7280', custom: '#3D5AF1',
+  personal: '#3D5AF1', health: '#10B981', finance: '#F97316',
+  family: '#EF4444', travel: '#8B5CF6', shopping: '#14B8A6',
 };
 const CAT_EMOJI: Record<string, string> = {
   birthday: '🎂', wedding: '💍', medicine: '💊',
   bill: '💰', study: '📚', work: '💼',
   general: '📌', custom: '✨',
+  personal: '👤', health: '❤️', finance: '💵',
+  family: '👨‍👩‍👧', travel: '✈️', shopping: '🛒',
 };
 const CAT_LABEL: Record<string, string> = {
   birthday: 'Birthday', wedding: 'Wedding', medicine: 'Medicine',
   bill: 'Bill', study: 'Study', work: 'Work',
   general: 'General', custom: 'Custom',
+  personal: 'Personal', health: 'Health', finance: 'Finance',
+  family: 'Family', travel: 'Travel', shopping: 'Shopping',
 };
 const SHARED_COLOR: Record<string, string> = {
   sent: '#3B82F6', received: '#F59E0B', acknowledged: '#06B6D4',
@@ -106,12 +124,23 @@ const STATUS_COLOR: Record<string, string> = {
               [class.wk-selected]="d.isSelected" [class.wk-today]="d.isToday" (click)="selected.set(d.date)">
               <div class="wk-dow">{{ d.weekday }}</div>
               <div class="wk-num">{{ d.num }}</div>
-              @if (d.reminders.length > 0) {
+              @if (d.reminders.length > 0 || d.specials.length > 0) {
                 <div class="wk-dot"></div>
               }
             </div>
           }
         </div>
+        <!-- All-day special days for the selected day -->
+        @if (selectedDaySpecials().length > 0) {
+          <div class="wk-specials">
+            @for (s of selectedDaySpecials(); track s._id) {
+              <div class="wk-special-chip" [style.background]="specialColor(s) + '22'" [style.color]="specialColor(s)">
+                {{ specialEmoji(s.type) }} {{ s.name }}
+              </div>
+            }
+          </div>
+        }
+
         <!-- Time slots -->
         <div class="week-slots">
           @for (h of hours; track h) {
@@ -167,9 +196,12 @@ const STATUS_COLOR: Record<string, string> = {
             (click)="selectDay(day)"
           >
             <span class="day-num">{{ day.day }}</span>
-            @if (day.reminders.length > 0) {
+            @if (day.reminders.length > 0 || day.specials.length > 0) {
               <div class="dots-row">
-                @for (r of day.reminders.slice(0,3); track r._id) {
+                @for (s of day.specials.slice(0,3); track s._id) {
+                  <span class="dot" [style.background]="day.isToday ? '#fff' : specialColor(s)"></span>
+                }
+                @for (r of day.reminders.slice(0, 3 - (day.specials.length > 3 ? 3 : day.specials.length)); track r._id) {
                   <span class="dot" [style.background]="day.isToday ? '#fff' : getCatColor(r.type)"></span>
                 }
               </div>
@@ -182,18 +214,37 @@ const STATUS_COLOR: Record<string, string> = {
       <div class="events-section">
         <div class="events-title a-fu">
           {{ selectedDateLabel() }}
-          @if (selectedDayReminders().length > 0) {
-            <span class="events-count">{{ selectedDayReminders().length }}</span>
+          @if (selectedDayReminders().length + selectedDaySpecials().length > 0) {
+            <span class="events-count">{{ selectedDayReminders().length + selectedDaySpecials().length }}</span>
           }
         </div>
 
-        @if (selectedDayReminders().length === 0) {
+        @if (selectedDayReminders().length === 0 && selectedDaySpecials().length === 0) {
           <div class="no-events a-fu" [style.--i]="1">
             <span class="no-events-emoji">✨</span>
             <p>No reminders on this day</p>
           </div>
         } @else {
           <div class="events-list">
+            @for (s of selectedDaySpecials(); track s._id) {
+              <div class="event-card special-card a-fu" [style.--i]="$index + 1"
+                [style.border-left-color]="specialColor(s)">
+                <div class="special-emoji" [style.background]="specialColor(s) + '22'">{{ specialEmoji(s.type) }}</div>
+                <div class="event-info">
+                  <div class="event-title">{{ s.name }}</div>
+                  <div class="event-cat" [style.color]="specialColor(s)">
+                    {{ specialLabel(s.type) }}
+                    @if (s.note) { <span class="event-from"> · {{ s.note }}</span> }
+                  </div>
+                </div>
+                <div class="event-right">
+                  <div class="event-time">All day</div>
+                  <span class="event-status-chip"
+                    [style.background]="specialColor(s) + '22'"
+                    [style.color]="specialColor(s)">Special day</span>
+                </div>
+              </div>
+            }
             @for (r of selectedDayReminders(); track r._id) {
               <div class="event-card a-fu" [style.--i]="$index + 1"
                 [style.border-left-color]="getCatColor(r.type)" [class.event-done]="r.status === 'done'">
@@ -296,6 +347,9 @@ const STATUS_COLOR: Record<string, string> = {
     .event-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
     .event-time { font-size: 12.5px; font-weight: 700; color: var(--rm-text-secondary); }
     .event-status-chip { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
+    .special-emoji { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+    .wk-specials { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px 0; }
+    .wk-special-chip { padding: 7px 13px; border-radius: 12px; font-size: 12.5px; font-weight: 700; }
 
     /* Week view */
     .week-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--rm-card); }
@@ -328,7 +382,8 @@ const STATUS_COLOR: Record<string, string> = {
   `],
 })
 export class CalendarComponent implements OnInit {
-  private reminderService = inject(ReminderService);
+  private reminderService   = inject(ReminderService);
+  private specialDayService = inject(SpecialDayService);
 
   dowLabels = DOW;
   today     = new Date();
@@ -379,12 +434,14 @@ export class CalendarComponent implements OnInit {
   ngOnInit() {
     this.reminderService.getAll({ limit: 100 }).subscribe();
     this.reminderService.getReceived().subscribe();
+    this.specialDayService.getAll().subscribe({ error: () => {} });
   }
 
   doRefresh(event: CustomEvent) {
     Promise.all([
       this.reminderService.getAll({ limit: 100 }).toPromise(),
       this.reminderService.getReceived().toPromise(),
+      this.specialDayService.getAll().toPromise(),
     ]).finally(() => (event.target as HTMLIonRefresherElement).complete());
   }
 
@@ -432,6 +489,17 @@ export class CalendarComponent implements OnInit {
       .sort((a, b) => a.time.localeCompare(b.time));
   });
 
+  readonly selectedDaySpecials = computed(() => {
+    const sel = this.selected();
+    return this.specialDayService.items().filter(s => this.specialOccursOn(s, sel));
+  });
+
+  /** Special days repeat yearly on month/day, from their start year (if known). */
+  private specialOccursOn(s: SpecialDay, date: Date): boolean {
+    if (date.getMonth() + 1 !== s.month || date.getDate() !== s.day) return false;
+    return s.year == null || date.getFullYear() >= s.year;
+  }
+
   private reminderOccursOn(r: CalReminder, date: Date): boolean {
     const origin = new Date(r.date);
     // Never show before the reminder was originally created
@@ -458,6 +526,7 @@ export class CalendarComponent implements OnInit {
       isSelected:   date.toDateString() === selected.toDateString(),
       isOtherMonth,
       reminders: reminders.filter(r => this.reminderOccursOn(r, date)),
+      specials:  this.specialDayService.items().filter(s => this.specialOccursOn(s, date)),
     };
   }
 
@@ -473,6 +542,10 @@ export class CalendarComponent implements OnInit {
     this.viewDate.set(new Date());
     this.selected.set(new Date());
   }
+
+  specialEmoji(t: string): string { return SPECIAL_EMOJI[t] ?? '✨'; }
+  specialLabel(t: string): string { return SPECIAL_LABEL[t] ?? 'Event'; }
+  specialColor(s: SpecialDay): string { return s.color || SPECIAL_COLOR[s.type] || '#3D5AF1'; }
 
   getCatColor(type: string): string { return CAT_COLOR[type] ?? '#6B7280'; }
   getCatEmoji(type: string): string { return CAT_EMOJI[type] ?? '📌'; }
@@ -499,6 +572,7 @@ export class CalendarComponent implements OnInit {
         isToday:  d.toDateString() === this.today.toDateString(),
         isSelected: d.toDateString() === sel.toDateString(),
         reminders: rem.filter(r => this.reminderOccursOn(r, d)),
+        specials:  this.specialDayService.items().filter(s => this.specialOccursOn(s, d)),
       };
     });
   });

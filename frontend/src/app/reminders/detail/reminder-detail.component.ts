@@ -20,9 +20,11 @@ import { SocketService } from '../../core/services/socket.service';
 const CAT_COLOR: Record<string, string> = {
   birthday:'#EC4899',wedding:'#8B5CF6',medicine:'#EF4444',
   bill:'#3B82F6',study:'#10B981',work:'#F59E0B',general:'#6B7280',custom:'#3D5AF1',
+  personal:'#3D5AF1',health:'#10B981',finance:'#F97316',family:'#EF4444',travel:'#8B5CF6',shopping:'#14B8A6',
 };
 const CAT_EMOJI: Record<string, string> = {
   birthday:'🎂',wedding:'💍',medicine:'💊',bill:'💰',study:'📚',work:'💼',general:'📌',custom:'✨',
+  personal:'👤',health:'❤️',finance:'💵',family:'👨‍👩‍👧',travel:'✈️',shopping:'🛒',
 };
 const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
   sent:         { label: 'Sent',         color: '#3B82F6' },

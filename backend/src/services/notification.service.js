@@ -170,7 +170,7 @@ function categoryForType(type) {
  * Respects the recipient's per-category notifTypes switches — a disabled
  * category is skipped entirely (no DB doc, no socket event, no FCM).
  */
-exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
+exports.createAndPush = async ({ userId, type, title, message, data = {}, push = true }) => {
   // ── 0. Honour the user's per-category notification switch ───────────────
   try {
     const prefUser = await User.findById(userId).select('notifTypes').lean();
@@ -201,6 +201,9 @@ exports.createAndPush = async ({ userId, type, title, message, data = {} }) => {
   }
 
   // ── 2. FCM push (always runs, even if DB write failed) ──────────────────
+  if (!push) {
+    return notif; // caller handles delivery itself (e.g. device-local alarm)
+  }
   if (firebaseAdmin) {
     try {
       const user = await User.findById(userId).select('fcmToken').lean();

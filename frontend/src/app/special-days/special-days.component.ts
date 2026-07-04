@@ -3,44 +3,34 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent, IonRefresher, IonRefresherContent, ToastController } from '@ionic/angular/standalone';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../environments/environment';
-import { tap } from 'rxjs/operators';
+import { SpecialDayService, SpecialDayType } from '../core/services/special-day.service';
+import { RmDateFieldComponent } from '../core/components/rm-date-field.component';
 
-export interface SpecialDay {
-  _id: string;
-  name: string;
-  type: 'birthday' | 'anniversary' | 'event';
-  month: number;
-  day: number;
-  note?: string;
-  color?: string;
-  year?: number;
-  daysUntil?: number;
-}
+export type { SpecialDay } from '../core/services/special-day.service';
 
 type SDFilter = 'All' | 'Birthdays' | 'Anniversaries' | 'Events';
 
 @Component({
   selector: 'app-special-days',
   standalone: true,
-  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent],
+  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent, RmDateFieldComponent],
   templateUrl: './special-days.component.html',
   styleUrl: './special-days.component.scss',
 })
 export class SpecialDaysComponent implements OnInit {
-  protected nav  = inject(Router);
-  private http   = inject(HttpClient);
-  private toast  = inject(ToastController);
-  protected Math = Math;
+  protected nav       = inject(Router);
+  private sdService   = inject(SpecialDayService);
+  private toast       = inject(ToastController);
 
-  readonly items    = signal<SpecialDay[]>([]);
+  readonly items    = this.sdService.items;
   readonly filter   = signal<SDFilter>('All');
   readonly showForm = signal(false);
+  readonly saving   = signal(false);
 
   // New item form
   readonly form = signal({
-    name: '', type: 'birthday' as 'birthday' | 'anniversary' | 'event',
+    name: '', type: 'birthday' as SpecialDayType,
+    year: new Date().getFullYear(),
     month: new Date().getMonth() + 1, day: new Date().getDate(),
     note: '', color: '#3D5AF1',
   });
@@ -61,18 +51,21 @@ export class SpecialDaysComponent implements OnInit {
     return this.items().filter(i => i.type === type);
   });
 
+  /** Form date as "YYYY-MM-DD" for the shared date field. */
+  readonly dateValue = computed(() => {
+    const f = this.form();
+    return `${f.year}-${String(f.month).padStart(2, '0')}-${String(f.day).padStart(2, '0')}`;
+  });
+
   ngOnInit(): void { this.load(); }
 
   load(): void {
-    this.http.get<{ success: boolean; data: SpecialDay[] }>(`${environment.apiUrl}/special-days`)
-      .pipe(tap(r => this.items.set(r.data ?? [])))
-      .subscribe();
+    this.sdService.getAll().subscribe({ error: () => {} });
   }
 
   doRefresh(e: CustomEvent): void {
-    this.http.get<{ success: boolean; data: SpecialDay[] }>(`${environment.apiUrl}/special-days`)
-      .pipe(tap(r => this.items.set(r.data ?? [])))
-      .subscribe({ complete: () => (e.target as HTMLIonRefresherElement).complete() });
+    const done = () => (e.target as HTMLIonRefresherElement).complete();
+    this.sdService.getAll().subscribe({ complete: done, error: done });
   }
 
   setFilter(f: SDFilter): void { this.filter.set(f); }
@@ -91,16 +84,37 @@ export class SpecialDaysComponent implements OnInit {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
 
+  onDateChange(v: string): void {
+    const [y, m, d] = v.split('-').map(Number);
+    if (!y || !m || !d) return;
+    this.form.update(f => ({ ...f, year: y, month: m, day: d }));
+  }
+
   async saveSpecialDay(): Promise<void> {
     const f = this.form();
-    if (!f.name.trim()) return;
-    this.http.post<{ success: boolean; data: SpecialDay }>(`${environment.apiUrl}/special-days`, f)
-      .subscribe({
-        next: (res) => {
-          this.items.update(i => [...i, res.data]);
-          this.showForm.set(false);
-        },
-      });
+    if (!f.name.trim() || this.saving()) return;
+    this.saving.set(true);
+    this.sdService.create(f).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.showForm.set(false);
+        this.resetForm();
+      },
+      error: async () => {
+        this.saving.set(false);
+        const t = await this.toast.create({ message: 'Could not save — please try again', duration: 2000, color: 'danger', position: 'top' });
+        await t.present();
+      },
+    });
+  }
+
+  private resetForm(): void {
+    this.form.set({
+      name: '', type: 'birthday',
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1, day: new Date().getDate(),
+      note: '', color: '#3D5AF1',
+    });
   }
 
   updateForm(field: string, value: unknown): void {

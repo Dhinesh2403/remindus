@@ -182,7 +182,8 @@ export class AuthService {
   refreshAccessToken(
     refreshToken: string
   ): Observable<AuthTokens> {
-    return this.http.post<AuthTokens>(`${this.API}/refresh`, { refreshToken });
+    // Transparent background refresh — must not flash the global loader.
+    return this.http.post<AuthTokens>(`${this.API}/refresh`, { refreshToken }, { headers: { 'X-Skip-Loading': '1' } });
   }
 
   // ─── Verify OTP ───────────────────────────────────────────────────────────

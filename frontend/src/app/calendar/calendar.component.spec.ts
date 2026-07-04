@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { of } from 'rxjs';
 import { CalendarComponent } from './calendar.component';
 import { ReminderService } from '../core/services/reminder.service';
+import { SpecialDayService } from '../core/services/special-day.service';
 
 describe('CalendarComponent', () => {
   let fixture: ComponentFixture<CalendarComponent>;
@@ -16,10 +17,18 @@ describe('CalendarComponent', () => {
     getReceived: () => of([]),
   };
 
+  const specialDayStub = {
+    items: signal<any[]>([]),
+    getAll: () => of([]),
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CalendarComponent],
-      providers: [{ provide: ReminderService, useValue: reminderStub }],
+      providers: [
+        { provide: ReminderService, useValue: reminderStub },
+        { provide: SpecialDayService, useValue: specialDayStub },
+      ],
     })
       .overrideComponent(CalendarComponent, { set: { template: '' } })
       .compileComponents();
@@ -70,5 +79,24 @@ describe('CalendarComponent', () => {
   it('viewMode can switch to week', () => {
     component.viewMode.set('week');
     expect(component.viewMode()).toBe('week');
+  });
+
+  it('selectedDaySpecials() matches special days on their month/day', () => {
+    const sel = component.selected();
+    specialDayStub.items.set([
+      { _id: 's1', name: 'Match', type: 'birthday', month: sel.getMonth() + 1, day: sel.getDate() },
+      { _id: 's2', name: 'Other', type: 'event', month: sel.getMonth() + 1, day: sel.getDate() === 1 ? 2 : 1 },
+    ]);
+    expect(component.selectedDaySpecials().map(s => s.name)).toEqual(['Match']);
+    specialDayStub.items.set([]);
+  });
+
+  it('selectedDaySpecials() hides special days before their start year', () => {
+    const sel = component.selected();
+    specialDayStub.items.set([
+      { _id: 's3', name: 'Future', type: 'anniversary', month: sel.getMonth() + 1, day: sel.getDate(), year: sel.getFullYear() + 1 },
+    ]);
+    expect(component.selectedDaySpecials().length).toBe(0);
+    specialDayStub.items.set([]);
   });
 });

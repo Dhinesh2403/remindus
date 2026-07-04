@@ -31,6 +31,12 @@ const CATEGORY_META: Record<ReminderType, { emoji: string; color: string; label:
   work:     { emoji: '💼', color: '#F59E0B', label: 'Work' },
   general:  { emoji: '📌', color: '#6B7280', label: 'General' },
   custom:   { emoji: '✨', color: '#3D5AF1', label: 'Custom' },
+  personal: { emoji: '👤', color: '#3D5AF1', label: 'Personal' },
+  health:   { emoji: '❤️', color: '#10B981', label: 'Health' },
+  finance:  { emoji: '💵', color: '#F97316', label: 'Finance' },
+  family:   { emoji: '👨‍👩‍👧', color: '#EF4444', label: 'Family' },
+  travel:   { emoji: '✈️', color: '#8B5CF6', label: 'Travel' },
+  shopping: { emoji: '🛒', color: '#14B8A6', label: 'Shopping' },
 };
 
 const REMINDER_STATUS_META: Record<string, { label: string; color: string }> = {

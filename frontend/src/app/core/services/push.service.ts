@@ -112,7 +112,7 @@ export class PushService {
         localStorage.setItem('rm_fcm_token', token);
 
         pushLogger.log('📤 Uploading token to backend', { endpoint: this.API });
-        this.http.patch(this.API, { token }).subscribe({
+        this.http.patch(this.API, { token }, { headers: { 'X-Skip-Loading': '1' } }).subscribe({
           next: (res) => {
             pushLogger.log('✅ Token uploaded to backend successfully', res);
             localStorage.setItem('rm_fcm_token_synced', 'true');
@@ -315,7 +315,7 @@ export class PushService {
     if (!Capacitor.isNativePlatform()) return;
     pushLogger.log('🚪 deregister() — logout push cleanup');
 
-    this.http.patch(this.API, { token: null }).subscribe({
+    this.http.patch(this.API, { token: null }, { headers: { 'X-Skip-Loading': '1' } }).subscribe({
       next:  () => pushLogger.log('✅ FCM token cleared on backend'),
       error: (e) => pushLogger.log('❌ Backend token clear failed', { status: e?.status }),
     });

@@ -167,6 +167,11 @@ async function fireReminder(reminder) {
     ? reminder.notificationTypes
     : ['push'];
 
+  // Alarm-type reminders ring via a local notification scheduled on the
+  // device — skip the FCM push so the owner isn't notified twice, but still
+  // record it in the in-app notification center.
+  const alarmOnly = notifTypes.includes('alarm') && !notifTypes.includes('push');
+
   // Notify the reminder owner. "Due in 30 min" (the reminder window) vs the
   // pre-alert's "⏳ In 2 min:" prefix is what tells the two apart on the phone.
   const due = duePhrase(reminder);
@@ -179,6 +184,7 @@ async function fireReminder(reminder) {
       ? `${sentenceCase(due)} · ${reminder.description}`
       : sentenceCase(due),
     data:    { reminderId: String(reminder._id), type: 'reminder_due' },
+    push:    !alarmOnly,
   });
 
   // If assigned to a friend, fire notification to them too with action options
@@ -207,6 +213,10 @@ function computeNextDate(currentDate, repeatType) {
   switch (repeatType) {
     case 'daily':   d.setDate(d.getDate() + 1);    break;
     case 'weekly':  d.setDate(d.getDate() + 7);    break;
+    case 'weekdays':
+      d.setDate(d.getDate() + 1);
+      while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setDate(d.getDate() + 1);
+      break;
     case 'monthly': d.setMonth(d.getMonth() + 1);  break;
     case 'yearly':  d.setFullYear(d.getFullYear() + 1); break;
   }
