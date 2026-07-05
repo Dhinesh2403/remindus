@@ -24,6 +24,7 @@ const notificationSchema = new mongoose.Schema(
         'friend_reminder_due',
         'friend_request',
         'friend_accepted',
+        'note_shared',
         'system',
       ],
       required: true,

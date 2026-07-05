@@ -5,6 +5,7 @@ const Note = require('../models/Note');
 const Friendship = require('../models/Friendship');
 const { asyncHandler, AppError } = require('../utils/helpers');
 const { emitToUser } = require('../sockets');
+const notifService = require('../services/notification.service');
 
 const POPULATE_FIELDS = 'name avatar gender';
 
@@ -46,12 +47,11 @@ exports.getAll = asyncHandler(async (req, res) => {
 
 // ── POST /api/notes ───────────────────────────────────────────────────────
 exports.create = asyncHandler(async (req, res) => {
-  const { text, title, color, collaboratorIds } = req.body;
+  const { text, title, collaboratorIds } = req.body;
   const note = await Note.create({
     userId: req.user._id,
     title: title || '',
     text,
-    color: color || 'none',
   });
 
   if (Array.isArray(collaboratorIds) && collaboratorIds.length) {
@@ -69,6 +69,7 @@ exports.create = asyncHandler(async (req, res) => {
     );
     for (const id of collaboratorIds) if (friendIds.has(String(id))) note.collaborators.addToSet(id);
     if (note.isModified('collaborators')) await note.save();
+    for (const id of friendIds) await notifyNoteShared(note, req.user, id);
   }
 
   const populated = await note.populate([
@@ -83,10 +84,10 @@ exports.create = asyncHandler(async (req, res) => {
 
 // ── PUT /api/notes/:id ────────────────────────────────────────────────────
 exports.update = asyncHandler(async (req, res) => {
-  const allowed = ['title', 'text', 'color', 'pinned'];
+  const allowed = ['title', 'text', 'pinned'];
   const update = {};
   for (const k of allowed) if (req.body[k] !== undefined) update[k] = req.body[k];
-  const editsContent = ['title', 'text', 'color'].some((k) => update[k] !== undefined);
+  const editsContent = ['title', 'text'].some((k) => update[k] !== undefined);
   if (editsContent) {
     update.lastEditedAt = new Date();
     update.lastEditedBy = req.user._id;
@@ -176,6 +177,7 @@ exports.share = asyncHandler(async (req, res) => {
   const rawNote = populated.toObject();
 
   emitNoteToMembers(rawNote, 'note:shared');
+  await notifyNoteShared(note, req.user, friendId);
   res.json({ success: true, data: normalizeForViewer(rawNote, req.user._id) });
 });
 
@@ -214,6 +216,21 @@ exports.reorder = asyncHandler(async (req, res) => {
   notifyNote(note, 'note:reordered', { noteId: String(note._id), order: note.order });
   res.json({ success: true, data: normalizeForViewer(note.toObject(), req.user._id) });
 });
+
+// ── Push/DB notification to a collaborator a note was just shared with ──────
+async function notifyNoteShared(note, sender, friendId) {
+  await notifService.createAndPush({
+    userId:  friendId,
+    type:    'note_shared',
+    title:   sender.name,
+    message: `${sender.name} shared a note with you${note.title ? `: "${note.title}"` : ''}`,
+    data:    { noteId: String(note._id), route: `/app/notes/${note._id}` },
+    category:   'Note',
+    subtext:    'Shared a note with you',
+    senderName: sender.name,
+    avatar:     sender.avatar,
+  });
+}
 
 // ── Fan out a note event (no personalized `note` payload) to the owner + every collaborator ──
 function notifyNote(note, event, payload) {
