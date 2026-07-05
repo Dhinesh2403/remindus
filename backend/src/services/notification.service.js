@@ -8,6 +8,12 @@ const Notification = require('../models/Notification');
 const User         = require('../models/User');
 const { emitToUser }  = require('../sockets');
 const logger      = require('../utils/logger');
+const { signActionToken } = require('../utils/notif-action');
+
+// Public base URL the native tray-action receiver POSTs back to. Falls back to
+// the production API so no env change is needed to ship; override with
+// PUBLIC_API_URL on other deployments.
+const ACTION_URL = `${process.env.PUBLIC_API_URL || 'https://remindus-buddy-api.up.railway.app/api'}/reminders/notif-action`;
 
 // ── Configure Firebase Admin (only if service account env vars are present) ──
 let firebaseAdmin = null;
@@ -74,7 +80,7 @@ exports.sendTestPush = async (userId) => {
   try {
     const id = await firebaseAdmin.messaging().send({
       token:        user.fcmToken,
-      notification: { title: '🔔 Remindus server test', body: `Sent from the server at ${new Date().toISOString()}` },
+      notification: { title: 'Remindus server test', body: `Sent from the server at ${new Date().toISOString()}` },
       data:         { type: 'reminder_due' },
       android: {
         priority: 'high',
@@ -170,23 +176,33 @@ function categoryForType(type) {
  * Respects the recipient's per-category notifTypes switches — a disabled
  * category is skipped entirely (no DB doc, no socket event, no FCM).
  */
-exports.createAndPush = async ({ userId, type, title, message, data = {}, push = true, senderName = null, avatar = null }) => {
+exports.createAndPush = async ({
+  userId, type, title, message, data = {}, push = true,
+  senderName = null, avatar = null,
+  // Structured "styled" push fields (rendered natively — see RemindusMessagingService):
+  category = null,             // header label: 'Reminder' | 'Task' | 'Daily plan' | 'Friend request' | 'Message' | 'System'
+  subtext  = null,             // crisp status line under the title (e.g. 'Due now', 'From Dhinesh')
+  actions  = null,            // [{ id, label }] → tray action buttons (token signed below)
+}) => {
   // ── 0. Honour the user's per-category notification switch ───────────────
   try {
     const prefUser = await User.findById(userId).select('notifTypes').lean();
-    const category = categoryForType(type);
-    if (prefUser?.notifTypes && prefUser.notifTypes[category] === false) {
-      logger.info(`[Notification] "${type}" suppressed for user ${userId} (${category} off)`);
+    const prefCategory = categoryForType(type);
+    if (prefUser?.notifTypes && prefUser.notifTypes[prefCategory] === false) {
+      logger.info(`[Notification] "${type}" suppressed for user ${userId} (${prefCategory} off)`);
       return null;
     }
   } catch (err) {
     logger.warn('[Notification] notifTypes check failed (sending anyway):', err.message);
   }
 
+  // Carry the display category into the stored data so the in-app list can chip it too.
+  const storedData = category ? { ...data, category } : data;
+
   // ── 1. Persist to DB + socket (best-effort — never blocks FCM) ──────────
   let notif = null;
   try {
-    notif = await Notification.create({ userId, type, title, message, data });
+    notif = await Notification.create({ userId, type, title, message, data: storedData });
     emitToUser(String(userId), 'notification:new', {
       _id:       notif._id,
       type:      notif.type,
@@ -209,26 +225,45 @@ exports.createAndPush = async ({ userId, type, title, message, data = {}, push =
       const user = await User.findById(userId).select('fcmToken').lean();
       if (user?.fcmToken) {
         const baseData = { type, ...Object.fromEntries(
-          Object.entries(data).map(([k, v]) => [k, String(v)])
+          Object.entries(storedData).map(([k, v]) => [k, String(v)])
         )};
 
-        if (senderName) {
-          // WhatsApp-style push: sent DATA-ONLY (no `notification` block) so the
-          // native RemindusMessagingService renders a NotificationCompat.
-          // MessagingStyle notification — circular sender avatar, sender name as
-          // the title, and an expandable full-text body — in every app state.
-          // (FCM's notification payload can't do the circular avatar; only the
-          // client can.) High priority so it still wakes a killed app.
+        // A `category` (or a legacy `senderName`) means this is a rich, native-
+        // rendered push: sent DATA-ONLY (no `notification` block) so the native
+        // RemindusMessagingService is the SINGLE code path that renders it — in
+        // every app state (foreground, background, killed). That gives us the
+        // brand small-icon, a typed header, an avatar large-icon, and tray action
+        // buttons that FCM's own notification payload cannot, and — because only
+        // one layer ever renders it — no duplicate, icon-less notifications.
+        if (category || senderName) {
+          const styledData = {
+            ...baseData,
+            v:          '2',
+            style:      'styled',
+            category:   String(category || 'Message'),
+            title:      title   || '',
+            subtext:    subtext ? String(subtext) : '',
+            body:       message || '',
+            senderName: senderName ? String(senderName) : '',
+            avatar:     avatar ? String(avatar) : '',
+          };
+          // Tray action buttons (reminder actions only — 'ack' / 'snooze5'). Each
+          // button carries its OWN short-lived token, scoped to this recipient +
+          // reminder + action, so the native receiver can POST it to ACTION_URL
+          // without carrying the user's real JWT. See utils/notif-action.js.
+          if (Array.isArray(actions) && actions.length && data.reminderId) {
+            const withTokens = actions.map((a) => ({
+              id:    a.id,
+              label: a.label,
+              token: signActionToken({ reminderId: data.reminderId, uid: userId, act: a.id }),
+            }));
+            styledData.actions   = JSON.stringify(withTokens);
+            styledData.actionUrl = ACTION_URL;
+          }
+
           await firebaseAdmin.messaging().send({
             token: user.fcmToken,
-            data: {
-              ...baseData,
-              style:      'messaging',
-              title:      title   || '',
-              body:       message || '',
-              senderName: String(senderName),
-              avatar:     avatar ? String(avatar) : '',
-            },
+            data:  styledData,
             android: { priority: 'high' },
           });
         } else {
@@ -327,18 +362,18 @@ async function sendEmail(user, reminder) {
 
   await emailService.deliver({
     to:      user.email,
-    subject: `⏰ Reminder: ${reminder.title}`,
+    subject: `Reminder: ${reminder.title}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#F8F7FF;border-radius:16px">
         <div style="background:#7C3AED;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
-          <h1 style="color:white;margin:0;font-size:24px">🔔 Remindus</h1>
+          <h1 style="color:white;margin:0;font-size:24px">Remindus</h1>
         </div>
         <h2 style="color:#1F2937">Hi ${user.name}!</h2>
         <p style="color:#4B5563">Your reminder is due:</p>
         <div style="background:white;border-radius:12px;padding:20px;border-left:4px solid #7C3AED;margin:16px 0">
           <h3 style="color:#7C3AED;margin:0 0 8px">${reminder.title}</h3>
           ${reminder.description ? `<p style="color:#6B7280;margin:0 0 8px">${reminder.description}</p>` : ''}
-          <p style="color:#9CA3AF;margin:0;font-size:14px">📅 ${timeStr}</p>
+          <p style="color:#9CA3AF;margin:0;font-size:14px">${timeStr}</p>
         </div>
         <p style="color:#9CA3AF;font-size:12px;text-align:center;margin-top:24px">
           Remindus · Unsubscribe from emails in app settings

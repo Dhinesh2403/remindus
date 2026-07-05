@@ -88,7 +88,7 @@
         }
       </div>
       <div class="sd-date-row">
-        <rm-date-field label="Date" [value]="dateValue()" (valueChange)="onDateChange($event)"></rm-date-field>
+        <rm-datetime mode="date" heading="DATE" [date]="dateValue()" (dateChange)="onDateChange($event)"></rm-datetime>
       </div>
       <input class="sd-input" placeholder="Note – e.g. Turning 30" [value]="form().note"
              (input)="updateForm('note', $any($event.target).value)" />

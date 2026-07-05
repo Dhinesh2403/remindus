@@ -9,7 +9,7 @@ import {
   IonTextarea,
 } from '@ionic/angular/standalone';
 import { RmSpinnerComponent } from '../core/components/rm-spinner.component';
-import { RmTimeFieldComponent } from '../core/components/rm-time-field.component';
+import { RmDateTimeComponent } from '../core/components/rm-datetime.component';
 import { addIcons } from 'ionicons';
 import {
   chevronBackOutline,
@@ -26,7 +26,7 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
 @Component({
   selector: 'app-daily-plan',
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, RmSpinnerComponent, RmTimeFieldComponent],
+  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, RmSpinnerComponent, RmDateTimeComponent],
   template: `
     <ion-content [scrollY]="true" class="page">
       <!-- Header -->
@@ -141,7 +141,8 @@ const COLORS = ['#3257EE', '#F05542', '#1AA06D', '#E08A2B', '#7B61D8', '#E0699B'
                 </div>
               </div>
 
-              <rm-time-field label="Start Time" [value]="dStart()" (valueChange)="dStart.set($event)"></rm-time-field>
+              <rm-datetime mode="time" [chips]="false" heading="START TIME"
+                [time]="dStart()" (timeChange)="dStart.set($event)"></rm-datetime>
 
               <div>
                 <div class="field-label">Duration</div>

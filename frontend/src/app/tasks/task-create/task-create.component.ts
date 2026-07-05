@@ -6,8 +6,7 @@ import { Router } from '@angular/router';
 import { IonContent, ToastController } from '@ionic/angular/standalone';
 import { TaskService } from '../../core/services/task.service';
 import { TimeService } from '../../core/services/time.service';
-import { RmDateFieldComponent } from '../../core/components/rm-date-field.component';
-import { RmTimeFieldComponent } from '../../core/components/rm-time-field.component';
+import { RmDateTimeComponent } from '../../core/components/rm-datetime.component';
 
 type Priority = 'low' | 'medium' | 'high';
 type RepeatOpt = 'Does not repeat' | 'Daily' | 'Weekly' | 'Monthly';
@@ -15,7 +14,7 @@ type RepeatOpt = 'Does not repeat' | 'Daily' | 'Weekly' | 'Monthly';
 @Component({
   selector: 'app-task-create',
   standalone: true,
-  imports: [CommonModule, FormsModule, IonContent, RmDateFieldComponent, RmTimeFieldComponent],
+  imports: [CommonModule, FormsModule, IonContent, RmDateTimeComponent],
   templateUrl: './task-create.component.html',
   styleUrl: './task-create.component.scss',
 })

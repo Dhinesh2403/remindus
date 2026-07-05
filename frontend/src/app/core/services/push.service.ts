@@ -167,6 +167,15 @@ export class PushService {
           pushLogger.log('⏭️ Push received while logged out — not shown');
           return;
         }
+        // Styled/messaging pushes are DATA-ONLY and rendered by the native
+        // RemindusMessagingService in every app state — mirroring them here would
+        // produce a second, icon-less notification. (Normally Capacitor never even
+        // forwards these since the native service consumes them, but guard anyway.)
+        const style = String(notification.data?.['style'] ?? '');
+        if (style === 'styled' || style === 'messaging') {
+          pushLogger.log('⏭️ Styled push already rendered natively — not mirroring');
+          return;
+        }
         const type = String(notification.data?.['type'] ?? '');
         if (type === 'chat_message') {
           // App is in the foreground — the user sees messages live in the UI,
@@ -315,6 +324,7 @@ export class PushService {
           body:      body ?? '',
           extra:     data ?? {},
           channelId: 'remindus_default',
+          smallIcon: 'ic_stat_remindus',        // brand bell — never the app-icon "letter" blob
         }],
       });
       pushLogger.log('✅ Foreground push mirrored as local notification', { title });

@@ -6,7 +6,8 @@ const Notification = require('../models/Notification');
 const User          = require('../models/User');
 const notifService  = require('../services/notification.service');
 const { asyncHandler, AppError } = require('../utils/helpers');
-const { duePhrase } = require('../utils/reminder-text');
+const { dueWhen } = require('../utils/reminder-text');
+const { verifyActionToken } = require('../utils/notif-action');
 const { getIO, emitToUser } = require('../sockets');
 
 // ── GET /api/reminders ────────────────────────────────────────────────────
@@ -119,9 +120,13 @@ exports.create = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  assignedTo,
       type:    'reminder_assigned',
-      title:   `📌 New task from ${req.user.name}`,
-      message: `"${reminder.title}" — ${duePhrase(reminder)}`,
+      title:   reminder.title,
+      message: `${req.user.name} assigned you "${reminder.title}" · due ${dueWhen(reminder)}`,
       data:    { reminderId: reminder._id },
+      category:   'Task',
+      subtext:    `From ${req.user.name} · due ${dueWhen(reminder)}`,
+      // Assignee-side "Acknowledge" tray button (ack_assigned → sharedStatus=acknowledged).
+      actions:    [{ id: 'ack_assigned', label: 'Acknowledge' }],
       senderName: req.user.name,
       avatar:     req.user.avatar,
     });
@@ -132,12 +137,28 @@ exports.create = asyncHandler(async (req, res) => {
 
 // ── PUT /api/reminders/:id ────────────────────────────────────────────────
 exports.update = asyncHandler(async (req, res) => {
+  const current = await Reminder.findOne({ _id: req.params.id, userId: req.user._id });
+  if (!current) throw new AppError('Reminder not found', 404);
+
+  const $set = { ...req.body };
+
+  // findOneAndUpdate bypasses the pre('save') hook, so an edited date/time/window
+  // would otherwise keep a stale nextFireAt (wrong countdown + clock in the push).
+  // Recompute it here unless the client sent a timezone-aware nextFireAt itself.
+  const touchesFire = ['date', 'time', 'reminderWindowMinutes'].some((k) => req.body[k] !== undefined);
+  if (touchesFire && req.body.nextFireAt === undefined) {
+    $set.nextFireAt = Reminder.computeNextFireAt(
+      req.body.date ?? current.date,
+      req.body.time ?? current.time,
+      req.body.reminderWindowMinutes ?? current.reminderWindowMinutes,
+    );
+  }
+
   const reminder = await Reminder.findOneAndUpdate(
     { _id: req.params.id, userId: req.user._id },
-    { $set: req.body },
+    { $set },
     { new: true, runValidators: true }
   );
-  if (!reminder) throw new AppError('Reminder not found', 404);
   res.json({ success: true, data: reminder });
 });
 
@@ -150,62 +171,120 @@ exports.remove = asyncHandler(async (req, res) => {
 
 // ── PATCH /api/reminders/:id/done ────────────────────────────────────────
 exports.markDone = asyncHandler(async (req, res) => {
+  const reminder = await doMarkDone(req.params.id, req.user._id, req.user.name);
+  if (!reminder) throw new AppError('Reminder not found', 404);
+  res.json({ success: true, data: reminder });
+});
+
+/**
+ * Core "mark reminder done" used by both the REST route and the notification
+ * tray-action endpoint. Returns the updated reminder, or null if not found /
+ * not owned by `userId`. `actorName` is only needed for the assigner notice.
+ */
+async function doMarkDone(reminderId, userId, actorName = null) {
   const reminder = await Reminder.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user._id },
+    { _id: reminderId, userId },
     { status: 'done', completedAt: new Date() },
     { new: true }
   );
-  if (!reminder) throw new AppError('Reminder not found', 404);
+  if (!reminder) return null;
 
-  // Update user streak
-  await updateStreak(req.user._id);
+  await updateStreak(userId);
 
-  // Notify assigner if this was assigned
   if (reminder.assignedBy) {
+    const name = actorName || (await User.findById(userId).select('name').lean())?.name || 'A friend';
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_response',
-      title:   'Reminder completed',
-      message: `${req.user.name} marked "${reminder.title}" as done`,
+      title:   reminder.title,
+      message: `${name} marked "${reminder.title}" as done`,
       data:    { reminderId: reminder._id },
+      category: 'Reminder',
+      subtext:  `${name} marked it done`,
     });
   }
 
-  // Real-time update to the reminder owner
-  getIO()?.to(`user:${req.user._id}`).emit('reminder:response', reminder);
-
-  res.json({ success: true, data: reminder });
-});
+  getIO()?.to(`user:${userId}`).emit('reminder:response', reminder);
+  return reminder;
+}
 
 // ── PATCH /api/reminders/:id/snooze ──────────────────────────────────────
 exports.snooze = asyncHandler(async (req, res) => {
   const { minutes = 30 } = req.body;
+  const reminder = await doSnooze(req.params.id, req.user._id, minutes, req.user.name);
+  if (!reminder) throw new AppError('Reminder not found', 404);
+  res.json({ success: true, data: reminder });
+});
+
+/**
+ * Core "snooze reminder" shared by the REST route and the tray-action endpoint.
+ * Returns the updated reminder, or null if not found / not owned by `userId`.
+ */
+async function doSnooze(reminderId, userId, minutes, actorName = null) {
   const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000);
 
   const reminder = await Reminder.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user._id },
+    { _id: reminderId, userId },
     {
       status: 'snoozed',
       snoozeUntil,
       nextFireAt: snoozeUntil,
+      // nextFireAt is now the exact re-fire instant, so the window must be 0 or
+      // duePhrase would add it back and report "due in <window> min" wrongly.
+      reminderWindowMinutes: 0,
       $inc: { snoozeCount: 1 },
     },
     { new: true }
   );
-  if (!reminder) throw new AppError('Reminder not found', 404);
+  if (!reminder) return null;
 
   // If snooze count > 3, escalate notification to assigner
   if (reminder.assignedBy && reminder.snoozeCount > 3) {
+    const name = actorName || (await User.findById(userId).select('name').lean())?.name || 'A friend';
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_response',
-      title:   'Reminder snoozed multiple times',
-      message: `${req.user.name} has snoozed "${reminder.title}" ${reminder.snoozeCount} times`,
+      title:   reminder.title,
+      message: `${name} has snoozed "${reminder.title}" ${reminder.snoozeCount} times`,
       data:    { reminderId: reminder._id },
+      category: 'Reminder',
+      subtext:  `Snoozed ${reminder.snoozeCount} times`,
     });
   }
 
-  res.json({ success: true, data: reminder });
+  return reminder;
+}
+
+// ── POST /api/reminders/notif-action (public — token-authorised) ─────────
+// Called by the Android notification-tray buttons. The signed token names the
+// reminder, the user it was issued to, and the exact action, so no login
+// session is needed. See utils/notif-action.js.
+exports.notifAction = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  if (!token) throw new AppError('Missing action token', 400);
+
+  let payload;
+  try {
+    payload = verifyActionToken(token);
+  } catch {
+    throw new AppError('Invalid or expired action token', 401);
+  }
+
+  const { reminderId, uid, act } = payload;
+  let reminder;
+  switch (act) {
+    // Owner acting on their OWN reminder_due notification (userId-scoped).
+    case 'ack':              reminder = await doMarkDone(reminderId, uid);              break;
+    case 'snooze5':          reminder = await doSnooze(reminderId, uid, 5);             break;
+    // Assignee acting on a task a friend gave them (assignedTo-scoped). "Acknowledge"
+    // sets sharedStatus, it does NOT mark the owner's reminder done.
+    case 'ack_assigned':     reminder = await doSharedStatus(reminderId, uid, 'acknowledged'); break;
+    case 'snooze5_assigned': reminder = await doSnoozeAssigned(reminderId, uid, 5);     break;
+    default:                 throw new AppError('Unknown action', 400);
+  }
+  if (!reminder) throw new AppError('Reminder not found', 404);
+
+  res.json({ success: true, act, status: reminder.status, sharedStatus: reminder.sharedStatus });
 });
 
 // ── PATCH /api/reminders/:id/assign ──────────────────────────────────────
@@ -225,9 +304,12 @@ exports.assign = asyncHandler(async (req, res) => {
   await notifService.createAndPush({
     userId:  friendId,
     type:    'reminder_assigned',
-    title:   `📌 New task from ${req.user.name}`,
-    message: `"${reminder.title}" — ${duePhrase(reminder)}`,
+    title:   reminder.title,
+    message: `${req.user.name} assigned you "${reminder.title}" · due ${dueWhen(reminder)}`,
     data:    { reminderId: reminder._id },
+    category:   'Task',
+    subtext:    `From ${req.user.name} · due ${dueWhen(reminder)}`,
+    actions:    [{ id: 'ack_assigned', label: 'Acknowledge' }],
     senderName: req.user.name,
     avatar:     req.user.avatar,
   });
@@ -237,11 +319,20 @@ exports.assign = asyncHandler(async (req, res) => {
 
 // ── PATCH /api/reminders/:id/shared-status ───────────────────────────────
 exports.updateSharedStatus = asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  const uid = req.user._id;
-
-  const reminder = await Reminder.findOne({ _id: req.params.id, assignedTo: uid });
+  const reminder = await doSharedStatus(req.params.id, req.user._id, req.body.status, req.user.name);
   if (!reminder) throw new AppError('Reminder not found', 404);
+  res.json({ success: true, data: reminder });
+});
+
+/**
+ * Core "assignee updates the shared status" shared by the REST route and the
+ * notification tray-action endpoint. Scoped by `assignedTo: uid` (the recipient),
+ * NOT the owner. Returns the updated reminder, or null if not found / not the
+ * assignee. `actorName` is resolved lazily when the tray endpoint doesn't have it.
+ */
+async function doSharedStatus(reminderId, uid, status, actorName = null) {
+  const reminder = await Reminder.findOne({ _id: reminderId, assignedTo: uid });
+  if (!reminder) return null;
 
   reminder.sharedStatus = status;
   if (status === 'completed') {
@@ -251,6 +342,7 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
   await reminder.save();
 
   if (reminder.assignedBy) {
+    const name = actorName || (await User.findById(uid).select('name').lean())?.name || 'A friend';
     // Real-time socket update so the sender's "Sent to Friends" badge refreshes instantly
     emitToUser(String(reminder.assignedBy), 'reminder:sharedStatus', {
       _id:          String(reminder._id),
@@ -269,45 +361,59 @@ exports.updateSharedStatus = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_status_update',
-      title:   `${req.user.name} ${text}`,
-      message: `"${reminder.title}"`,
+      title:   reminder.title,
+      message: `${name} ${text}`,
       data:    { reminderId: String(reminder._id), sharedStatus: status, type: 'reminder_status_update' },
+      category: 'Reminder',
+      subtext:  `${name} ${text}`,
     });
   }
 
-  res.json({ success: true, data: reminder });
-});
+  return reminder;
+}
 
 // ── PATCH /api/reminders/:id/snooze-assigned ─────────────────────────────
 exports.snoozeAssigned = asyncHandler(async (req, res) => {
-  const { minutes = 10 } = req.body;
-  const uid = req.user._id;
-
-  const reminder = await Reminder.findOne({ _id: req.params.id, assignedTo: uid });
+  const reminder = await doSnoozeAssigned(req.params.id, req.user._id, req.body.minutes ?? 10, req.user.name);
   if (!reminder) throw new AppError('Reminder not found', 404);
+  res.json({ success: true, data: reminder });
+});
+
+/**
+ * Core "assignee snoozes the task" shared by the REST route and the tray-action
+ * endpoint. Scoped by `assignedTo: uid`. Reschedules to the exact re-fire instant
+ * (window 0 so duePhrase doesn't add it back), and clears preAlertSent so the
+ * cron fires the pre-alert + due push again. Returns the reminder, or null.
+ */
+async function doSnoozeAssigned(reminderId, uid, minutes, actorName = null) {
+  const reminder = await Reminder.findOne({ _id: reminderId, assignedTo: uid });
+  if (!reminder) return null;
 
   const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000);
   reminder.status      = 'snoozed';
   reminder.snoozeUntil = snoozeUntil;
   reminder.nextFireAt  = snoozeUntil;
-  reminder.preAlertSent = false; // allow pre-alert to fire again
-  reminder.$inc        = undefined;
+  reminder.reminderWindowMinutes = 0; // nextFireAt is the exact re-fire instant
+  reminder.preAlertSent = false;       // allow pre-alert to fire again
   reminder.snoozeCount = (reminder.snoozeCount || 0) + 1;
   await reminder.save();
 
   // Notify sender of snooze
   if (reminder.assignedBy) {
+    const name = actorName || (await User.findById(uid).select('name').lean())?.name || 'A friend';
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
       type:    'reminder_status_update',
-      title:   'Reminder snoozed',
-      message: `${req.user.name} snoozed "${reminder.title}" by ${minutes} min`,
+      title:   reminder.title,
+      message: `${name} snoozed "${reminder.title}" by ${minutes} min`,
       data:    { reminderId: String(reminder._id), type: 'reminder_status_update' },
+      category: 'Reminder',
+      subtext:  `${name} snoozed it ${minutes} min`,
     });
   }
 
-  res.json({ success: true, data: reminder });
-});
+  return reminder;
+}
 
 // ── GET /api/reminders/received ──────────────────────────────────────────
 // Returns all reminders assigned TO the current user by any friend

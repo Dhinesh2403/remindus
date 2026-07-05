@@ -43,3 +43,23 @@ exports.duePhrase = (reminder, now = new Date()) => {
 };
 
 exports.sentenceCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/**
+ * Absolute "when" for an assigned task, so the recipient sees the concrete
+ * date + clock time rather than only a relative phrase — e.g. "Jul 6, 9:00 AM".
+ *
+ * The date is derived in UTC (matching how nextFireAt is computed in the
+ * Reminder model) and the clock time is echoed verbatim from the user-entered
+ * `time` string, so the server's own timezone never shifts it.
+ */
+exports.dueWhen = (reminder) => {
+  const clock = clockTime(reminder.time);
+  const d = reminder.date ? new Date(reminder.date) : null;
+  if (!d || Number.isNaN(d.getTime())) return clock || '';
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const datePart = `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  return clock ? `${datePart}, ${clock}` : datePart;
+};
+
+// Exported so callers (e.g. the fire push) can show just the clock time.
+exports.clockTime = clockTime;

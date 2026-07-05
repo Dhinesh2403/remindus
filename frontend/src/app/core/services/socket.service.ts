@@ -21,7 +21,13 @@ export type SocketEvent =
   | 'chat:read'
   | 'chat:typing'
   | 'presence:update'
-  | 'presence:state';
+  | 'presence:state'
+  | 'note:created'
+  | 'note:updated'
+  | 'note:deleted'
+  | 'note:shared'
+  | 'note:unshared'
+  | 'note:reordered';
 
 export interface SocketPayload<T = unknown> {
   event: SocketEvent;
@@ -76,6 +82,12 @@ export class SocketService {
       'chat:typing',
       'presence:update',
       'presence:state',
+      'note:created',
+      'note:updated',
+      'note:deleted',
+      'note:shared',
+      'note:unshared',
+      'note:reordered',
     ];
 
     events.forEach((event) => {

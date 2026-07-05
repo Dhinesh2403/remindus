@@ -208,9 +208,13 @@ exports.sendRequest = asyncHandler(async (req, res) => {
   await notifService.createAndPush({
     userId:  target._id,
     type:    'friend_request',
-    title:   '👋 New friend request',
+    title:   req.user.name,
     message: `${req.user.name} wants to be your accountability buddy`,
     data:    { friendshipId: friendship._id },
+    category:   'Friend request',
+    subtext:    'Wants to be your buddy',
+    senderName: req.user.name,
+    avatar:     req.user.avatar,
   });
 
   res.status(201).json({ success: true, message: 'Friend request sent', data: friendship });
@@ -229,9 +233,13 @@ exports.accept = asyncHandler(async (req, res) => {
   await notifService.createAndPush({
     userId:  f.requester._id,
     type:    'friend_accepted',
-    title:   '🎉 Friend request accepted!',
+    title:   req.user.name,
     message: `${req.user.name} is now your accountability buddy`,
     data:    { friendshipId: f._id },
+    category:   'Friend request',
+    subtext:    'Accepted your request',
+    senderName: req.user.name,
+    avatar:     req.user.avatar,
   });
 
   res.json({ success: true, data: f });

@@ -64,9 +64,13 @@ exports.create = asyncHandler(async (req, res) => {
     await notifService.createAndPush({
       userId:  assignedTo,
       type:    'task_assigned',
-      title:   'New task assigned',
+      title:   task.title,
       message: `${req.user.name} assigned "${task.title}" to you`,
       data:    { taskId: String(task._id) },
+      category:   'Task',
+      subtext:    `From ${req.user.name}`,
+      senderName: req.user.name,
+      avatar:     req.user.avatar,
     });
   }
 
@@ -119,9 +123,11 @@ exports.toggle = asyncHandler(async (req, res) => {
       await notifService.createAndPush({
         userId:  otherParty,
         type:    'task_status_update',
-        title:   `${req.user.name} completed a shared task`,
-        message: `"${task.title}"`,
+        title:   task.title,
+        message: `${req.user.name} completed a shared task`,
         data:    { taskId: String(task._id), type: 'task_status_update' },
+        category: 'Task',
+        subtext:  `${req.user.name} completed it`,
       });
     }
   }

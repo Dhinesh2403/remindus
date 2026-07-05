@@ -19,10 +19,38 @@
   cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit;
 }
 .profile-avatar {
+  position: relative;
   width: 84px; height: 84px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.35);
   background: rgba(255,255,255,0.20); display: flex; align-items: center; justify-content: center;
   font-size: 30px; font-weight: 800; color: #fff; margin-bottom: 12px; font-family: 'Nunito', sans-serif;
+  cursor: pointer; overflow: hidden;
 }
+.profile-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.profile-avatar-cam {
+  position: absolute; bottom: 0; right: 0; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--rm-purple); border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.profile-cam-spinner {
+  width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+  border-radius: 50%; animation: profile-spin 0.7s linear infinite;
+}
+@keyframes profile-spin { to { transform: rotate(360deg); } }
+
+.profile-edit-input {
+  width: 100%; margin-top: 2px; padding: 6px 0; border: none; border-bottom: 1.5px solid var(--rm-border);
+  background: transparent; font-size: 15px; font-weight: 600; color: var(--rm-text-primary);
+  font-family: inherit; outline: none;
+}
+.profile-edit-input:focus { border-bottom-color: var(--rm-purple); }
+
+.profile-save-btn {
+  display: block; width: calc(100% - 32px); margin: 16px 16px 0;
+  height: 50px; border: none; border-radius: 14px;
+  background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+}
+.profile-save-btn:disabled { opacity: 0.6; }
 .profile-name  { font-size: 22px; font-weight: 900; color: #fff; font-family: 'Nunito', sans-serif; }
 .profile-email { font-size: 14px; color: rgba(255,255,255,0.75); margin-top: 4px; }
 .profile-gender-badge {

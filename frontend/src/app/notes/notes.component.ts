@@ -1,6 +1,7 @@
 // src/app/notes/notes.component.ts
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
+import { Router } from '@angular/router';
 import {
   IonContent,
   IonIcon,
@@ -8,6 +9,7 @@ import {
   IonInput,
   IonTextarea,
   IonSpinner,
+  AlertController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -17,25 +19,29 @@ import {
   trashOutline,
   bookmarkOutline,
   bookmark,
-  starOutline,
+  searchOutline,
+  checkmark,
 } from 'ionicons/icons';
 import { NoteService, Note, NoteHue } from '../core/services/note.service';
+import { FriendAvatarComponent } from '../core/components/friend-avatar.component';
 
 type Hue = NoteHue;
+type Section = 'pinned' | 'other';
 
 const HUES: Record<Hue, { bar: string }> = {
+  none: { bar: 'var(--rm-border)' },
   yellow: { bar: '#E0B92B' },
   pink: { bar: '#E0699B' },
   blue: { bar: '#3257EE' },
   green: { bar: '#1AA06D' },
   purple: { bar: '#7B61D8' },
 };
-const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
+const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
 
 @Component({
   selector: 'app-notes',
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, IonSpinner],
+  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, IonSpinner, FriendAvatarComponent],
   template: `
     <ion-content [scrollY]="true" class="page">
       <div class="hdr">
@@ -51,45 +57,40 @@ const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
             <ion-icon name="add-outline"></ion-icon>
           </button>
         </div>
+        <div class="search-row">
+          <ion-icon name="search-outline"></ion-icon>
+          <input class="search-input" placeholder="Search notes"
+            [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
+        </div>
       </div>
 
       <div class="body">
         <div class="loading" *ngIf="loading()"><ion-spinner name="crescent"></ion-spinner></div>
         <div class="empty" *ngIf="!loading() && notes().length === 0">No notes yet. Tap + to jot one down.</div>
-
-        <!-- High priority -->
-        <ng-container *ngIf="highNotes().length">
-          <div class="section-label hi">
-            <ion-icon name="star-outline"></ion-icon> High Priority
-          </div>
-          <div class="masonry">
-            <div class="note hi-note" *ngFor="let n of highNotes()"
-              [style.background]="bg(n)" [style.borderTopColor]="HUES[n.color].bar">
-              <div class="hi-badge">HIGH</div>
-              <div class="note-text">{{ n.text }}</div>
-              <div class="note-foot">
-                <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
-                <div class="note-acts">
-                  <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
-                  <ion-icon name="trash-outline" (click)="remove(n)"></ion-icon>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ng-container>
+        <div class="empty" *ngIf="!loading() && notes().length > 0 && filteredNotes().length === 0">No notes match "{{ searchTerm() }}".</div>
 
         <!-- Pinned -->
-        <ng-container *ngIf="pinnedNotes().length">
+        <ng-container *ngIf="displayedPinned().length">
           <div class="section-label"><ion-icon name="bookmark"></ion-icon> Pinned</div>
           <div class="masonry">
-            <div class="note" *ngFor="let n of pinnedNotes()"
-              [style.background]="bg(n)" [style.borderTopColor]="HUES[n.color].bar">
+            <div class="note" *ngFor="let n of displayedPinned(); trackBy: trackNote"
+              [attr.data-id]="n._id" [attr.data-section]="'pinned'"
+              [class.dragging]="draggingId() === n._id"
+              [style.transform]="draggingId() === n._id ? ('translate(' + dragDX() + 'px,' + dragDY() + 'px) scale(1.04)') : null"
+              [style.background]="bg(n)" [style.borderTopColor]="n.color === 'none' ? 'transparent' : HUES[n.color].bar"
+              (pointerdown)="onPointerDown($event, n, 'pinned')" (pointermove)="onPointerMove($event)"
+              (pointerup)="onPointerUp($event, n)" (pointercancel)="onPointerCancel()">
+              <div class="collab-stack" *ngIf="n.collaborators.length">
+                <app-friend-avatar *ngFor="let c of n.collaborators.slice(0,3)" class="collab-av"
+                  [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
+                <span class="collab-more" *ngIf="n.collaborators.length > 3">+{{ n.collaborators.length - 3 }}</span>
+              </div>
               <div class="note-text">{{ n.text }}</div>
               <div class="note-foot">
                 <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
                 <div class="note-acts">
                   <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
-                  <ion-icon name="trash-outline" (click)="remove(n)"></ion-icon>
+                  <ion-icon name="trash-outline" (click)="confirmDelete(n, $event)"></ion-icon>
                 </div>
               </div>
             </div>
@@ -97,15 +98,25 @@ const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
         </ng-container>
 
         <!-- Others -->
-        <div class="masonry">
-          <div class="note" *ngFor="let n of otherNotes()"
-            [style.background]="bg(n)" [style.borderTopColor]="HUES[n.color].bar">
+        <div class="masonry" *ngIf="displayedOther().length">
+          <div class="note" *ngFor="let n of displayedOther(); trackBy: trackNote"
+            [attr.data-id]="n._id" [attr.data-section]="'other'"
+            [class.dragging]="draggingId() === n._id"
+            [style.transform]="draggingId() === n._id ? ('translate(' + dragDX() + 'px,' + dragDY() + 'px) scale(1.04)') : null"
+            [style.background]="bg(n)" [style.borderTopColor]="n.color === 'none' ? 'transparent' : HUES[n.color].bar"
+            (pointerdown)="onPointerDown($event, n, 'other')" (pointermove)="onPointerMove($event)"
+            (pointerup)="onPointerUp($event, n)" (pointercancel)="onPointerCancel()">
+            <div class="collab-stack" *ngIf="n.collaborators.length">
+              <app-friend-avatar *ngFor="let c of n.collaborators.slice(0,3)" class="collab-av"
+                [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
+              <span class="collab-more" *ngIf="n.collaborators.length > 3">+{{ n.collaborators.length - 3 }}</span>
+            </div>
             <div class="note-text">{{ n.text }}</div>
             <div class="note-foot">
               <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
               <div class="note-acts">
                 <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
-                <ion-icon name="trash-outline" (click)="remove(n)"></ion-icon>
+                <ion-icon name="trash-outline" (click)="confirmDelete(n, $event)"></ion-icon>
               </div>
             </div>
           </div>
@@ -129,17 +140,11 @@ const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
 
             <div class="row">
               <div class="swatches">
-                <div *ngFor="let k of HUE_KEYS" class="swatch" [style.background]="HUES[k].bar"
-                  [style.borderColor]="draftColor() === k ? HUES[k].bar : 'transparent'" (click)="draftColor.set(k)"></div>
+                <div *ngFor="let k of HUE_KEYS" class="swatch-wrap" [class.selected]="draftColor() === k" (click)="draftColor.set(k)">
+                  <div class="swatch" [style.background]="HUES[k].bar"></div>
+                  <ion-icon *ngIf="draftColor() === k" name="checkmark" class="swatch-check"></ion-icon>
+                </div>
               </div>
-            </div>
-
-            <div class="field-label">Priority</div>
-            <div class="pri-row">
-              <button class="pri" [class.on]="draftPri() === 'normal'" (click)="draftPri.set('normal')">Normal</button>
-              <button class="pri hi" [class.on]="draftPri() === 'high'" (click)="draftPri.set('high')">
-                <ion-icon name="star-outline"></ion-icon> High
-              </button>
             </div>
 
             <button class="save-btn" (click)="save()">Save Note</button>
@@ -153,7 +158,7 @@ const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 
     .page { --background: var(--rm-bg); }
-    .hdr { background: linear-gradient(160deg, #C99A1E, #a87f12); padding: calc(env(safe-area-inset-top) + 14px) 20px 18px; animation: rmFadeUp .35s ease both; }
+    .hdr { background: linear-gradient(160deg, var(--rm-purple), #2E3FC0); padding: calc(env(safe-area-inset-top) + 14px) 20px 14px; animation: rmFadeUp .35s ease both; }
     .hdr-row { display: flex; align-items: center; gap: 12px; }
     .circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; flex: none; }
     .circle-btn:active { transform: scale(.9); }
@@ -162,22 +167,29 @@ const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
     .hdr-title { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
     .hdr-sub { font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.78); margin-top: 2px; }
 
+    .search-row { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.16); border-radius: 12px; padding: 9px 13px; margin-top: 14px; color: #fff; }
+    .search-row ion-icon { font-size: 17px; color: rgba(255,255,255,.85); flex: none; }
+    .search-input { flex: 1; border: none; background: none; outline: none; color: #fff; font-size: 14px; font-weight: 600; font-family: inherit; }
+    .search-input::placeholder { color: rgba(255,255,255,.65); }
+
     .body { padding: 18px 20px calc(env(safe-area-inset-bottom) + 28px); }
     .empty { text-align: center; padding: 60px 24px; color: var(--rm-text-secondary); font-size: 14.5px; font-weight: 600; }
     .loading { display: flex; justify-content: center; padding: 60px 0; }
     .section-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .6px; text-transform: uppercase; margin-bottom: 11px; }
-    .section-label.hi { color: #E0544B; }
 
     .masonry { column-count: 2; column-gap: 12px; margin-bottom: 18px; }
-    .note { break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 12px; border-radius: 16px; padding: 14px; box-shadow: var(--rm-shadow-sm); border-top: 3px solid; animation: rmFadeUp .35s ease both; }
-    .hi-note { position: relative; box-shadow: 0 2px 12px rgba(224,84,75,.18); }
-    .hi-badge { position: absolute; top: 10px; right: 10px; background: #E0544B; color: #fff; font-size: 9px; font-weight: 900; padding: 2px 7px; border-radius: 8px; letter-spacing: .4px; }
+    .note { position: relative; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 12px; border-radius: 16px; padding: 14px; box-shadow: var(--rm-shadow-sm); border-top: 3px solid; animation: rmFadeUp .35s ease both; touch-action: pan-y; user-select: none; }
+    .note.dragging { z-index: 10; opacity: .92; box-shadow: 0 8px 24px rgba(0,0,0,.22); transition: none; }
     .note-text { font-size: 14px; font-weight: 600; color: var(--rm-text-primary); line-height: 1.45; white-space: pre-wrap; }
-    .hi-note .note-text { padding-right: 40px; }
     .note-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
     .note-date { font-size: 11px; font-weight: 700; color: var(--rm-text-muted); }
     .note-acts { display: flex; gap: 11px; align-items: center; font-size: 16px; color: var(--rm-text-muted); }
     .note-acts ion-icon { cursor: pointer; }
+
+    .collab-stack { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; }
+    .collab-av { margin-left: -8px; border: 2px solid var(--rm-card); border-radius: 50%; }
+    .collab-av:first-child { margin-left: 0; }
+    .collab-more { margin-left: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--rm-text-muted); color: #fff; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid var(--rm-card); }
 
     .sheet { background: var(--rm-card); height: 100%; display: flex; flex-direction: column; }
     .sheet-hdr { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 6px; }
@@ -186,45 +198,74 @@ const HUE_KEYS: Hue[] = ['yellow', 'pink', 'blue', 'green', 'purple'];
     .ta { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 14px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 600; }
     .row { display: flex; align-items: center; justify-content: space-between; }
     .swatches { display: flex; gap: 11px; }
-    .swatch { width: 26px; height: 26px; border-radius: 50%; border: 3px solid; cursor: pointer; }
-    .field-label { font-size: 13px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .5px; text-transform: uppercase; margin-bottom: -6px; }
-    .pri-row { display: flex; gap: 8px; }
-    .pri { flex: 1; height: 40px; border-radius: 12px; border: 1.5px solid var(--rm-border); background: var(--rm-surface); color: var(--rm-text-secondary); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .pri.on { border-color: var(--rm-purple); background: var(--rm-purple-light); color: var(--rm-purple); }
-    .pri.hi.on { border-color: #E0544B; background: rgba(224,84,75,.12); color: #E0544B; }
-    .save-btn { width: 100%; height: 52px; border-radius: 14px; border: none; background: #C99A1E; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .swatch-wrap { position: relative; width: 26px; height: 26px; cursor: pointer; }
+    .swatch { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--rm-border); }
+    .swatch-wrap.selected { box-shadow: 0 0 0 2px var(--rm-card), 0 0 0 4px var(--rm-purple); border-radius: 50%; }
+    .swatch-check { position: absolute; inset: 0; margin: auto; font-size: 14px; color: #fff; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
+    .save-btn { width: 100%; height: 52px; border-radius: 14px; border: none; background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
   `],
 })
 export class NotesComponent implements OnInit {
   private location = inject(Location);
+  private router = inject(Router);
   private noteService = inject(NoteService);
+  private alertCtrl = inject(AlertController);
   readonly HUES = HUES;
   readonly HUE_KEYS = HUE_KEYS;
 
-  readonly notes = signal<Note[]>([]);
+  readonly notes = this.noteService.notes;
   readonly loading = signal(true);
 
   readonly composing = signal(false);
   readonly draft = signal('');
-  readonly draftColor = signal<Hue>('yellow');
-  readonly draftPri = signal<'normal' | 'high'>('normal');
+  readonly draftColor = signal<Hue>('none');
 
-  readonly highNotes = computed(() => this.notes().filter((n) => n.priority === 'high' && !n.pinned));
-  readonly pinnedNotes = computed(() => this.notes().filter((n) => n.pinned));
-  readonly otherNotes = computed(() => this.notes().filter((n) => !n.pinned && n.priority !== 'high'));
+  readonly searchTerm = signal('');
+  readonly filteredNotes = computed(() => {
+    const q = this.searchTerm().trim().toLowerCase();
+    const all = this.notes();
+    return q ? all.filter((n) => n.text.toLowerCase().includes(q)) : all;
+  });
+  readonly pinnedNotes = computed(() => this.filteredNotes().filter((n) => n.pinned));
+  readonly otherNotes = computed(() => this.filteredNotes().filter((n) => !n.pinned));
+
+  // ─── Long-press drag reorder (native Pointer Events, no CDK) ──────────────
+  readonly draggingId = signal<string | null>(null);
+  readonly dragDX = signal(0);
+  readonly dragDY = signal(0);
+  private dragSection: Section | null = null;
+  private dragWorkingIds = signal<string[] | null>(null);
+  private longPressTimer: ReturnType<typeof setTimeout> | undefined;
+  private pressActive = false;
+  private pressMoved = false;
+  private pressStartX = 0;
+  private pressStartY = 0;
+  private pressStartTime = 0;
+
+  readonly displayedPinned = computed(() =>
+    this.dragSection === 'pinned' && this.dragWorkingIds() ? this.reorderedFrom(this.dragWorkingIds()!) : this.pinnedNotes()
+  );
+  readonly displayedOther = computed(() =>
+    this.dragSection === 'other' && this.dragWorkingIds() ? this.reorderedFrom(this.dragWorkingIds()!) : this.otherNotes()
+  );
 
   constructor() {
-    addIcons({ chevronBackOutline, addOutline, closeOutline, trashOutline, bookmarkOutline, bookmark, starOutline });
+    addIcons({ chevronBackOutline, addOutline, closeOutline, trashOutline, bookmarkOutline, bookmark, searchOutline, checkmark });
   }
 
   ngOnInit(): void {
     this.noteService.getAll().subscribe({
-      next: (data) => { this.notes.set(data); this.loading.set(false); },
+      next: () => this.loading.set(false),
       error: () => this.loading.set(false),
     });
   }
 
   back(): void { this.location.back(); }
+  trackNote(_: number, n: Note): string { return n._id; }
+
+  open(n: Note): void {
+    this.router.navigate(['/app/notes', n._id]);
+  }
 
   fmtDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -232,36 +273,152 @@ export class NotesComponent implements OnInit {
 
   // Translucent tint of the bar colour — legible on both light and dark surfaces.
   bg(n: Note): string {
+    if (n.color === 'none') return 'var(--rm-surface)';
     const hex = HUES[n.color].bar;
     const num = parseInt(hex.slice(1), 16);
     return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},0.14)`;
   }
 
   togglePin(n: Note): void {
-    this.noteService.togglePin(n._id).subscribe((updated) =>
-      this.notes.update((list) => list.map((x) => (x._id === updated._id ? updated : x)))
-    );
+    this.noteService.togglePin(n._id).subscribe();
   }
-  remove(n: Note): void {
-    this.noteService.delete(n._id).subscribe(() =>
-      this.notes.update((list) => list.filter((x) => x._id !== n._id))
-    );
+
+  async confirmDelete(n: Note, event: Event): Promise<void> {
+    event.stopPropagation();
+    const alert = await this.alertCtrl.create({
+      header: 'Delete Note',
+      message: 'This cannot be undone.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        { text: 'Delete', role: 'destructive', handler: () => this.noteService.delete(n._id).subscribe() },
+      ],
+    });
+    await alert.present();
   }
 
   openCompose(): void {
     this.draft.set('');
-    this.draftColor.set('yellow');
-    this.draftPri.set('normal');
+    this.draftColor.set('none');
     this.composing.set(true);
   }
   save(): void {
     const text = this.draft().trim();
     if (!text) return;
-    this.noteService
-      .create({ text, color: this.draftColor(), priority: this.draftPri() })
-      .subscribe((created) => {
-        this.notes.update((list) => [created, ...list]);
-        this.composing.set(false);
-      });
+    this.noteService.create({ text, color: this.draftColor() }).subscribe(() => this.composing.set(false));
+  }
+
+  // ─── Drag reorder handlers ──────────────────────────────────────────────
+  onPointerDown(ev: PointerEvent, n: Note, section: Section): void {
+    if ((ev.target as HTMLElement).closest('.note-acts')) return;
+    this.pressActive = true;
+    this.pressMoved = false;
+    this.pressStartX = ev.clientX;
+    this.pressStartY = ev.clientY;
+    this.pressStartTime = Date.now();
+    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+    this.longPressTimer = setTimeout(() => this.beginDrag(n, section), 450);
+  }
+
+  onPointerMove(ev: PointerEvent): void {
+    if (!this.pressActive) return;
+    const dx = ev.clientX - this.pressStartX;
+    const dy = ev.clientY - this.pressStartY;
+    if (!this.draggingId()) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        this.pressMoved = true;
+        clearTimeout(this.longPressTimer);
+      }
+      return;
+    }
+    // Once a drag is active, suppress the page's native vertical scroll so
+    // dragging the card doesn't fight (or get cancelled by) scrolling.
+    ev.preventDefault();
+    this.dragDX.set(dx);
+    this.dragDY.set(dy);
+    this.updateDragTarget(ev.clientY);
+  }
+
+  onPointerUp(ev: PointerEvent, n: Note): void {
+    if (!this.pressActive) return;
+    clearTimeout(this.longPressTimer);
+    if (this.draggingId()) {
+      this.finishDrag();
+    } else if (!this.pressMoved && Date.now() - this.pressStartTime < 450) {
+      this.open(n);
+    }
+    this.pressActive = false;
+  }
+
+  onPointerCancel(): void {
+    clearTimeout(this.longPressTimer);
+    this.pressActive = false;
+    this.draggingId.set(null);
+    this.dragSection = null;
+    this.dragWorkingIds.set(null);
+    this.dragDX.set(0);
+    this.dragDY.set(0);
+  }
+
+  private beginDrag(n: Note, section: Section): void {
+    this.draggingId.set(n._id);
+    this.dragSection = section;
+    const list = section === 'pinned' ? this.pinnedNotes() : this.otherNotes();
+    this.dragWorkingIds.set(list.map((x) => x._id));
+    this.dragDX.set(0);
+    this.dragDY.set(0);
+  }
+
+  private reorderedFrom(ids: string[]): Note[] {
+    const byId = new Map(this.notes().map((n) => [n._id, n]));
+    return ids.map((id) => byId.get(id)).filter((n): n is Note => !!n);
+  }
+
+  private updateDragTarget(pointerY: number): void {
+    const ids = this.dragWorkingIds();
+    const dragId = this.draggingId();
+    if (!ids || !dragId) return;
+    const cards = Array.from(
+      document.querySelectorAll(`.note[data-section="${this.dragSection}"]`)
+    ) as HTMLElement[];
+    const currentIndex = ids.indexOf(dragId);
+    let targetIndex = currentIndex;
+    for (const card of cards) {
+      const id = card.dataset['id'];
+      if (!id || id === dragId) continue;
+      const idx = ids.indexOf(id);
+      if (idx === -1) continue;
+      const rect = card.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      if (pointerY < mid && idx < targetIndex) targetIndex = idx;
+      if (pointerY > mid && idx > targetIndex) targetIndex = idx;
+    }
+    if (targetIndex !== currentIndex) {
+      const newIds = [...ids];
+      newIds.splice(currentIndex, 1);
+      newIds.splice(targetIndex, 0, dragId);
+      this.dragWorkingIds.set(newIds);
+    }
+  }
+
+  private finishDrag(): void {
+    const ids = this.dragWorkingIds();
+    const dragId = this.draggingId();
+    if (ids && dragId) {
+      const idx = ids.indexOf(dragId);
+      const byId = new Map(this.notes().map((n) => [n._id, n]));
+      const before = idx > 0 ? byId.get(ids[idx - 1]) : undefined;
+      const after = idx < ids.length - 1 ? byId.get(ids[idx + 1]) : undefined;
+      let newOrder: number;
+      if (before && after) newOrder = (before.order + after.order) / 2;
+      else if (before) newOrder = before.order - 1000;
+      else if (after) newOrder = after.order + 1000;
+      else newOrder = Date.now();
+      this.noteService.reorder(dragId, newOrder).subscribe();
+    }
+    this.draggingId.set(null);
+    this.dragSection = null;
+    this.dragWorkingIds.set(null);
+    this.dragDX.set(0);
+    this.dragDY.set(0);
   }
 }

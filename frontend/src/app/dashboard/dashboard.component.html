@@ -85,7 +85,10 @@
     <div class="dash-section-title a-fu" [style.--i]="2">Get started</div>
     <div class="dash-modules">
       @for (mod of modules; track mod.label) {
-        <div class="dash-module a-fu rm-press" [style.--i]="$index + 3" [style.background]="mod.bg" (click)="nav.navigate([mod.route])">
+        <div class="dash-module a-fu rm-press" [class.coming-soon]="mod.comingSoon" [style.--i]="$index + 3" [style.background]="mod.bg" (click)="openModule(mod)">
+          @if (mod.comingSoon) {
+            <div class="dash-module-badge">Soon</div>
+          }
           <div class="dash-module-icon" [style.color]="mod.color">
             @switch (mod.icon) {
               @case ('clock') {
@@ -115,13 +118,21 @@
               @case ('alarm') {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.9"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M5 3L2 6M19 3l3 3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
               }
+              @case ('cart') {
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><path d="M3 4h2l2.2 10.5a2 2 0 002 1.5h7.6a2 2 0 002-1.6L20 8H6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              }
+              @case ('coin') {
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.9"/><path d="M12 7v10M9.5 9.3c0-1.1 1-2 2.5-2s2.5.7 2.5 1.8-1 1.6-2.5 1.9-2.5.8-2.5 1.9S10.9 15 12 15s2.5-.7 2.5-1.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              }
             }
           </div>
           <div class="dash-module-label">{{ mod.label }}</div>
           <div class="dash-module-sub">{{ mod.sub }}</div>
-          <div class="dash-module-arrow" [style.color]="mod.color">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-          </div>
+          @if (!mod.comingSoon) {
+            <div class="dash-module-arrow" [style.color]="mod.color">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            </div>
+          }
         </div>
       }
     </div>

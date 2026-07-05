@@ -114,12 +114,12 @@ function activityData(userId) {
 
 function noteData(userId) {
   return [
-    { userId, text: 'Buy anniversary gift for Maya — she likes ceramics', color: 'pink',   pinned: true,  priority: 'normal' },
-    { userId, text: 'Home wifi: skyline-4827',                            color: 'blue',   pinned: true,  priority: 'normal' },
-    { userId, text: 'Grocery run\nMilk · Eggs · Coffee\nSpinach · Oats · Yogurt', color: 'green', pinned: false, priority: 'normal' },
-    { userId, text: 'Call the plumber about the kitchen tap leak',         color: 'yellow', pinned: false, priority: 'high' },
-    { userId, text: 'Gift ideas for Dad\n- Wireless headphones\n- A good book', color: 'purple', pinned: false, priority: 'normal' },
-    { userId, text: 'Gym locker code: 1532',                              color: 'yellow', pinned: false, priority: 'normal' },
+    { userId, text: 'Buy anniversary gift for Maya — she likes ceramics', color: 'pink',   pinned: true,  order: 160000 },
+    { userId, text: 'Home wifi: skyline-4827',                            color: 'blue',   pinned: true,  order: 150000 },
+    { userId, text: 'Grocery run\nMilk · Eggs · Coffee\nSpinach · Oats · Yogurt', color: 'green', pinned: false, order: 140000 },
+    { userId, text: 'Call the plumber about the kitchen tap leak',         color: 'yellow', pinned: false, order: 130000 },
+    { userId, text: 'Gift ideas for Dad\n- Wireless headphones\n- A good book', color: 'purple', pinned: false, order: 120000 },
+    { userId, text: 'Gym locker code: 1532',                              color: 'none',   pinned: false, order: 110000 },
   ];
 }
 

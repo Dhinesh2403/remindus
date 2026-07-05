@@ -31,7 +31,11 @@ const reminderSchema = new mongoose.Schema(
       enum: ['low','medium','high','urgent'],
       default: 'medium',
     },
-    reminderWindowMinutes: { type: Number, default: 30 },
+    // 0 = fire at the exact due time (the app's default). A positive value fires
+    // that many minutes *before* the due moment; duePhrase reconstructs the real
+    // due instant as nextFireAt + reminderWindowMinutes, so the two must always
+    // agree — every create/update path keeps them in sync (see reminder.controller).
+    reminderWindowMinutes: { type: Number, default: 0 },
     durationMinutes:       { type: Number, default: null },
     notificationTypes: [{
       type: String,
@@ -62,20 +66,31 @@ const reminderSchema = new mongoose.Schema(
 reminderSchema.index({ userId: 1, status: 1, date: 1 });
 reminderSchema.index({ nextFireAt: 1, status: 1 });
 
+/**
+ * Fallback fire instant from date + wall-clock time when the client didn't send
+ * a timezone-aware `nextFireAt`. Uses UTC so the server's own timezone never
+ * shifts it, then subtracts the reminder window. Exported so the update path can
+ * recompute consistently (findOneAndUpdate bypasses this hook).
+ */
+function computeNextFireAt(date, time, windowMinutes = 0) {
+  const [h, m] = String(time).split(':').map(Number);
+  const d = new Date(date);
+  const fireAt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h, m, 0, 0));
+  fireAt.setUTCMinutes(fireAt.getUTCMinutes() - (windowMinutes || 0));
+  return fireAt;
+}
+
 reminderSchema.pre('save', function (next) {
   // If frontend provided nextFireAt (timezone-aware), trust it on new docs
   if (this.isNew && this.nextFireAt) {
     return next();
   }
   if (this.isModified('date') || this.isModified('time') || this.isModified('reminderWindowMinutes')) {
-    const [h, m] = this.time.split(':').map(Number);
-    const d = new Date(this.date);
-    // Always use UTC so server timezone never shifts the fire time
-    const fireAt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h, m, 0, 0));
-    fireAt.setUTCMinutes(fireAt.getUTCMinutes() - (this.reminderWindowMinutes || 0));
-    this.nextFireAt = fireAt;
+    this.nextFireAt = computeNextFireAt(this.date, this.time, this.reminderWindowMinutes);
   }
   next();
 });
 
-module.exports = mongoose.model('Reminder', reminderSchema);
+const Reminder = mongoose.model('Reminder', reminderSchema);
+Reminder.computeNextFireAt = computeNextFireAt;
+module.exports = Reminder;

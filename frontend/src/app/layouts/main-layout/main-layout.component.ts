@@ -144,7 +144,10 @@ export class MainLayoutComponent implements OnInit {
     const path = this.currentUrl().split('?')[0].split('#')[0];
     const segments = path.split('/').filter(Boolean);   // e.g. ['app','friends']
     const isTopLevelTab = segments[0] === 'app' && segments.length === 2;
-    return isTopLevelTab && !this.ui.overlayOpen();
+    // Notes hides the tab bar even on its own list (not just the nested editor) —
+    // the search bar and long-press drag reorder want the full-height viewport.
+    const isNotesModule = segments[0] === 'app' && segments[1] === 'notes';
+    return isTopLevelTab && !isNotesModule && !this.ui.overlayOpen();
   });
 
   ngOnInit() {

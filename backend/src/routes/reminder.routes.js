@@ -7,6 +7,11 @@ const ctrl   = require('../controllers/reminder.controller');
 const { authenticate }  = require('../middlewares/auth');
 const { validate }      = require('../middlewares/validate');
 
+// Public, token-authorised endpoint hit by the Android notification-tray buttons.
+// Must be registered BEFORE `authenticate` — the native receiver has no JWT, only
+// the signed action token in the request body.
+router.post('/notif-action', ctrl.notifAction);
+
 router.use(authenticate);
 
 router.get('/',              ctrl.getAll);

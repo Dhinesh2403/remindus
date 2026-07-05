@@ -53,11 +53,13 @@ function startJobs() {
     }
   });
 
-  // ── Pre-alert: notify assigned friend 2 minutes before fire time ───────
+  // ── Pre-alert: notify assigned friend 5 minutes before fire time ───────
+  // Only assigned reminders (tasks) get this heads-up — a plain reminder the
+  // user set for themselves fires once, at its time, with no pre-alert.
   cron.schedule('* * * * *', async () => {
     try {
       const now   = new Date();
-      const soon  = new Date(now.getTime() + 2 * 60 * 1000); // exactly 2 min from now
+      const soon  = new Date(now.getTime() + 5 * 60 * 1000); // exactly 5 min from now
       const delta = 60 * 1000; // ±30s window to avoid missing a tick
       let   sent  = 0;
 
@@ -81,12 +83,15 @@ function startJobs() {
         if (!reminder) break;
         if (!reminder.assignedTo) continue;   // assignee deleted — already claimed, skip
 
+        const preFrom = reminder.userId?.name || 'A friend';
         await notifService.createAndPush({
           userId:  reminder.assignedTo._id,
           type:    'reminder_pre_alert',
-          title:   `⏳ In 2 min: ${reminder.title}`,
-          message: `Heads-up — ${reminder.userId?.name || 'A friend'}'s reminder fires in 2 minutes (task ${duePhrase(reminder, now)}).`,
+          title:   reminder.title,
+          message: `Heads-up — ${preFrom}'s task is due in 5 minutes.`,
           data:    { reminderId: String(reminder._id), type: 'reminder_pre_alert' },
+          category: 'Task',
+          subtext:  `From ${preFrom} · due in 5 min`,
         });
         sent++;
       }
@@ -174,31 +179,42 @@ async function fireReminder(reminder) {
 
   // Notify the reminder owner. "Due in 30 min" (the reminder window) vs the
   // pre-alert's "⏳ In 2 min:" prefix is what tells the two apart on the phone.
-  const due = duePhrase(reminder);
+  const due      = duePhrase(reminder);
+  const dueLabel = sentenceCase(due); // "Due now" | "Due in 30 min"
   await notifService.send({ user, reminder, channels: notifTypes });
   await notifService.createAndPush({
     userId:  user._id,
     type:    'reminder_due',
-    title:   `🔔 ${reminder.title}`,
-    message: reminder.description
-      ? `${sentenceCase(due)} · ${reminder.description}`
-      : sentenceCase(due),
+    title:   reminder.title,
+    message: reminder.description ? `${dueLabel} · ${reminder.description}` : dueLabel,
     data:    { reminderId: String(reminder._id), type: 'reminder_due' },
+    category: 'Reminder',
+    subtext:  dueLabel,
+    actions:  [
+      { id: 'ack',     label: 'Mark done' },
+      { id: 'snooze5', label: 'Snooze 5 min' },
+    ],
     push:    !alarmOnly,
   });
 
-  // If assigned to a friend, fire notification to them too with action options
+  // If assigned to a friend, fire notification to them too (tap-through)
   if (reminder.assignedTo?._id) {
     await notifService.createAndPush({
       userId:  reminder.assignedTo._id,
       type:    'friend_reminder_due',
-      title:   `🔔 ${reminder.title}`,
-      message: `From ${user.name} — ${due}. Tap to mark done or snooze.`,
+      title:   reminder.title,
+      // No "due now" — the arrival of the push IS the "it's time" signal. Lead
+      // with who it's from + the task name; the Snooze button carries the rest.
+      message: `From ${user.name} — tap Snooze to push it 5 min.`,
       data:    {
         reminderId:  String(reminder._id),
         type:        'friend_reminder_due',
         senderName:  user.name,
       },
+      category:   'Task',
+      subtext:    `From ${user.name}`,
+      // Assignee-side snooze: reschedules the task +5 min and re-pushes then.
+      actions:    [{ id: 'snooze5_assigned', label: 'Snooze 5 min' }],
       senderName: user.name,
       avatar:     user.avatar,
     });
