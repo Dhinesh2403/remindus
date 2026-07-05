@@ -27,7 +27,8 @@ export type SocketEvent =
   | 'note:deleted'
   | 'note:shared'
   | 'note:unshared'
-  | 'note:reordered';
+  | 'note:reordered'
+  | 'note:viewed';
 
 export interface SocketPayload<T = unknown> {
   event: SocketEvent;
@@ -88,6 +89,7 @@ export class SocketService {
       'note:shared',
       'note:unshared',
       'note:reordered',
+      'note:viewed',
     ];
 
     events.forEach((event) => {

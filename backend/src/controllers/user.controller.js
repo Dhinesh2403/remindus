@@ -4,6 +4,7 @@
 const User     = require('../models/User');
 const Reminder = require('../models/Reminder');
 const Friendship = require('../models/Friendship');
+const Note = require('../models/Note');
 const { cloudinary, cloudinaryReady, cloudinaryFolder } = require('../config/cloudinary');
 const { asyncHandler, AppError } = require('../utils/helpers');
 
@@ -79,6 +80,9 @@ exports.deleteAccount = asyncHandler(async (req, res) => {
     Friendship.deleteMany({
       $or: [{ requester: uid }, { recipient: uid }]
     }),
+    // Leaving uid in other users' collaborators arrays would make Note.populate()
+    // resolve it to null, which the frontend renders as if it were a real collaborator.
+    Note.updateMany({ collaborators: uid }, { $pull: { collaborators: uid } }),
   ]);
   res.json({ success: true, message: 'Account deleted' });
 });

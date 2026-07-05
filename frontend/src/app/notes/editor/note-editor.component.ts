@@ -6,6 +6,7 @@ import {
   IonContent,
   IonIcon,
   IonModal,
+  IonInput,
   IonTextarea,
   IonSpinner,
   AlertController,
@@ -27,23 +28,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { FriendService, Friend } from '../../core/services/friend.service';
 import { FriendAvatarComponent } from '../../core/components/friend-avatar.component';
+import { HUES, HUE_KEYS } from '../../core/constants/note-colors';
 
 type Hue = NoteHue;
-
-const HUES: Record<Hue, { bar: string }> = {
-  none: { bar: 'var(--rm-border)' },
-  yellow: { bar: '#E0B92B' },
-  pink: { bar: '#E0699B' },
-  blue: { bar: '#3257EE' },
-  green: { bar: '#1AA06D' },
-  purple: { bar: '#7B61D8' },
-};
-const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
 
 @Component({
   selector: 'app-note-editor',
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonModal, IonTextarea, IonSpinner, FriendAvatarComponent],
+  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, IonSpinner, FriendAvatarComponent],
   template: `
     <ion-content [scrollY]="true" class="page">
       <div class="loading" *ngIf="loading()"><ion-spinner name="crescent"></ion-spinner></div>
@@ -76,6 +68,8 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
         </div>
 
         <div class="body" [style.background]="bg(n)">
+          <ion-input class="title-input" placeholder="Title (optional)"
+            [value]="titleDraft()" (ionInput)="onTitleInput($any($event.target).value)"></ion-input>
           <ion-textarea class="ta" placeholder="Type a note…" [autoGrow]="true"
             [value]="textDraft()" (ionInput)="onTextInput($any($event.target).value)"></ion-textarea>
 
@@ -139,6 +133,7 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
     .collab-label { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.85); }
 
     .body { min-height: calc(100% - 96px); padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+    .title-input { --color: var(--rm-text-primary); font-size: 18px; font-weight: 800; }
     .ta { --color: var(--rm-text-primary); font-size: 15.5px; font-weight: 600; line-height: 1.5; }
 
     .swatches { display: flex; gap: 12px; }
@@ -176,12 +171,14 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
   readonly HUE_KEYS = HUE_KEYS;
 
   private id = '';
+  private tab: 'mine' | 'shared' = 'mine';
   private socketSubs: Subscription[] = [];
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   private lastLocalEditAt = 0;
 
   readonly loading = signal(true);
   readonly note = signal<Note | null>(null);
+  readonly titleDraft = signal('');
   readonly textDraft = signal('');
   readonly sharing = signal(false);
   readonly friends = signal<Friend[]>([]);
@@ -209,18 +206,25 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id')!;
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (tabParam === 'shared' || tabParam === 'mine') this.tab = tabParam;
 
     const existing = this.noteService.notes().find((n) => n._id === this.id);
     if (existing) {
       this.applyIncoming(existing);
       this.loading.set(false);
+      this.noteService.markViewed(this.id).subscribe();
     } else {
       this.noteService.getAll().subscribe({
         next: () => {
           const found = this.noteService.notes().find((n) => n._id === this.id);
           this.loading.set(false);
-          if (found) this.applyIncoming(found);
-          else this.router.navigate(['/app/notes']);
+          if (found) {
+            this.applyIncoming(found);
+            this.noteService.markViewed(this.id).subscribe();
+          } else {
+            this.router.navigate(['/app/notes']);
+          }
         },
         error: () => {
           this.loading.set(false);
@@ -263,14 +267,26 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
   private applyIncoming(n: Note): void {
     const typingRecently = Date.now() - this.lastLocalEditAt < 1000;
     this.note.set(n);
-    if (!typingRecently) this.textDraft.set(n.text);
+    if (!typingRecently) {
+      this.textDraft.set(n.text);
+      this.titleDraft.set(n.title);
+    }
   }
 
   bg(n: Note): string {
     if (n.color === 'none') return 'var(--rm-bg)';
-    const hex = HUES[n.color].bar;
-    const num = parseInt(hex.slice(1), 16);
+    const style = getComputedStyle(document.documentElement);
+    const match = /var\((--[\w-]+)\)/.exec(HUES[n.color].bar);
+    const hex = (match ? style.getPropertyValue(match[1]).trim() : HUES[n.color].bar) || '#3D5AF1';
+    const num = parseInt(hex.replace('#', ''), 16);
     return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},0.10)`;
+  }
+
+  onTitleInput(value: string): void {
+    this.titleDraft.set(value);
+    this.lastLocalEditAt = Date.now();
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => this.flushSave(), 600);
   }
 
   onTextInput(value: string): void {
@@ -283,7 +299,7 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
   private flushSave(): void {
     const text = this.textDraft().trim();
     if (!text || !this.note()) return;
-    this.noteService.update(this.id, { text: this.textDraft() }).subscribe();
+    this.noteService.update(this.id, { text: this.textDraft(), title: this.titleDraft().trim() }).subscribe();
   }
 
   setColor(c: Hue): void {
@@ -299,7 +315,7 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
       clearTimeout(this.saveTimer);
       this.flushSave();
     }
-    this.router.navigate(['/app/notes']);
+    this.router.navigate(['/app/notes'], { queryParams: { tab: this.tab } });
   }
 
   async confirmDelete(): Promise<void> {
@@ -311,7 +327,10 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
         {
           text: 'Delete',
           role: 'destructive',
-          handler: () => this.noteService.delete(this.id).subscribe(() => this.router.navigate(['/app/notes'])),
+          handler: () =>
+            this.noteService
+              .delete(this.id)
+              .subscribe(() => this.router.navigate(['/app/notes'], { queryParams: { tab: this.tab } })),
         },
       ],
     });

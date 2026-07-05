@@ -8,6 +8,29 @@ const { emitToUser } = require('../sockets');
 
 const POPULATE_FIELDS = 'name avatar gender';
 
+// ── Normalize a lean/plain note for the requesting user ──────────────────
+// .lean() skips Mongoose's array-default getters, so notes saved before the
+// collaborators/order fields existed come back with them missing entirely —
+// that crashes the frontend, which assumes collaborators is always an array.
+// Also derives `hasUnreadEdit` (viewer-scoped) and strips the raw viewedBy/
+// lastEditedBy tracking fields so the client only ever sees the flag.
+function normalizeForViewer(n, viewerId) {
+  const collaborators = n.collaborators || [];
+  const order = n.order ?? 0;
+  const viewerIdStr = String(viewerId);
+  const isShared = collaborators.length > 0;
+  const editedByOther = n.lastEditedBy && String(n.lastEditedBy._id || n.lastEditedBy) !== viewerIdStr;
+  const viewedEntry = (n.viewedBy || []).find((v) => String(v.user) === viewerIdStr);
+  const hasUnreadEdit = !!(
+    isShared &&
+    editedByOther &&
+    n.lastEditedAt &&
+    (!viewedEntry || new Date(viewedEntry.at) < new Date(n.lastEditedAt))
+  );
+  const { viewedBy, lastEditedBy, ...rest } = n;
+  return { ...rest, title: n.title ?? '', collaborators, order, hasUnreadEdit };
+}
+
 // ── GET /api/notes ────────────────────────────────────────────────────────
 exports.getAll = asyncHandler(async (req, res) => {
   const data = await Note.find({
@@ -17,26 +40,57 @@ exports.getAll = asyncHandler(async (req, res) => {
     .populate('userId', POPULATE_FIELDS)
     .populate('collaborators', POPULATE_FIELDS)
     .lean();
-  res.json({ success: true, data });
+  const normalized = data.map((n) => normalizeForViewer(n, req.user._id));
+  res.json({ success: true, data: normalized });
 });
 
 // ── POST /api/notes ───────────────────────────────────────────────────────
 exports.create = asyncHandler(async (req, res) => {
-  const { text, color } = req.body;
+  const { text, title, color, collaboratorIds } = req.body;
   const note = await Note.create({
     userId: req.user._id,
+    title: title || '',
     text,
     color: color || 'none',
   });
-  const populated = await note.populate('userId', POPULATE_FIELDS);
-  res.status(201).json({ success: true, data: populated });
+
+  if (Array.isArray(collaboratorIds) && collaboratorIds.length) {
+    const friendships = await Friendship.find({
+      status: 'accepted',
+      $or: collaboratorIds.flatMap((id) => [
+        { requester: req.user._id, recipient: id },
+        { requester: id, recipient: req.user._id },
+      ]),
+    });
+    const friendIds = new Set(
+      friendships.map((f) =>
+        String(f.requester) === String(req.user._id) ? String(f.recipient) : String(f.requester)
+      )
+    );
+    for (const id of collaboratorIds) if (friendIds.has(String(id))) note.collaborators.addToSet(id);
+    if (note.isModified('collaborators')) await note.save();
+  }
+
+  const populated = await note.populate([
+    { path: 'userId', select: POPULATE_FIELDS },
+    { path: 'collaborators', select: POPULATE_FIELDS },
+  ]);
+  const rawNote = populated.toObject();
+
+  emitNoteToMembers(rawNote, 'note:created');
+  res.status(201).json({ success: true, data: normalizeForViewer(rawNote, req.user._id) });
 });
 
 // ── PUT /api/notes/:id ────────────────────────────────────────────────────
 exports.update = asyncHandler(async (req, res) => {
-  const allowed = ['text', 'color', 'pinned'];
+  const allowed = ['title', 'text', 'color', 'pinned'];
   const update = {};
   for (const k of allowed) if (req.body[k] !== undefined) update[k] = req.body[k];
+  const editsContent = ['title', 'text', 'color'].some((k) => update[k] !== undefined);
+  if (editsContent) {
+    update.lastEditedAt = new Date();
+    update.lastEditedBy = req.user._id;
+  }
   const note = await Note.findOneAndUpdate(
     { _id: req.params.id, $or: [{ userId: req.user._id }, { collaborators: req.user._id }] },
     { $set: update },
@@ -46,8 +100,30 @@ exports.update = asyncHandler(async (req, res) => {
     .populate('collaborators', POPULATE_FIELDS);
   if (!note) throw new AppError('Note not found', 404);
 
-  notifyNote(note, 'note:updated', { note });
-  res.json({ success: true, data: note });
+  const rawNote = note.toObject();
+  emitNoteToMembers(rawNote, 'note:updated');
+  res.json({ success: true, data: normalizeForViewer(rawNote, req.user._id) });
+});
+
+// ── PATCH /api/notes/:id/view ────────────────────────────────────────────
+exports.markViewed = asyncHandler(async (req, res) => {
+  const note = await Note.findOneAndUpdate(
+    { _id: req.params.id, $or: [{ userId: req.user._id }, { collaborators: req.user._id }] },
+    { $pull: { viewedBy: { user: req.user._id } } }
+  );
+  if (!note) throw new AppError('Note not found', 404);
+
+  const updated = await Note.findByIdAndUpdate(
+    req.params.id,
+    { $push: { viewedBy: { user: req.user._id, at: new Date() } } },
+    { new: true }
+  )
+    .populate('userId', POPULATE_FIELDS)
+    .populate('collaborators', POPULATE_FIELDS);
+
+  const normalized = normalizeForViewer(updated.toObject(), req.user._id);
+  emitToUser(String(req.user._id), 'note:viewed', { noteId: String(updated._id) });
+  res.json({ success: true, data: normalized });
 });
 
 // ── PATCH /api/notes/:id/pin ─────────────────────────────────────────────
@@ -62,8 +138,9 @@ exports.togglePin = asyncHandler(async (req, res) => {
   note.pinned = !note.pinned;
   await note.save();
 
-  notifyNote(note, 'note:updated', { note });
-  res.json({ success: true, data: note });
+  const rawNote = note.toObject();
+  emitNoteToMembers(rawNote, 'note:updated');
+  res.json({ success: true, data: normalizeForViewer(rawNote, req.user._id) });
 });
 
 // ── DELETE /api/notes/:id ─────────────────────────────────────────────────
@@ -96,9 +173,10 @@ exports.share = asyncHandler(async (req, res) => {
     { path: 'userId', select: POPULATE_FIELDS },
     { path: 'collaborators', select: POPULATE_FIELDS },
   ]);
+  const rawNote = populated.toObject();
 
-  notifyNote(populated, 'note:shared', { note: populated });
-  res.json({ success: true, data: populated });
+  emitNoteToMembers(rawNote, 'note:shared');
+  res.json({ success: true, data: normalizeForViewer(rawNote, req.user._id) });
 });
 
 // ── DELETE /api/notes/:id/share/:friendId ────────────────────────────────
@@ -118,7 +196,7 @@ exports.unshare = asyncHandler(async (req, res) => {
   // longer in `collaborators` — notifyNote() below only fans out to current members.
   emitToUser(friendId, 'note:unshared', { noteId: String(note._id), friendId: String(friendId) });
   notifyNote(populated, 'note:unshared', { noteId: String(note._id), friendId: String(friendId) });
-  res.json({ success: true, data: populated });
+  res.json({ success: true, data: normalizeForViewer(populated.toObject(), req.user._id) });
 });
 
 // ── PATCH /api/notes/:id/order ───────────────────────────────────────────
@@ -134,13 +212,23 @@ exports.reorder = asyncHandler(async (req, res) => {
   if (!note) throw new AppError('Note not found', 404);
 
   notifyNote(note, 'note:reordered', { noteId: String(note._id), order: note.order });
-  res.json({ success: true, data: note });
+  res.json({ success: true, data: normalizeForViewer(note.toObject(), req.user._id) });
 });
 
-// ── Fan out a note event to the owner + every collaborator ──────────────
+// ── Fan out a note event (no personalized `note` payload) to the owner + every collaborator ──
 function notifyNote(note, event, payload) {
-  emitToUser(String(note.userId._id || note.userId), event, payload);
+  if (note.userId) emitToUser(String(note.userId._id || note.userId), event, payload);
   for (const c of note.collaborators || []) {
-    emitToUser(String(c._id || c), event, payload);
+    if (c) emitToUser(String(c._id || c), event, payload);
+  }
+}
+
+// ── Fan out a note-carrying event, personalizing hasUnreadEdit per recipient ──
+function emitNoteToMembers(rawNote, event, extra = {}) {
+  const ownerId = String(rawNote.userId?._id || rawNote.userId);
+  const collabIds = (rawNote.collaborators || []).map((c) => String(c?._id || c));
+  for (const uid of [ownerId, ...collabIds]) {
+    if (!uid) continue;
+    emitToUser(uid, event, { note: normalizeForViewer(rawNote, uid), ...extra });
   }
 }
