@@ -41,6 +41,15 @@ const appConfigRoutes    = require('./routes/app.routes');
 const logRoutes          = require('./routes/log.routes');
 
 const app    = express();
+
+// Behind Render's (and any) reverse proxy the real client IP arrives in the
+// X-Forwarded-For header. Trust the first proxy hop so `req.ip` is the actual
+// client. Without this, express-rate-limit keys every request off the shared
+// proxy IP and lumps ALL users into one bucket — producing app-wide 429s.
+// Use `1` (not `true`): only the immediate proxy is trusted, so clients can't
+// spoof their IP via a forged X-Forwarded-For.
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 
 // ── Socket.IO ─────────────────────────────────────────────────────────────
@@ -94,11 +103,20 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ── Global rate limiter ────────────────────────────────────────────────────
+// Per-client (see `trust proxy` above) budget for a normal authenticated
+// session: first-load fan-out + polling + navigation easily runs into the
+// hundreds over 15 min, so 100 was far too tight. High-frequency, low-risk
+// endpoints are skipped here — /health is polled for clock sync and
+// /logs/device already enforces its own tighter limiter.
 const globalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max:      parseInt(process.env.RATE_LIMIT_MAX)        || 100,
+  max:      parseInt(process.env.RATE_LIMIT_MAX)        || 600,
   standardHeaders: true,
   legacyHeaders:   false,
+  skip: (req) => {
+    const url = req.originalUrl || req.url;
+    return url.startsWith('/api/health') || url.startsWith('/api/logs/device');
+  },
   message: { success: false, message: 'Too many requests. Please try again later.' },
 });
 app.use('/api', globalLimiter);
