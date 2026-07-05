@@ -23,14 +23,11 @@ import {
   closeCircle,
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
-import { NoteService, Note, NoteHue } from '../../core/services/note.service';
+import { NoteService, Note } from '../../core/services/note.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { FriendService, Friend } from '../../core/services/friend.service';
 import { FriendAvatarComponent } from '../../core/components/friend-avatar.component';
-import { HUES, HUE_KEYS } from '../../core/constants/note-colors';
-
-type Hue = NoteHue;
 
 @Component({
   selector: 'app-note-editor',
@@ -43,17 +40,17 @@ type Hue = NoteHue;
       <ng-container *ngIf="!loading() && note() as n">
         <div class="hdr">
           <div class="hdr-row">
-            <button class="circle-btn" (click)="back()">
+            <button class="icon-btn" (click)="back()">
               <ion-icon name="chevron-back-outline"></ion-icon>
             </button>
             <div class="hdr-spacer"></div>
-            <button class="circle-btn" (click)="togglePin()">
+            <button class="icon-btn" (click)="togglePin()">
               <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'"></ion-icon>
             </button>
-            <button class="circle-btn" *ngIf="isOwner()" (click)="openShareSheet()">
+            <button class="icon-btn" *ngIf="isOwner()" (click)="openShareSheet()">
               <ion-icon name="person-add-outline"></ion-icon>
             </button>
-            <button class="circle-btn" *ngIf="isOwner()" (click)="confirmDelete()">
+            <button class="icon-btn" *ngIf="isOwner()" (click)="confirmDelete()">
               <ion-icon name="trash-outline"></ion-icon>
             </button>
           </div>
@@ -67,18 +64,11 @@ type Hue = NoteHue;
           </div>
         </div>
 
-        <div class="body" [style.background]="bg(n)">
+        <div class="body">
           <ion-input class="title-input" placeholder="Title (optional)"
             [value]="titleDraft()" (ionInput)="onTitleInput($any($event.target).value)"></ion-input>
           <ion-textarea class="ta" placeholder="Type a note…" [autoGrow]="true"
             [value]="textDraft()" (ionInput)="onTextInput($any($event.target).value)"></ion-textarea>
-
-          <div class="swatches">
-            <div *ngFor="let k of HUE_KEYS" class="swatch-wrap" [class.selected]="n.color === k" (click)="setColor(k)">
-              <div class="swatch" [style.background]="HUES[k].bar"></div>
-              <ion-icon *ngIf="n.color === k" name="checkmark" class="swatch-check"></ion-icon>
-            </div>
-          </div>
 
           <div class="shared-list" *ngIf="n.collaborators.length">
             <div class="field-label">Shared with</div>
@@ -119,28 +109,23 @@ type Hue = NoteHue;
     .page { --background: var(--rm-bg); }
     .loading { display: flex; justify-content: center; padding: 80px 0; }
 
-    .hdr { background: linear-gradient(160deg, var(--rm-purple), #2E3FC0); padding: calc(env(safe-area-inset-top) + 14px) 20px 16px; }
-    .hdr-row { display: flex; align-items: center; gap: 10px; }
+    .hdr { background: var(--rm-bg); padding: calc(env(safe-area-inset-top) + 14px) 12px 12px; }
+    .hdr-row { display: flex; align-items: center; gap: 2px; }
     .hdr-spacer { flex: 1; }
+    .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: none; color: var(--rm-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 21px; cursor: pointer; flex: none; }
+    .icon-btn:active { background: var(--rm-surface); }
     .circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; flex: none; }
-    .circle-btn:active { transform: scale(.9); }
     .circle-btn.dark { background: var(--rm-surface); color: var(--rm-text-secondary); }
 
-    .collab-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .collab-row { display: flex; align-items: center; gap: 10px; margin: 10px 8px 0; }
     .collab-stack { display: flex; }
-    .collab-av { margin-left: -8px; border: 2px solid #2E3FC0; border-radius: 50%; }
+    .collab-av { margin-left: -8px; border: 2px solid var(--rm-bg); border-radius: 50%; }
     .collab-av:first-child { margin-left: 0; }
-    .collab-label { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.85); }
+    .collab-label { font-size: 12.5px; font-weight: 600; color: var(--rm-text-secondary); }
 
-    .body { min-height: calc(100% - 96px); padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+    .body { min-height: calc(100% - 96px); padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 20px; }
     .title-input { --color: var(--rm-text-primary); font-size: 18px; font-weight: 800; }
     .ta { --color: var(--rm-text-primary); font-size: 15.5px; font-weight: 600; line-height: 1.5; }
-
-    .swatches { display: flex; gap: 12px; }
-    .swatch-wrap { position: relative; width: 28px; height: 28px; cursor: pointer; }
-    .swatch { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--rm-border); }
-    .swatch-wrap.selected { box-shadow: 0 0 0 2px var(--rm-bg), 0 0 0 4px var(--rm-purple); border-radius: 50%; }
-    .swatch-check { position: absolute; inset: 0; margin: auto; font-size: 15px; color: #fff; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
 
     .field-label { font-size: 12px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 10px; }
     .shared-list { border-top: 1px solid var(--rm-border); padding-top: 16px; }
@@ -166,9 +151,6 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
   private socketService = inject(SocketService);
   private friendService = inject(FriendService);
   private alertCtrl = inject(AlertController);
-
-  readonly HUES = HUES;
-  readonly HUE_KEYS = HUE_KEYS;
 
   private id = '';
   private tab: 'mine' | 'shared' = 'mine';
@@ -273,15 +255,6 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
     }
   }
 
-  bg(n: Note): string {
-    if (n.color === 'none') return 'var(--rm-bg)';
-    const style = getComputedStyle(document.documentElement);
-    const match = /var\((--[\w-]+)\)/.exec(HUES[n.color].bar);
-    const hex = (match ? style.getPropertyValue(match[1]).trim() : HUES[n.color].bar) || '#3D5AF1';
-    const num = parseInt(hex.replace('#', ''), 16);
-    return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},0.10)`;
-  }
-
   onTitleInput(value: string): void {
     this.titleDraft.set(value);
     this.lastLocalEditAt = Date.now();
@@ -300,10 +273,6 @@ export class NoteEditorComponent implements OnInit, OnDestroy {
     const text = this.textDraft().trim();
     if (!text || !this.note()) return;
     this.noteService.update(this.id, { text: this.textDraft(), title: this.titleDraft().trim() }).subscribe();
-  }
-
-  setColor(c: Hue): void {
-    this.noteService.update(this.id, { color: c }).subscribe();
   }
 
   togglePin(): void {

@@ -6,8 +6,6 @@ import { environment } from '../../../environments/environment';
 import { SocketService } from './socket.service';
 import { AuthService } from './auth.service';
 
-export type NoteHue = 'none' | 'yellow' | 'pink' | 'blue' | 'green' | 'purple';
-
 export interface NoteCollaborator {
   _id: string;
   name: string;
@@ -19,7 +17,6 @@ export interface Note {
   _id: string;
   title: string;
   text: string;
-  color: NoteHue;
   pinned: boolean;
   order: number;
   userId: NoteCollaborator;
@@ -32,7 +29,6 @@ export interface Note {
 export interface CreateNoteDto {
   title?: string;
   text: string;
-  color?: NoteHue;
   collaboratorIds?: string[];
 }
 

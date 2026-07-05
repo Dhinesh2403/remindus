@@ -12,21 +12,21 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  chevronBackOutline,
+  menuOutline,
   addOutline,
   closeOutline,
   bookmarkOutline,
   bookmark,
   searchOutline,
   checkmark,
+  gridOutline,
+  swapVerticalOutline,
 } from 'ionicons/icons';
-import { NoteService, Note, NoteCollaborator, NoteHue } from '../core/services/note.service';
+import { NoteService, Note, NoteCollaborator } from '../core/services/note.service';
 import { AuthService } from '../core/services/auth.service';
 import { FriendService, Friend } from '../core/services/friend.service';
 import { FriendAvatarComponent } from '../core/components/friend-avatar.component';
-import { HUES, HUE_KEYS } from '../core/constants/note-colors';
 
-type Hue = NoteHue;
 type Section = 'pinned' | 'other';
 type Tab = 'mine' | 'shared';
 
@@ -38,21 +38,23 @@ type Tab = 'mine' | 'shared';
     <ion-content [scrollY]="true" class="page">
       <div class="hdr">
         <div class="hdr-row">
-          <button class="circle-btn" (click)="back()">
-            <ion-icon name="chevron-back-outline"></ion-icon>
+          <button class="icon-btn" (click)="back()">
+            <ion-icon name="menu-outline"></ion-icon>
           </button>
-          <div class="hdr-titles">
-            <div class="hdr-title">Notes</div>
-            <div class="hdr-sub">Jot it down, keep it close</div>
+          <div class="search-row">
+            <ion-icon name="search-outline"></ion-icon>
+            <input class="search-input" placeholder="Search notes"
+              [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
           </div>
-          <button class="circle-btn" (click)="openCompose()">
-            <ion-icon name="add-outline"></ion-icon>
+          <button class="icon-btn">
+            <ion-icon name="grid-outline"></ion-icon>
           </button>
-        </div>
-        <div class="search-row">
-          <ion-icon name="search-outline"></ion-icon>
-          <input class="search-input" placeholder="Search notes"
-            [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
+          <button class="icon-btn">
+            <ion-icon name="swap-vertical-outline"></ion-icon>
+          </button>
+          <button class="avatar-btn" (click)="openProfile()">
+            <app-friend-avatar [name]="myName()" [avatar]="myAvatar()" [gender]="myGender()" [size]="34"></app-friend-avatar>
+          </button>
         </div>
         <div class="tabs-row">
           <button class="tab-btn" [class.active]="activeTab() === 'mine'" (click)="activeTab.set('mine')">My Notes</button>
@@ -75,19 +77,20 @@ type Tab = 'mine' | 'shared';
               [attr.data-id]="n._id" [attr.data-section]="'pinned'"
               [class.dragging]="draggingId() === n._id"
               [style.transform]="draggingId() === n._id ? ('translate(' + dragDX() + 'px,' + dragDY() + 'px) scale(1.04)') : null"
-              [style.background]="bg(n)" [style.borderTopColor]="n.color === 'none' ? 'transparent' : HUES[n.color].bar"
               (pointerdown)="onPointerDown($event, n, 'pinned')" (pointermove)="onPointerMove($event)"
               (pointerup)="onPointerUp($event, n)" (pointercancel)="onPointerCancel()">
               <div class="unread-dot" *ngIf="n.hasUnreadEdit"></div>
-              <div class="collab-stack" *ngIf="othersOn(n).length">
-                <app-friend-avatar *ngFor="let c of othersOn(n).slice(0,3)" class="collab-av"
-                  [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
-                <span class="collab-more" *ngIf="othersOn(n).length > 3">+{{ othersOn(n).length - 3 }}</span>
-              </div>
               <div class="note-title" *ngIf="n.title">{{ n.title }}</div>
               <div class="note-text">{{ n.text }}</div>
               <div class="note-foot">
-                <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
+                <div class="note-foot-left">
+                  <div class="collab-stack" *ngIf="othersOn(n).length">
+                    <app-friend-avatar *ngFor="let c of othersOn(n).slice(0,3)" class="collab-av"
+                      [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
+                    <span class="collab-more" *ngIf="othersOn(n).length > 3">+{{ othersOn(n).length - 3 }}</span>
+                  </div>
+                  <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
+                </div>
                 <div class="note-acts">
                   <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
                 </div>
@@ -102,19 +105,20 @@ type Tab = 'mine' | 'shared';
             [attr.data-id]="n._id" [attr.data-section]="'other'"
             [class.dragging]="draggingId() === n._id"
             [style.transform]="draggingId() === n._id ? ('translate(' + dragDX() + 'px,' + dragDY() + 'px) scale(1.04)') : null"
-            [style.background]="bg(n)" [style.borderTopColor]="n.color === 'none' ? 'transparent' : HUES[n.color].bar"
             (pointerdown)="onPointerDown($event, n, 'other')" (pointermove)="onPointerMove($event)"
             (pointerup)="onPointerUp($event, n)" (pointercancel)="onPointerCancel()">
             <div class="unread-dot" *ngIf="n.hasUnreadEdit"></div>
-            <div class="collab-stack" *ngIf="othersOn(n).length">
-              <app-friend-avatar *ngFor="let c of othersOn(n).slice(0,3)" class="collab-av"
-                [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
-              <span class="collab-more" *ngIf="othersOn(n).length > 3">+{{ othersOn(n).length - 3 }}</span>
-            </div>
             <div class="note-title" *ngIf="n.title">{{ n.title }}</div>
             <div class="note-text">{{ n.text }}</div>
             <div class="note-foot">
-              <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
+              <div class="note-foot-left">
+                <div class="collab-stack" *ngIf="othersOn(n).length">
+                  <app-friend-avatar *ngFor="let c of othersOn(n).slice(0,3)" class="collab-av"
+                    [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
+                  <span class="collab-more" *ngIf="othersOn(n).length > 3">+{{ othersOn(n).length - 3 }}</span>
+                </div>
+                <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
+              </div>
               <div class="note-acts">
                 <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
               </div>
@@ -122,6 +126,10 @@ type Tab = 'mine' | 'shared';
           </div>
         </div>
       </div>
+
+      <button class="fab" (click)="openCompose()">
+        <ion-icon name="add-outline"></ion-icon>
+      </button>
     </ion-content>
 
     <!-- Compose sheet -->
@@ -139,15 +147,6 @@ type Tab = 'mine' | 'shared';
               [value]="draftTitle()" (ionInput)="draftTitle.set($any($event.target).value)"></ion-input>
             <ion-textarea class="ta" placeholder="Type a note…" [autoGrow]="true" [rows]="4"
               [value]="draft()" (ionInput)="draft.set($any($event.target).value)"></ion-textarea>
-
-            <div class="row">
-              <div class="swatches">
-                <div *ngFor="let k of HUE_KEYS" class="swatch-wrap" [class.selected]="draftColor() === k" (click)="draftColor.set(k)">
-                  <div class="swatch" [style.background]="HUES[k].bar"></div>
-                  <ion-icon *ngIf="draftColor() === k" name="checkmark" class="swatch-check"></ion-icon>
-                </div>
-              </div>
-            </div>
 
             <div class="share-section" *ngIf="composeFriends().length">
               <div class="field-label">Share with (optional)</div>
@@ -168,58 +167,55 @@ type Tab = 'mine' | 'shared';
     @keyframes rmFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 
-    .page { --background: var(--rm-bg); }
-    .hdr { background: linear-gradient(160deg, var(--rm-purple), #2E3FC0); padding: calc(env(safe-area-inset-top) + 14px) 20px 14px; animation: rmFadeUp .35s ease both; }
-    .hdr-row { display: flex; align-items: center; gap: 12px; }
-    .circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; flex: none; }
-    .circle-btn:active { transform: scale(.9); }
-    .circle-btn.dark { background: var(--rm-surface); color: var(--rm-text-secondary); }
-    .hdr-titles { flex: 1; }
-    .hdr-title { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
-    .hdr-sub { font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.78); margin-top: 2px; }
+    .page { --background: var(--rm-bg); position: relative; }
+    .hdr { background: var(--rm-bg); padding: calc(env(safe-area-inset-top) + 14px) 16px 10px; animation: rmFadeUp .35s ease both; }
+    .hdr-row { display: flex; align-items: center; gap: 8px; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: none; color: var(--rm-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 21px; cursor: pointer; flex: none; }
+    .icon-btn:active { background: var(--rm-surface); }
+    .avatar-btn { border: none; background: none; padding: 0; margin-left: 2px; cursor: pointer; border-radius: 50%; flex: none; }
 
-    .search-row { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.16); border-radius: 12px; padding: 9px 13px; margin-top: 14px; color: #fff; }
-    .search-row ion-icon { font-size: 17px; color: rgba(255,255,255,.85); flex: none; }
-    .search-input { flex: 1; border: none; background: none; outline: none; color: #fff; font-size: 14px; font-weight: 600; font-family: inherit; }
-    .search-input::placeholder { color: rgba(255,255,255,.65); }
+    .search-row { flex: 1; display: flex; align-items: center; gap: 9px; background: var(--rm-surface); border-radius: 24px; padding: 9px 16px; color: var(--rm-text-primary); }
+    .search-row ion-icon { font-size: 17px; color: var(--rm-text-muted); flex: none; }
+    .search-input { flex: 1; border: none; background: none; outline: none; color: var(--rm-text-primary); font-size: 14px; font-weight: 500; font-family: inherit; }
+    .search-input::placeholder { color: var(--rm-text-muted); }
 
-    .tabs-row { display: flex; gap: 8px; margin-top: 12px; background: rgba(255,255,255,.12); border-radius: 12px; padding: 4px; }
-    .tab-btn { flex: 1; border: none; background: none; color: rgba(255,255,255,.75); font-size: 13px; font-weight: 700; padding: 8px 0; border-radius: 9px; cursor: pointer; }
-    .tab-btn.active { background: #fff; color: var(--rm-purple); }
+    .tabs-row { display: flex; gap: 8px; margin-top: 14px; background: var(--rm-surface); border-radius: 12px; padding: 4px; }
+    .tab-btn { flex: 1; border: none; background: none; color: var(--rm-text-muted); font-size: 13px; font-weight: 700; padding: 8px 0; border-radius: 9px; cursor: pointer; }
+    .tab-btn.active { background: var(--rm-card); color: var(--rm-purple); }
 
-    .body { padding: 18px 20px calc(env(safe-area-inset-bottom) + 28px); }
+    .body { padding: 18px 16px calc(env(safe-area-inset-bottom) + 100px); }
     .empty { text-align: center; padding: 60px 24px; color: var(--rm-text-secondary); font-size: 14.5px; font-weight: 600; }
     .loading { display: flex; justify-content: center; padding: 60px 0; }
     .section-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .6px; text-transform: uppercase; margin-bottom: 11px; }
 
     .masonry { column-count: 2; column-gap: 12px; margin-bottom: 18px; }
-    .note { position: relative; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 12px; border-radius: 16px; padding: 14px; box-shadow: var(--rm-shadow-sm); border-top: 3px solid; animation: rmFadeUp .35s ease both; touch-action: pan-y; user-select: none; }
-    .note.dragging { z-index: 10; opacity: .92; box-shadow: 0 8px 24px rgba(0,0,0,.22); transition: none; }
+    .note { position: relative; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 12px; border-radius: 16px; padding: 14px; background: var(--rm-card); border: 1px solid var(--rm-border); animation: rmFadeUp .35s ease both; touch-action: pan-y; user-select: none; }
+    .note.dragging { z-index: 10; opacity: .92; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: none; }
     .note-title { font-size: 14.5px; font-weight: 800; color: var(--rm-text-primary); margin-bottom: 4px; }
-    .note-text { font-size: 14px; font-weight: 600; color: var(--rm-text-primary); line-height: 1.45; white-space: pre-wrap; }
+    .note-text { font-size: 14px; font-weight: 500; color: var(--rm-text-primary); line-height: 1.45; white-space: pre-wrap; }
     .note-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+    .note-foot-left { display: flex; align-items: center; gap: 8px; }
     .note-date { font-size: 11px; font-weight: 700; color: var(--rm-text-muted); }
     .note-acts { display: flex; gap: 11px; align-items: center; font-size: 16px; color: var(--rm-text-muted); }
     .note-acts ion-icon { cursor: pointer; }
 
-    .unread-dot { position: absolute; top: 10px; left: 10px; width: 9px; height: 9px; border-radius: 50%; background: var(--rm-danger); box-shadow: 0 0 0 2px var(--rm-card); }
-    .collab-stack { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; }
+    .unread-dot { position: absolute; top: 10px; right: 10px; width: 9px; height: 9px; border-radius: 50%; background: var(--rm-danger); box-shadow: 0 0 0 2px var(--rm-card); }
+    .collab-stack { display: flex; align-items: center; }
     .collab-av { margin-left: -8px; border: 2px solid var(--rm-card); border-radius: 50%; }
     .collab-av:first-child { margin-left: 0; }
     .collab-more { margin-left: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--rm-text-muted); color: #fff; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid var(--rm-card); }
+
+    .fab { position: fixed; right: 20px; bottom: calc(env(safe-area-inset-bottom) + 24px); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--rm-purple); color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.35); z-index: 5; }
+    .fab:active { transform: scale(.92); }
 
     .sheet { background: var(--rm-card); height: 100%; display: flex; flex-direction: column; }
     .sheet-hdr { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 6px; }
     .sheet-title { font-size: 20px; font-weight: 800; color: var(--rm-text-primary); }
     .sheet-body { padding: 14px 22px calc(env(safe-area-inset-bottom) + 28px); display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+    .circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; flex: none; }
+    .circle-btn.dark { background: var(--rm-surface); color: var(--rm-text-secondary); }
     .title-input { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 12px; --padding-bottom: 12px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 700; font-size: 15px; }
     .ta { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 14px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 600; }
-    .row { display: flex; align-items: center; justify-content: space-between; }
-    .swatches { display: flex; gap: 11px; }
-    .swatch-wrap { position: relative; width: 26px; height: 26px; cursor: pointer; }
-    .swatch { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--rm-border); }
-    .swatch-wrap.selected { box-shadow: 0 0 0 2px var(--rm-card), 0 0 0 4px var(--rm-purple); border-radius: 50%; }
-    .swatch-check { position: absolute; inset: 0; margin: auto; font-size: 14px; color: #fff; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
     .save-btn { width: 100%; height: 52px; border-radius: 14px; border: none; background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
 
     .share-section { border-top: 1px solid var(--rm-border); padding-top: 14px; display: flex; flex-direction: column; gap: 2px; }
@@ -237,8 +233,6 @@ export class NotesComponent implements OnInit {
   private noteService = inject(NoteService);
   private authService = inject(AuthService);
   private friendService = inject(FriendService);
-  readonly HUES = HUES;
-  readonly HUE_KEYS = HUE_KEYS;
 
   readonly notes = this.noteService.notes;
   readonly loading = signal(true);
@@ -246,12 +240,14 @@ export class NotesComponent implements OnInit {
   readonly composing = signal(false);
   readonly draft = signal('');
   readonly draftTitle = signal('');
-  readonly draftColor = signal<Hue>('none');
   readonly composeFriends = signal<Friend[]>([]);
   readonly selectedFriendIds = signal<string[]>([]);
 
   readonly activeTab = signal<Tab>('mine');
   readonly myId = computed(() => this.authService.currentUser()?._id ?? '');
+  readonly myName = computed(() => this.authService.currentUser()?.name ?? '');
+  readonly myAvatar = computed(() => this.authService.currentUser()?.avatar ?? null);
+  readonly myGender = computed(() => this.authService.currentUser()?.gender ?? null);
 
   readonly searchTerm = signal('');
   readonly tabNotes = computed(() => {
@@ -289,7 +285,7 @@ export class NotesComponent implements OnInit {
   );
 
   constructor() {
-    addIcons({ chevronBackOutline, addOutline, closeOutline, bookmarkOutline, bookmark, searchOutline, checkmark });
+    addIcons({ menuOutline, addOutline, closeOutline, bookmarkOutline, bookmark, searchOutline, checkmark, gridOutline, swapVerticalOutline });
   }
 
   ngOnInit(): void {
@@ -303,6 +299,7 @@ export class NotesComponent implements OnInit {
   }
 
   back(): void { this.router.navigate(['/app/dashboard']); }
+  openProfile(): void { this.router.navigate(['/app/settings/profile']); }
   trackNote(_: number, n: Note): string { return n._id; }
 
   open(n: Note): void {
@@ -320,21 +317,6 @@ export class NotesComponent implements OnInit {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  // Translucent tint of the bar colour — legible on both light and dark surfaces.
-  bg(n: Note): string {
-    if (n.color === 'none') return 'var(--rm-surface)';
-    const style = getComputedStyle(document.documentElement);
-    const hex = this.resolveColor(HUES[n.color].bar, style);
-    const num = parseInt(hex.replace('#', ''), 16);
-    return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},0.14)`;
-  }
-
-  private resolveColor(value: string, style: CSSStyleDeclaration): string {
-    const match = /var\((--[\w-]+)\)/.exec(value);
-    if (!match) return value;
-    return style.getPropertyValue(match[1]).trim() || '#3D5AF1';
-  }
-
   togglePin(n: Note): void {
     this.noteService.togglePin(n._id).subscribe();
   }
@@ -342,7 +324,6 @@ export class NotesComponent implements OnInit {
   openCompose(): void {
     this.draft.set('');
     this.draftTitle.set('');
-    this.draftColor.set('none');
     this.selectedFriendIds.set([]);
     this.composing.set(true);
     this.friendService.getFriends().subscribe(({ friends }) => this.composeFriends.set(friends));
@@ -366,7 +347,6 @@ export class NotesComponent implements OnInit {
       .create({
         text,
         title: title || undefined,
-        color: this.draftColor(),
         collaboratorIds: collaboratorIds.length ? collaboratorIds : undefined,
       })
       .subscribe(() => this.composing.set(false));
