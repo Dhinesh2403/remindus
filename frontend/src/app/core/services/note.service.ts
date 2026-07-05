@@ -17,19 +17,23 @@ export interface NoteCollaborator {
 
 export interface Note {
   _id: string;
+  title: string;
   text: string;
   color: NoteHue;
   pinned: boolean;
   order: number;
   userId: NoteCollaborator;
   collaborators: NoteCollaborator[];
+  hasUnreadEdit: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateNoteDto {
+  title?: string;
   text: string;
   color?: NoteHue;
+  collaboratorIds?: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -50,7 +54,18 @@ export class NoteService {
     return this.http
       .get<{ data: Note[] }>(this.API)
       .pipe(
-        map((r) => r.data),
+        // Notes saved before collaborators/order/title existed may come back without
+        // them (older/un-updated backends) — normalize so the template's
+        // unguarded n.collaborators.length/slice() never sees undefined.
+        map((r) =>
+          r.data.map((n) => ({
+            ...n,
+            title: n.title ?? '',
+            collaborators: n.collaborators || [],
+            order: n.order ?? 0,
+            hasUnreadEdit: n.hasUnreadEdit ?? false,
+          }))
+        ),
         tap((data) => this._notes.set(this.sortNotes(data)))
       );
   }
@@ -71,6 +86,12 @@ export class NoteService {
   togglePin(id: string): Observable<Note> {
     return this.http
       .patch<{ data: Note }>(`${this.API}/${id}/pin`, {})
+      .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
+  }
+
+  markViewed(id: string): Observable<Note> {
+    return this.http
+      .patch<{ data: Note }>(`${this.API}/${id}/view`, {})
       .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
   }
 
@@ -155,6 +176,13 @@ export class NoteService {
           this.sortNotes(list.map((n) => (n._id === noteId ? { ...n, order } : n)))
         );
       });
+
+    // Clears the unread badge on this user's other devices when one of them views the note.
+    this.socketService.on<{ noteId: string }>('note:viewed').subscribe(({ noteId }) => {
+      this._notes.update((list) =>
+        list.map((n) => (n._id === noteId ? { ...n, hasUnreadEdit: false } : n))
+      );
+    });
   }
 
   private upsertSorted(updated: Note): void {

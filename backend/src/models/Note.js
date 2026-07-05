@@ -11,12 +11,24 @@ const noteSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    title:    { type: String, trim: true, maxlength: 120, default: '' },
     text:     { type: String, required: true, trim: true, maxlength: 2000 },
     color:    { type: String, enum: ['none', 'yellow', 'pink', 'blue', 'green', 'purple'], default: 'none' },
     pinned:   { type: Boolean, default: false },
     collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     // Drives display order; drag-reorder sets this to the midpoint of its new neighbours.
     order:    { type: Number, default: () => Date.now() * 1000 },
+    // Who last changed title/text/color, and when — drives the per-viewer "unread edit" badge.
+    lastEditedAt: { type: Date, default: null },
+    lastEditedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // One entry per user who has opened this note; compared against lastEditedAt.
+    viewedBy: [
+      {
+        _id: false,
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        at: { type: Date },
+      },
+    ],
   },
   { timestamps: true }
 );

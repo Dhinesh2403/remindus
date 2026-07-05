@@ -12,13 +12,18 @@ router.use(authenticate);
 router.get('/', ctrl.getAll);
 
 router.post('/',
-  [body('text').trim().notEmpty().withMessage('Text is required').isLength({ max: 2000 })],
+  [
+    body('text').trim().notEmpty().withMessage('Text is required').isLength({ max: 2000 }),
+    body('title').optional().trim().isLength({ max: 120 }),
+    body('collaboratorIds').optional().isArray(),
+  ],
   validate,
   ctrl.create
 );
 
 router.put('/:id', ctrl.update);
 router.patch('/:id/pin', ctrl.togglePin);
+router.patch('/:id/view', ctrl.markViewed);
 router.delete('/:id', ctrl.remove);
 
 router.post('/:id/share',

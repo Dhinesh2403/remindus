@@ -1,7 +1,7 @@
 // src/app/notes/notes.component.ts
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { CommonModule, Location } from '@angular/common';
-import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonContent,
   IonIcon,
@@ -9,34 +9,26 @@ import {
   IonInput,
   IonTextarea,
   IonSpinner,
-  AlertController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   chevronBackOutline,
   addOutline,
   closeOutline,
-  trashOutline,
   bookmarkOutline,
   bookmark,
   searchOutline,
   checkmark,
 } from 'ionicons/icons';
-import { NoteService, Note, NoteHue } from '../core/services/note.service';
+import { NoteService, Note, NoteCollaborator, NoteHue } from '../core/services/note.service';
+import { AuthService } from '../core/services/auth.service';
+import { FriendService, Friend } from '../core/services/friend.service';
 import { FriendAvatarComponent } from '../core/components/friend-avatar.component';
+import { HUES, HUE_KEYS } from '../core/constants/note-colors';
 
 type Hue = NoteHue;
 type Section = 'pinned' | 'other';
-
-const HUES: Record<Hue, { bar: string }> = {
-  none: { bar: 'var(--rm-border)' },
-  yellow: { bar: '#E0B92B' },
-  pink: { bar: '#E0699B' },
-  blue: { bar: '#3257EE' },
-  green: { bar: '#1AA06D' },
-  purple: { bar: '#7B61D8' },
-};
-const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
+type Tab = 'mine' | 'shared';
 
 @Component({
   selector: 'app-notes',
@@ -62,12 +54,18 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
           <input class="search-input" placeholder="Search notes"
             [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
         </div>
+        <div class="tabs-row">
+          <button class="tab-btn" [class.active]="activeTab() === 'mine'" (click)="activeTab.set('mine')">My Notes</button>
+          <button class="tab-btn" [class.active]="activeTab() === 'shared'" (click)="activeTab.set('shared')">Shared</button>
+        </div>
       </div>
 
       <div class="body">
         <div class="loading" *ngIf="loading()"><ion-spinner name="crescent"></ion-spinner></div>
-        <div class="empty" *ngIf="!loading() && notes().length === 0">No notes yet. Tap + to jot one down.</div>
-        <div class="empty" *ngIf="!loading() && notes().length > 0 && filteredNotes().length === 0">No notes match "{{ searchTerm() }}".</div>
+        <div class="empty" *ngIf="!loading() && tabNotes().length === 0">
+          {{ activeTab() === 'shared' ? 'No shared notes yet.' : 'No notes yet. Tap + to jot one down.' }}
+        </div>
+        <div class="empty" *ngIf="!loading() && tabNotes().length > 0 && filteredNotes().length === 0">No notes match "{{ searchTerm() }}".</div>
 
         <!-- Pinned -->
         <ng-container *ngIf="displayedPinned().length">
@@ -80,17 +78,18 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
               [style.background]="bg(n)" [style.borderTopColor]="n.color === 'none' ? 'transparent' : HUES[n.color].bar"
               (pointerdown)="onPointerDown($event, n, 'pinned')" (pointermove)="onPointerMove($event)"
               (pointerup)="onPointerUp($event, n)" (pointercancel)="onPointerCancel()">
-              <div class="collab-stack" *ngIf="n.collaborators.length">
-                <app-friend-avatar *ngFor="let c of n.collaborators.slice(0,3)" class="collab-av"
+              <div class="unread-dot" *ngIf="n.hasUnreadEdit"></div>
+              <div class="collab-stack" *ngIf="othersOn(n).length">
+                <app-friend-avatar *ngFor="let c of othersOn(n).slice(0,3)" class="collab-av"
                   [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
-                <span class="collab-more" *ngIf="n.collaborators.length > 3">+{{ n.collaborators.length - 3 }}</span>
+                <span class="collab-more" *ngIf="othersOn(n).length > 3">+{{ othersOn(n).length - 3 }}</span>
               </div>
+              <div class="note-title" *ngIf="n.title">{{ n.title }}</div>
               <div class="note-text">{{ n.text }}</div>
               <div class="note-foot">
                 <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
                 <div class="note-acts">
                   <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
-                  <ion-icon name="trash-outline" (click)="confirmDelete(n, $event)"></ion-icon>
                 </div>
               </div>
             </div>
@@ -106,17 +105,18 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
             [style.background]="bg(n)" [style.borderTopColor]="n.color === 'none' ? 'transparent' : HUES[n.color].bar"
             (pointerdown)="onPointerDown($event, n, 'other')" (pointermove)="onPointerMove($event)"
             (pointerup)="onPointerUp($event, n)" (pointercancel)="onPointerCancel()">
-            <div class="collab-stack" *ngIf="n.collaborators.length">
-              <app-friend-avatar *ngFor="let c of n.collaborators.slice(0,3)" class="collab-av"
+            <div class="unread-dot" *ngIf="n.hasUnreadEdit"></div>
+            <div class="collab-stack" *ngIf="othersOn(n).length">
+              <app-friend-avatar *ngFor="let c of othersOn(n).slice(0,3)" class="collab-av"
                 [name]="c.name" [avatar]="c.avatar" [gender]="c.gender" [size]="20"></app-friend-avatar>
-              <span class="collab-more" *ngIf="n.collaborators.length > 3">+{{ n.collaborators.length - 3 }}</span>
+              <span class="collab-more" *ngIf="othersOn(n).length > 3">+{{ othersOn(n).length - 3 }}</span>
             </div>
+            <div class="note-title" *ngIf="n.title">{{ n.title }}</div>
             <div class="note-text">{{ n.text }}</div>
             <div class="note-foot">
               <span class="note-date">{{ fmtDate(n.createdAt) }}</span>
               <div class="note-acts">
                 <ion-icon [name]="n.pinned ? 'bookmark' : 'bookmark-outline'" (click)="togglePin(n)"></ion-icon>
-                <ion-icon name="trash-outline" (click)="confirmDelete(n, $event)"></ion-icon>
               </div>
             </div>
           </div>
@@ -135,6 +135,8 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
             </button>
           </div>
           <div class="sheet-body">
+            <ion-input class="title-input" placeholder="Title (optional)"
+              [value]="draftTitle()" (ionInput)="draftTitle.set($any($event.target).value)"></ion-input>
             <ion-textarea class="ta" placeholder="Type a note…" [autoGrow]="true" [rows]="4"
               [value]="draft()" (ionInput)="draft.set($any($event.target).value)"></ion-textarea>
 
@@ -144,6 +146,15 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
                   <div class="swatch" [style.background]="HUES[k].bar"></div>
                   <ion-icon *ngIf="draftColor() === k" name="checkmark" class="swatch-check"></ion-icon>
                 </div>
+              </div>
+            </div>
+
+            <div class="share-section" *ngIf="composeFriends().length">
+              <div class="field-label">Share with (optional)</div>
+              <div class="friend-chip" *ngFor="let f of composeFriends()" [class.selected]="isSelected(f._id)" (click)="toggleSelected(f._id)">
+                <app-friend-avatar [name]="f.name" [avatar]="f.avatar" [gender]="f.gender" [size]="28"></app-friend-avatar>
+                <span class="friend-chip-name">{{ f.name }}</span>
+                <ion-icon *ngIf="isSelected(f._id)" name="checkmark" class="friend-chip-check"></ion-icon>
               </div>
             </div>
 
@@ -172,6 +183,10 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
     .search-input { flex: 1; border: none; background: none; outline: none; color: #fff; font-size: 14px; font-weight: 600; font-family: inherit; }
     .search-input::placeholder { color: rgba(255,255,255,.65); }
 
+    .tabs-row { display: flex; gap: 8px; margin-top: 12px; background: rgba(255,255,255,.12); border-radius: 12px; padding: 4px; }
+    .tab-btn { flex: 1; border: none; background: none; color: rgba(255,255,255,.75); font-size: 13px; font-weight: 700; padding: 8px 0; border-radius: 9px; cursor: pointer; }
+    .tab-btn.active { background: #fff; color: var(--rm-purple); }
+
     .body { padding: 18px 20px calc(env(safe-area-inset-bottom) + 28px); }
     .empty { text-align: center; padding: 60px 24px; color: var(--rm-text-secondary); font-size: 14.5px; font-weight: 600; }
     .loading { display: flex; justify-content: center; padding: 60px 0; }
@@ -180,12 +195,14 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
     .masonry { column-count: 2; column-gap: 12px; margin-bottom: 18px; }
     .note { position: relative; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 12px; border-radius: 16px; padding: 14px; box-shadow: var(--rm-shadow-sm); border-top: 3px solid; animation: rmFadeUp .35s ease both; touch-action: pan-y; user-select: none; }
     .note.dragging { z-index: 10; opacity: .92; box-shadow: 0 8px 24px rgba(0,0,0,.22); transition: none; }
+    .note-title { font-size: 14.5px; font-weight: 800; color: var(--rm-text-primary); margin-bottom: 4px; }
     .note-text { font-size: 14px; font-weight: 600; color: var(--rm-text-primary); line-height: 1.45; white-space: pre-wrap; }
     .note-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
     .note-date { font-size: 11px; font-weight: 700; color: var(--rm-text-muted); }
     .note-acts { display: flex; gap: 11px; align-items: center; font-size: 16px; color: var(--rm-text-muted); }
     .note-acts ion-icon { cursor: pointer; }
 
+    .unread-dot { position: absolute; top: 10px; left: 10px; width: 9px; height: 9px; border-radius: 50%; background: var(--rm-danger); box-shadow: 0 0 0 2px var(--rm-card); }
     .collab-stack { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; }
     .collab-av { margin-left: -8px; border: 2px solid var(--rm-card); border-radius: 50%; }
     .collab-av:first-child { margin-left: 0; }
@@ -194,7 +211,8 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
     .sheet { background: var(--rm-card); height: 100%; display: flex; flex-direction: column; }
     .sheet-hdr { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 6px; }
     .sheet-title { font-size: 20px; font-weight: 800; color: var(--rm-text-primary); }
-    .sheet-body { padding: 14px 22px calc(env(safe-area-inset-bottom) + 28px); display: flex; flex-direction: column; gap: 16px; }
+    .sheet-body { padding: 14px 22px calc(env(safe-area-inset-bottom) + 28px); display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+    .title-input { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 12px; --padding-bottom: 12px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 700; font-size: 15px; }
     .ta { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 14px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 600; }
     .row { display: flex; align-items: center; justify-content: space-between; }
     .swatches { display: flex; gap: 11px; }
@@ -203,13 +221,22 @@ const HUE_KEYS: Hue[] = ['none', 'yellow', 'pink', 'blue', 'green', 'purple'];
     .swatch-wrap.selected { box-shadow: 0 0 0 2px var(--rm-card), 0 0 0 4px var(--rm-purple); border-radius: 50%; }
     .swatch-check { position: absolute; inset: 0; margin: auto; font-size: 14px; color: #fff; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
     .save-btn { width: 100%; height: 52px; border-radius: 14px; border: none; background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+    .share-section { border-top: 1px solid var(--rm-border); padding-top: 14px; display: flex; flex-direction: column; gap: 2px; }
+    .field-label { font-size: 12px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; }
+    .friend-chip { display: flex; align-items: center; gap: 12px; padding: 9px 4px; cursor: pointer; border-radius: 12px; }
+    .friend-chip:active { background: var(--rm-surface); }
+    .friend-chip.selected { background: var(--rm-purple-light); }
+    .friend-chip-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--rm-text-primary); }
+    .friend-chip-check { font-size: 17px; color: var(--rm-purple); }
   `],
 })
 export class NotesComponent implements OnInit {
-  private location = inject(Location);
+  private route = inject(ActivatedRoute);
   private router = inject(Router);
   private noteService = inject(NoteService);
-  private alertCtrl = inject(AlertController);
+  private authService = inject(AuthService);
+  private friendService = inject(FriendService);
   readonly HUES = HUES;
   readonly HUE_KEYS = HUE_KEYS;
 
@@ -218,13 +245,25 @@ export class NotesComponent implements OnInit {
 
   readonly composing = signal(false);
   readonly draft = signal('');
+  readonly draftTitle = signal('');
   readonly draftColor = signal<Hue>('none');
+  readonly composeFriends = signal<Friend[]>([]);
+  readonly selectedFriendIds = signal<string[]>([]);
+
+  readonly activeTab = signal<Tab>('mine');
+  readonly myId = computed(() => this.authService.currentUser()?._id ?? '');
 
   readonly searchTerm = signal('');
+  readonly tabNotes = computed(() => {
+    const notes = this.notes();
+    return this.activeTab() === 'shared'
+      ? notes.filter((n) => n.collaborators.length > 0)
+      : notes.filter((n) => n.collaborators.length === 0);
+  });
   readonly filteredNotes = computed(() => {
     const q = this.searchTerm().trim().toLowerCase();
-    const all = this.notes();
-    return q ? all.filter((n) => n.text.toLowerCase().includes(q)) : all;
+    const all = this.tabNotes();
+    return q ? all.filter((n) => n.title.toLowerCase().includes(q) || n.text.toLowerCase().includes(q)) : all;
   });
   readonly pinnedNotes = computed(() => this.filteredNotes().filter((n) => n.pinned));
   readonly otherNotes = computed(() => this.filteredNotes().filter((n) => !n.pinned));
@@ -250,21 +289,31 @@ export class NotesComponent implements OnInit {
   );
 
   constructor() {
-    addIcons({ chevronBackOutline, addOutline, closeOutline, trashOutline, bookmarkOutline, bookmark, searchOutline, checkmark });
+    addIcons({ chevronBackOutline, addOutline, closeOutline, bookmarkOutline, bookmark, searchOutline, checkmark });
   }
 
   ngOnInit(): void {
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'shared' || tab === 'mine') this.activeTab.set(tab);
+
     this.noteService.getAll().subscribe({
       next: () => this.loading.set(false),
       error: () => this.loading.set(false),
     });
   }
 
-  back(): void { this.location.back(); }
+  back(): void { this.router.navigate(['/app/dashboard']); }
   trackNote(_: number, n: Note): string { return n._id; }
 
   open(n: Note): void {
-    this.router.navigate(['/app/notes', n._id]);
+    this.router.navigate(['/app/notes', n._id], { queryParams: { tab: this.activeTab() } });
+  }
+
+  // Everyone attached to this note besides me — the owner if I'm a collaborator,
+  // or my collaborators if I own it — so the Shared tab always shows "the other party".
+  othersOn(n: Note): NoteCollaborator[] {
+    const me = this.myId();
+    return [n.userId, ...n.collaborators].filter((c) => c._id !== me);
   }
 
   fmtDate(iso: string): string {
@@ -274,37 +323,53 @@ export class NotesComponent implements OnInit {
   // Translucent tint of the bar colour — legible on both light and dark surfaces.
   bg(n: Note): string {
     if (n.color === 'none') return 'var(--rm-surface)';
-    const hex = HUES[n.color].bar;
-    const num = parseInt(hex.slice(1), 16);
+    const style = getComputedStyle(document.documentElement);
+    const hex = this.resolveColor(HUES[n.color].bar, style);
+    const num = parseInt(hex.replace('#', ''), 16);
     return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},0.14)`;
+  }
+
+  private resolveColor(value: string, style: CSSStyleDeclaration): string {
+    const match = /var\((--[\w-]+)\)/.exec(value);
+    if (!match) return value;
+    return style.getPropertyValue(match[1]).trim() || '#3D5AF1';
   }
 
   togglePin(n: Note): void {
     this.noteService.togglePin(n._id).subscribe();
   }
 
-  async confirmDelete(n: Note, event: Event): Promise<void> {
-    event.stopPropagation();
-    const alert = await this.alertCtrl.create({
-      header: 'Delete Note',
-      message: 'This cannot be undone.',
-      buttons: [
-        { text: 'Cancel', role: 'cancel' },
-        { text: 'Delete', role: 'destructive', handler: () => this.noteService.delete(n._id).subscribe() },
-      ],
-    });
-    await alert.present();
-  }
-
   openCompose(): void {
     this.draft.set('');
+    this.draftTitle.set('');
     this.draftColor.set('none');
+    this.selectedFriendIds.set([]);
     this.composing.set(true);
+    this.friendService.getFriends().subscribe(({ friends }) => this.composeFriends.set(friends));
   }
+
+  toggleSelected(friendId: string): void {
+    this.selectedFriendIds.update((ids) =>
+      ids.includes(friendId) ? ids.filter((id) => id !== friendId) : [...ids, friendId]
+    );
+  }
+  isSelected(friendId: string): boolean {
+    return this.selectedFriendIds().includes(friendId);
+  }
+
   save(): void {
     const text = this.draft().trim();
     if (!text) return;
-    this.noteService.create({ text, color: this.draftColor() }).subscribe(() => this.composing.set(false));
+    const title = this.draftTitle().trim();
+    const collaboratorIds = this.selectedFriendIds();
+    this.noteService
+      .create({
+        text,
+        title: title || undefined,
+        color: this.draftColor(),
+        collaboratorIds: collaboratorIds.length ? collaboratorIds : undefined,
+      })
+      .subscribe(() => this.composing.set(false));
   }
 
   // ─── Drag reorder handlers ──────────────────────────────────────────────
