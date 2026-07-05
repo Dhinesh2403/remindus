@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent, IonToggle } from '@ionic/angular/standalone';
 import { AlarmService } from '../core/services/alarm.service';
-import { RmTimeFieldComponent } from '../core/components/rm-time-field.component';
+import { RmDateTimeComponent } from '../core/components/rm-datetime.component';
 
 export interface QuickAlarm {
   id: string;
@@ -21,7 +21,7 @@ const STORAGE_KEY = 'rm_quick_alarms';
 @Component({
   selector: 'app-quick-alarms',
   standalone: true,
-  imports: [CommonModule, FormsModule, IonContent, IonToggle, RmTimeFieldComponent],
+  imports: [CommonModule, FormsModule, IonContent, IonToggle, RmDateTimeComponent],
   templateUrl: './quick-alarms.component.html',
   styleUrl: './quick-alarms.component.scss',
 })

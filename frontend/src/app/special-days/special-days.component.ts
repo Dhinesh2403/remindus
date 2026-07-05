@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent, IonRefresher, IonRefresherContent, ToastController } from '@ionic/angular/standalone';
 import { SpecialDayService, SpecialDayType } from '../core/services/special-day.service';
-import { RmDateFieldComponent } from '../core/components/rm-date-field.component';
+import { RmDateTimeComponent } from '../core/components/rm-datetime.component';
 
 export type { SpecialDay } from '../core/services/special-day.service';
 
@@ -13,7 +13,7 @@ type SDFilter = 'All' | 'Birthdays' | 'Anniversaries' | 'Events';
 @Component({
   selector: 'app-special-days',
   standalone: true,
-  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent, RmDateFieldComponent],
+  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent, RmDateTimeComponent],
   templateUrl: './special-days.component.html',
   styleUrl: './special-days.component.scss',
 })

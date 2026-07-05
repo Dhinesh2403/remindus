@@ -87,6 +87,7 @@ export class NotificationsComponent implements OnInit {
   typeEmoji(type: string): string {
     const map: Record<string, string> = {
       reminder_due: '⏰', reminder_assigned: '📌', reminder_response: '✅',
+      reminder_pre_alert: '⏳', reminder_status_update: '🔄', friend_reminder_due: '⏰',
       friend_request: '👋', friend_accepted: '🎉', system: '📢',
     };
     return map[type] ?? '🔔';

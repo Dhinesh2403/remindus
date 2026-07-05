@@ -64,7 +64,7 @@
 
       <!-- Time (shared picker — opens the system clock, AM/PM handled there) -->
       <div class="qa-time-big">{{ formatTime(newAlarm().hour, newAlarm().minute) }}</div>
-      <rm-time-field label="Alarm time" [value]="timeValue()" (valueChange)="setTime($event)"></rm-time-field>
+      <rm-datetime mode="time" [chips]="false" [time]="timeValue()" (timeChange)="setTime($event)"></rm-datetime>
 
       @if (firesIn()) {
         <div class="qa-fires-in">

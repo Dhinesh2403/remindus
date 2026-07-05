@@ -125,11 +125,6 @@ export const routes: Routes = [
               import('./settings/profile/profile.component').then((m) => m.ProfileComponent),
           },
           {
-            path: 'profile/edit',
-            loadComponent: () =>
-              import('./settings/profile/edit-profile.component').then((m) => m.EditProfileComponent),
-          },
-          {
             path: 'notifications',
             loadComponent: () =>
               import('./settings/notifications-settings/notifications-settings.component').then((m) => m.NotificationsSettingsComponent),
@@ -185,8 +180,18 @@ export const routes: Routes = [
       },
       {
         path: 'notes',
-        loadComponent: () =>
-          import('./notes/notes.component').then((m) => m.NotesComponent),
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./notes/notes.component').then((m) => m.NotesComponent),
+          },
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./notes/editor/note-editor.component').then((m) => m.NoteEditorComponent),
+          },
+        ],
       },
       {
         path: 'special-days',

@@ -233,6 +233,16 @@ export class AuthService {
       );
   }
 
+  // ─── Update profile (name / phone / gender / dob) ─────────────────────────
+  // Named endpoint PUT /users/me with a body payload; patches the cached user.
+  updateProfile(
+    update: Partial<Pick<User, 'name' | 'phone' | 'gender' | 'dob'>>
+  ): Observable<User> {
+    return this.http
+      .put<User>(`${this.API}/me`, update)
+      .pipe(tap((user) => this._currentUser.set(user)));
+  }
+
   // ─── Update notification preferences (channels and/or per-type switches) ───
   updateNotifPrefs(
     update: NotifPrefsUpdate

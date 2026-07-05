@@ -21,4 +21,17 @@ router.put('/:id', ctrl.update);
 router.patch('/:id/pin', ctrl.togglePin);
 router.delete('/:id', ctrl.remove);
 
+router.post('/:id/share',
+  [body('friendId').notEmpty().withMessage('friendId is required')],
+  validate,
+  ctrl.share
+);
+router.delete('/:id/share/:friendId', ctrl.unshare);
+
+router.patch('/:id/order',
+  [body('order').isNumeric().withMessage('order must be numeric')],
+  validate,
+  ctrl.reorder
+);
+
 module.exports = router;

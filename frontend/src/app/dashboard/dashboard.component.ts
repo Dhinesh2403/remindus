@@ -6,12 +6,23 @@ import {
   IonContent,
   IonRefresher,
   IonRefresherContent,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../core/services/auth.service';
 import { ReminderService } from '../core/services/reminder.service';
 import { CountUpDirective } from '../core/directives/count-up.directive';
 
 type DashTab = 'dashboard' | 'today' | 'upcoming';
+
+interface DashModule {
+  label: string;
+  sub: string;
+  icon: string;
+  route: string;
+  color: string;
+  bg: string;
+  comingSoon?: boolean;
+}
 
 interface UpcomingItem {
   id: string;
@@ -34,6 +45,7 @@ export class DashboardComponent implements OnInit {
   protected nav = inject(Router);
   private authService = inject(AuthService);
   private reminderService = inject(ReminderService);
+  private toast = inject(ToastController);
 
   readonly currentUser = this.authService.currentUser;
   readonly todayCount = this.reminderService.todayCount;
@@ -65,16 +77,20 @@ export class DashboardComponent implements OnInit {
     return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
-  readonly modules = [
-    { label: 'Daily Plan',    sub: 'Time-block your day',   icon: 'clock',    route: '/app/daily-plan',   color: '#3D5AF1', bg: 'rgba(61,90,241,0.10)' },
-    { label: 'Tasks',         sub: 'Track to-dos & subtasks', icon: 'check',  route: '/app/tasks',        color: '#3D9970', bg: 'rgba(61,153,112,0.10)' },
+  readonly modules: DashModule[] = [
+    // ── Live modules ──────────────────────────────────────────────────────
     { label: 'Reminders',     sub: 'Never miss a thing',    icon: 'bell',     route: '/app/reminders',    color: '#E07A2B', bg: 'rgba(224,122,43,0.10)' },
-    { label: 'Habits',        sub: 'Build streaks',          icon: 'repeat',  route: '/app/habits',       color: '#E0732B', bg: 'rgba(224,115,43,0.10)' },
-    { label: 'Goals',         sub: 'Plan the big picture',  icon: 'flag',     route: '/app/goals',        color: '#7B61D8', bg: 'rgba(123,97,216,0.10)' },
-    { label: 'Calendar',      sub: 'Sync Google & device',  icon: 'calendar', route: '/app/calendar',     color: '#3B82F6', bg: 'rgba(59,130,246,0.10)' },
-    { label: 'Sticky Notes',  sub: 'Jot it down',           icon: 'note',     route: '/app/notes',        color: '#C99A1E', bg: 'rgba(201,154,30,0.10)' },
+    { label: 'Tasks',         sub: 'Track to-dos & subtasks', icon: 'check',  route: '/app/tasks',        color: '#3D9970', bg: 'rgba(61,153,112,0.10)' },
     { label: 'Special Days',  sub: 'Birthdays & events',    icon: 'heart',    route: '/app/special-days', color: '#E0699B', bg: 'rgba(224,105,155,0.10)' },
     { label: 'Quick Alarms',  sub: 'One-tap timers',        icon: 'alarm',    route: '/app/quick-alarms', color: '#0D9488', bg: 'rgba(13,148,136,0.10)' },
+    { label: 'Notes',         sub: 'Jot it down, keep it close', icon: 'note', route: '/app/notes',       color: '#3D5AF1', bg: 'rgba(61,90,241,0.10)' },
+    { label: 'Calendar',      sub: 'Sync Google & device',  icon: 'calendar', route: '/app/calendar',     color: '#3B82F6', bg: 'rgba(59,130,246,0.10)' },
+    // ── Coming soon ───────────────────────────────────────────────────────
+    { label: 'Daily Plan',    sub: 'Coming soon',   icon: 'clock',    route: '/app/daily-plan', color: '#3D5AF1', bg: 'rgba(61,90,241,0.10)',  comingSoon: true },
+    { label: 'Habits',        sub: 'Coming soon',   icon: 'repeat',   route: '/app/habits',     color: '#E0732B', bg: 'rgba(224,115,43,0.10)', comingSoon: true },
+    { label: 'Goals',         sub: 'Coming soon',   icon: 'flag',     route: '/app/goals',      color: '#7B61D8', bg: 'rgba(123,97,216,0.10)', comingSoon: true },
+    { label: 'Grocery List',  sub: 'Coming soon',   icon: 'cart',     route: '/app/grocery',    color: '#16A34A', bg: 'rgba(22,163,74,0.10)',  comingSoon: true },
+    { label: 'Finance',       sub: 'Coming soon',   icon: 'coin',     route: '/app/finance',    color: '#CA8A04', bg: 'rgba(202,138,4,0.10)',  comingSoon: true },
   ];
 
   // Mock today items — will be replaced by real data from TaskService
@@ -124,5 +140,14 @@ export class DashboardComponent implements OnInit {
 
   openSearch(): void {
     this.nav.navigate(['/app/search']);
+  }
+
+  async openModule(mod: DashModule): Promise<void> {
+    if (mod.comingSoon) {
+      const t = await this.toast.create({ message: 'Coming soon', duration: 1600, position: 'top' });
+      await t.present();
+      return;
+    }
+    this.nav.navigate([mod.route]);
   }
 }

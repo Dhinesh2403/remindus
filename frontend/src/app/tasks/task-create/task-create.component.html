@@ -68,10 +68,11 @@
     <p class="tc-hint">Tap + to add a subtask · press Enter to confirm</p>
   </div>
 
-  <!-- Date & Time (shared pickers) -->
-  <div class="tc-section tc-dt-row">
-    <rm-date-field label="Due Date" [value]="dueDate()" (valueChange)="dueDate.set($event)"></rm-date-field>
-    <rm-time-field label="Start time" [value]="startTime()" (valueChange)="startTime.set($event)"></rm-time-field>
+  <!-- Date & Time (shared picker) -->
+  <div class="tc-section">
+    <rm-datetime mode="datetime" heading="DUE DATE & TIME"
+                 [date]="dueDate()" (dateChange)="dueDate.set($event)"
+                 [time]="startTime()" (timeChange)="startTime.set($event)"></rm-datetime>
   </div>
 
   <!-- Estimated time chips -->
