@@ -15,6 +15,7 @@ import { Subscription } from 'rxjs';
 import { ReminderService, Reminder, ReminderStatus } from '../../core/services/reminder.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
+import { FriendService } from '../../core/services/friend.service';
 import { FriendAvatarComponent, AvatarGender } from '../../core/components/friend-avatar.component';
 
 const CAT_COLOR: Record<string, string> = {
@@ -162,8 +163,14 @@ interface PersonRef {
     </ion-content>`,
   styles: [`
     /* ── Header — flat bar, hairline divider, left-aligned title ── */
-    .det-bar { --background: var(--rm-card); border-bottom: 1px solid var(--rm-border); }
-    .det-bar-title { font-size: 17px; font-weight: 700; color: var(--rm-text-primary); }
+    .det-bar {
+      --background: var(--rm-card);
+      --min-height: 56px;
+      --padding-start: 10px; --padding-end: 10px;
+      --padding-top: 6px; --padding-bottom: 6px;
+      border-bottom: 1px solid var(--rm-border);
+    }
+    .det-bar-title { font-size: 17px; font-weight: 700; color: var(--rm-text-primary); margin-left: 6px; }
     .det-bar-btn {
       width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
       background: none; border: none; cursor: pointer; font-size: 20px; color: var(--rm-text-secondary);

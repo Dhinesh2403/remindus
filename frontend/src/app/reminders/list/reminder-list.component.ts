@@ -110,10 +110,13 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
 
       <!-- Mine / Shared tabs -->
       <div class="rem-tabs a-fu" [style.--i]="3">
-        <button class="rtab" [class.active]="activeTab() === 'mine'" (click)="activeTab.set('mine')">Mine</button>
+        <button class="rtab" [class.active]="activeTab() === 'mine'" (click)="activeTab.set('mine')">
+          Mine
+          @if (mineActiveTotal() > 0) { <span class="rtab-badge">{{ mineActiveTotal() }}</span> }
+        </button>
         <button class="rtab" [class.active]="activeTab() === 'shared'" (click)="activeTab.set('shared')">
           Shared
-          @if (sharedTotal() > 0) { <span class="rtab-badge">{{ sharedTotal() }}</span> }
+          @if (sharedActiveTotal() > 0) { <span class="rtab-badge">{{ sharedActiveTotal() }}</span> }
         </button>
       </div>
 
@@ -992,9 +995,11 @@ export class ReminderListComponent implements OnInit {
     if (this.selectedDate()) this.scrollStripTo(dateStr);
   }
 
+  // "Clear" resets the picker to today: select it and bring the strip back home
   clearDateFilter(): void {
-    this.selectedDate.set('');
+    this.selectedDate.set(this.todayDateStr);
     this.calSheetOpen.set(false);
+    this.scrollStripTo(this.todayDateStr);
   }
 
   // Center the given day chip in the strip (waits a tick so stretched days render first)

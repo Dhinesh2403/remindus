@@ -289,6 +289,11 @@ export class ReminderService {
         this._receivedReminders.update((prev) => [reminder, ...prev]);
       });
 
+    // My own reminder changed outside the app (notification-tray "Mark done") → update in place
+    this.socketService.on<Reminder>('reminder:response').subscribe((reminder) => {
+      this.updateInList(reminder);
+    });
+
     // Friend updated the sharedStatus on a reminder I sent them → update sender's list in place
     this.socketService
       .on<{ _id: string; sharedStatus: string; status: string }>('reminder:sharedStatus')

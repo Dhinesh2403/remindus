@@ -12,8 +12,9 @@ const { signActionToken } = require('../utils/notif-action');
 
 // Public base URL the native tray-action receiver POSTs back to. Falls back to
 // the production API so no env change is needed to ship; override with
-// PUBLIC_API_URL on other deployments.
-const ACTION_URL = `${process.env.PUBLIC_API_URL || 'https://remindus-buddy-api.up.railway.app/api'}/reminders/notif-action`;
+// PUBLIC_API_URL on other deployments. (Was the retired Railway URL — every
+// tray button silently POSTed into the void until this pointed at Render.)
+const ACTION_URL = `${process.env.PUBLIC_API_URL || 'https://remindus.onrender.com/api'}/reminders/notif-action`;
 
 // ── Configure Firebase Admin (only if service account env vars are present) ──
 let firebaseAdmin = null;

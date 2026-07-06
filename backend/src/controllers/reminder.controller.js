@@ -341,6 +341,14 @@ async function doSharedStatus(reminderId, uid, status, actorName = null) {
   }
   await reminder.save();
 
+  // Also update the assignee's own open app — matters for the tray "Acknowledge"
+  // button, where the action happens outside the app entirely.
+  emitToUser(String(uid), 'reminder:sharedStatus', {
+    _id:          String(reminder._id),
+    sharedStatus: reminder.sharedStatus,
+    status:       reminder.status,
+  });
+
   if (reminder.assignedBy) {
     const name = actorName || (await User.findById(uid).select('name').lean())?.name || 'A friend';
     // Real-time socket update so the sender's "Sent to Friends" badge refreshes instantly
