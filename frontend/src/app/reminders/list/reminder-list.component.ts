@@ -1,5 +1,5 @@
 // src/app/reminders/list/reminder-list.component.ts
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, viewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -108,33 +108,48 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
         </div>
       </div>
 
+      <!-- Mine / Shared tabs -->
+      <div class="rem-tabs a-fu" [style.--i]="3">
+        <button class="rtab" [class.active]="activeTab() === 'mine'" (click)="activeTab.set('mine')">Mine</button>
+        <button class="rtab" [class.active]="activeTab() === 'shared'" (click)="activeTab.set('shared')">
+          Shared
+          @if (sharedTotal() > 0) { <span class="rtab-badge">{{ sharedTotal() }}</span> }
+        </button>
+      </div>
+
       <!-- Status filter chips -->
-      <div class="filter-row a-fu" [style.--i]="3">
+      <div class="filter-row a-fu" [style.--i]="4">
         <button class="filter-chip" [class.active]="statusFilter() === 'all'"    (click)="setFilter('all')">All ({{ totalCount() }})</button>
         <button class="filter-chip" [class.active]="statusFilter() === 'active'" (click)="setFilter('active')">Active ({{ activeCount() }})</button>
         <button class="filter-chip" [class.active]="statusFilter() === 'done'"   (click)="setFilter('done')">Done ({{ doneCount() }})</button>
       </div>
 
       <!-- Calendar date strip -->
-      <div class="cal-strip a-fu" [style.--i]="4">
-        @for (day of calendarDays(); track day.dateStr) {
-          <div
-            class="cal-day rm-press"
-            [class.cal-today]="day.isToday"
-            [class.cal-selected]="day.dateStr === selectedDate()"
-            (click)="toggleDay(day.dateStr)"
-          >
-            <span class="cal-weekday">{{ day.weekday }}</span>
-            <span class="cal-num">{{ day.num }}</span>
-            @if (day.hasMissed) {
-              <span class="cal-dot dot-missed"></span>
-            } @else if (day.hasPending) {
-              <span class="cal-dot dot-pending"></span>
-            } @else if (day.hasDone) {
-              <span class="cal-dot dot-done"></span>
-            }
-          </div>
-        }
+      <div class="cal-row a-fu" [style.--i]="4">
+        <button class="cal-pick rm-press" [class.active]="!!selectedDate()" (click)="openCalSheet()" aria-label="Pick a date">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="cal-strip" #calStrip>
+          @for (day of calendarDays(); track day.dateStr) {
+            <div
+              class="cal-day rm-press"
+              [attr.data-date]="day.dateStr"
+              [class.cal-today]="day.isToday"
+              [class.cal-selected]="day.dateStr === selectedDate()"
+              (click)="toggleDay(day.dateStr)"
+            >
+              <span class="cal-weekday">{{ day.weekday }}</span>
+              <span class="cal-num">{{ day.num }}</span>
+              @if (day.hasMissed) {
+                <span class="cal-dot dot-missed"></span>
+              } @else if (day.hasPending) {
+                <span class="cal-dot dot-pending"></span>
+              } @else if (day.hasDone) {
+                <span class="cal-dot dot-done"></span>
+              }
+            </div>
+          }
+        </div>
       </div>
 
       <!-- Skeleton — only on very first load -->
@@ -153,9 +168,8 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
       } @else {
         <div class="list-body">
 
-          <!-- ── Mine section ── -->
-          @if (mine().length > 0) {
-            <div class="section-label a-fu" [style.--i]="5">Mine</div>
+          <!-- ── Mine tab: own reminders ── -->
+          @if (activeTab() === 'mine' && mine().length > 0) {
             @for (r of mine(); track r._id) {
               <ion-item-sliding class="a-fu" [style.--i]="$index + 6">
 
@@ -221,9 +235,9 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
             }
           }
 
-          <!-- ── Sent to Friends section ── -->
-          @if (sentToFriends().length > 0) {
-            <div class="section-label a-fu" [style.--i]="5" [style.margin-top]="mine().length > 0 ? '20px' : '0'">
+          <!-- ── Shared tab: sent to friends ── -->
+          @if (activeTab() === 'shared' && sentToFriends().length > 0) {
+            <div class="section-label a-fu" [style.--i]="5">
               Sent to Friends
             </div>
             @for (r of sentToFriends(); track r._id) {
@@ -278,10 +292,10 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
             }
           }
 
-          <!-- ── From Friends section ── -->
-          @if (fromFriends().length > 0) {
+          <!-- ── Shared tab: from friends ── -->
+          @if (activeTab() === 'shared' && fromFriends().length > 0) {
             <div class="section-label from-label a-fu" [style.--i]="5"
-              [style.margin-top]="(mine().length > 0 || sentToFriends().length > 0) ? '20px' : '0'">
+              [style.margin-top]="sentToFriends().length > 0 ? '20px' : '0'">
               <ion-icon name="arrow-down-outline" style="font-size:11px;margin-right:4px;vertical-align:middle"></ion-icon>
               From Friends
             </div>
@@ -355,22 +369,71 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
             }
           }
 
-          <!-- Empty state -->
-          @if (mine().length === 0 && sentToFriends().length === 0 && fromFriends().length === 0) {
+          <!-- Empty states (per tab) -->
+          @if (activeTab() === 'mine' && mine().length === 0) {
             <div class="empty-state a-fu" [style.--i]="5">
               <div class="empty-emoji">🔔</div>
               <h3>{{ selectedDate() ? 'No reminders on this day' : 'No reminders yet' }}</h3>
               <p>{{ selectedDate() ? 'Try another date or tap +' : 'Tap + to create your first reminder' }}</p>
             </div>
           }
+          @if (activeTab() === 'shared' && sentToFriends().length === 0 && fromFriends().length === 0) {
+            <div class="empty-state a-fu" [style.--i]="5">
+              <div class="empty-emoji">🤝</div>
+              <h3>No shared reminders</h3>
+              <p>{{ selectedDate() ? 'Nothing shared on this day' : 'Reminders you send to or get from friends show up here' }}</p>
+            </div>
+          }
 
         </div>
       }
 
-      <button class="rem-fab a-pop rm-press-deep" [style.--i]="8" (click)="router.navigate(['/app/reminders/create'])">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-        New Reminder
-      </button>
+      <!-- ══ Jump-to-date sheet (month grid, same pattern as create) ══ -->
+      @if (calSheetOpen()) {
+        <div class="ds-backdrop" (click)="calSheetOpen.set(false)"></div>
+        <div class="ds-sheet">
+          <div class="ds-head">
+            <button class="ds-x rm-press" (click)="calSheetOpen.set(false)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </button>
+            <span class="ds-title">Jump to date</span>
+            @if (selectedDate()) {
+              <button class="ds-clear rm-press" (click)="clearDateFilter()">Clear</button>
+            } @else {
+              <span class="ds-clear-ph"></span>
+            }
+          </div>
+          <div class="ds-cal-head">
+            <span class="ds-month">{{ monthLabel() }}</span>
+            <div class="ds-nav">
+              <button class="ds-nav-btn rm-press" (click)="navMonth(-1)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="ds-nav-btn rm-press" (click)="navMonth(1)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="ds-dow">
+            @for (d of dow; track d) { <span>{{ d }}</span> }
+          </div>
+          <div class="ds-grid">
+            @for (cell of monthCells(); track $index) {
+              @if (!cell) {
+                <span class="ds-cell blank"></span>
+              } @else {
+                <button class="ds-cell rm-press"
+                  [class.sel]="cell.dateStr === selectedDate()"
+                  [class.today]="cell.dateStr === todayDateStr"
+                  (click)="pickDate(cell.dateStr)">
+                  {{ cell.num }}
+                  @if (cell.dot) { <span class="ds-cell-dot" [style.background]="cell.dot"></span> }
+                </button>
+              }
+            }
+          </div>
+        </div>
+      }
 
     </ion-content>
   `,
@@ -384,13 +447,13 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .rem-title { font-size: 28px; font-weight: 900; color: var(--rm-text-primary); letter-spacing: -0.4px; }
     .rem-sub { font-size: 12.5px; font-weight: 600; color: var(--rm-text-muted); margin-top: 3px; }
     .btn-new {
-      display: flex; align-items: center; gap: 4px;
-      padding: 9px 16px; background: var(--rm-purple); color: #fff;
-      border: none; border-radius: 12px; font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 22px; background: var(--rm-purple); color: #fff;
+      border: none; border-radius: 14px; font-size: 15.5px; font-weight: 800;
       cursor: pointer; font-family: inherit;
-      box-shadow: 0 4px 12px rgba(61,90,241,0.3);
+      box-shadow: 0 6px 16px rgba(61,90,241,0.35);
     }
-    .btn-new ion-icon { font-size: 17px; }
+    .btn-new ion-icon { font-size: 20px; }
     .rem-progress { height: 5px; background: var(--rm-surface); border-radius: 3px; margin-top: 12px; overflow: hidden; }
     .rem-progress-fill {
       height: 100%; border-radius: 3px;
@@ -401,17 +464,33 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     @keyframes barGrow { from { width: 0; } }
 
     /* ── Stat cards ── */
-    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 16px 0; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; padding: 12px 16px 0; }
     .stat-card {
-      background: var(--rm-card); border-radius: 16px; padding: 12px 14px;
+      background: var(--rm-card); border-radius: 14px; padding: 9px 12px;
       box-shadow: var(--rm-shadow-sm); cursor: pointer;
       border: 1px solid var(--rm-border);
     }
     .stat-card.stat-alert { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.25); }
-    .stat-num { font-size: 22px; font-weight: 900; color: var(--rm-text-primary); font-family: 'Nunito', sans-serif; }
+    .stat-num { font-size: 19px; font-weight: 900; color: var(--rm-text-primary); font-family: 'Nunito', sans-serif; }
     .stat-green { color: #10B981; }
     .stat-red { color: #EF4444; }
-    .stat-label { font-size: 11.5px; font-weight: 600; color: var(--rm-text-muted); margin-top: 1px; }
+    .stat-label { font-size: 10.5px; font-weight: 600; color: var(--rm-text-muted); margin-top: 1px; }
+
+    /* ── Mine / Shared tabs ── */
+    .rem-tabs { display: flex; gap: 6px; margin: 12px 16px 0; background: var(--rm-surface); border-radius: 14px; padding: 4px; }
+    .rtab {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: none; background: none; color: var(--rm-text-secondary);
+      font-size: 13px; font-weight: 700; padding: 9px 0; border-radius: 10px;
+      cursor: pointer; font-family: inherit;
+      transition: background .22s, color .22s, box-shadow .22s;
+    }
+    .rtab.active { background: var(--rm-card); color: var(--rm-purple); box-shadow: var(--rm-shadow-sm); }
+    .rtab-badge {
+      min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+      background: var(--rm-purple); color: #fff; font-size: 10px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
 
     /* ── Filter chips ── */
     .filter-row { display: flex; gap: 8px; padding: 12px 16px 0; }
@@ -425,10 +504,28 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .filter-chip.active { background: var(--rm-purple); color: #fff; box-shadow: 0 4px 12px rgba(61,90,241,0.3); }
 
     /* ── Calendar strip ── */
+    .cal-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 0 4px 16px;
+    }
+    .cal-pick {
+      flex-shrink: 0;
+      width: 42px; height: 54px;
+      border: none; border-radius: 14px;
+      background: var(--rm-surface); color: var(--rm-text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .2s, color .2s, box-shadow .2s;
+    }
+    .cal-pick.active { background: var(--rm-purple); color: #fff; box-shadow: 0 4px 14px rgba(61,90,241,0.35); }
     .cal-strip {
+      flex: 1;
+      position: relative;
       display: flex;
       gap: 6px;
-      padding: 12px 16px 4px;
+      padding: 0 16px 0 4px;
       overflow-x: auto;
       scrollbar-width: none;
     }
@@ -455,6 +552,54 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .dot-pending { background: #F97316; }
     .dot-done    { background: #10B981; }
     .cal-selected .cal-dot { opacity: 0.85; }
+
+    /* ══ Jump-to-date sheet ══ */
+    .ds-backdrop { position: fixed; inset: 0; background: rgba(15, 20, 40, 0.45); z-index: 1000; animation: dsFade .2s ease-out; }
+    @keyframes dsFade { from { opacity: 0; } }
+    .ds-sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+      background: var(--rm-card); border-radius: 24px 24px 0 0;
+      padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
+      max-height: 88vh; overflow-y: auto;
+      animation: dsUp .28s var(--rm-ease-out, ease-out);
+    }
+    @keyframes dsUp { from { transform: translateY(40px); opacity: 0; } }
+    .ds-head { display: flex; align-items: center; margin-bottom: 10px; }
+    .ds-x {
+      width: 34px; height: 34px; border: none; background: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+      color: var(--rm-text-primary);
+    }
+    .ds-title { flex: 1; text-align: center; font-size: 14.5px; font-weight: 800; color: var(--rm-text-primary); }
+    .ds-clear {
+      border: none; background: none; cursor: pointer; font-family: inherit;
+      font-size: 12.5px; font-weight: 800; color: var(--rm-purple); padding: 6px 2px;
+      min-width: 40px; text-align: right;
+    }
+    .ds-clear-ph { min-width: 40px; }
+    .ds-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px; }
+    .ds-month { font-size: 16.5px; font-weight: 800; color: var(--rm-text-primary); font-family: 'Nunito', sans-serif; }
+    .ds-nav { display: flex; gap: 8px; }
+    .ds-nav-btn {
+      width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;
+      background: var(--rm-surface); color: var(--rm-text-primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ds-dow { display: grid; grid-template-columns: repeat(7, 1fr); padding-bottom: 4px; }
+    .ds-dow span { text-align: center; font-size: 10.5px; font-weight: 700; color: var(--rm-text-muted); }
+    .ds-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 4px; }
+    .ds-cell {
+      position: relative;
+      height: 38px; border: none; background: none; cursor: pointer; font-family: inherit;
+      font-size: 13.5px; font-weight: 700; color: var(--rm-text-primary);
+      border-radius: 50%; width: 38px; justify-self: center;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ds-cell.blank { cursor: default; }
+    .ds-cell.today { box-shadow: inset 0 0 0 1.5px var(--rm-purple); color: var(--rm-purple); }
+    .ds-cell.sel { background: var(--rm-purple); color: #fff; box-shadow: 0 4px 12px rgba(61,90,241,.4); }
+    .ds-cell-dot { position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; }
+    .ds-cell.sel .ds-cell-dot { background: #fff !important; opacity: .85; }
 
     /* ── List body ── */
     .list-body { padding: 12px 16px 130px; display: flex; flex-direction: column; gap: 8px; }
@@ -582,6 +727,7 @@ export class ReminderListComponent implements OnInit {
   isLoading = signal(true);
   selectedDate = signal<string>('');
   statusFilter = signal<'all' | 'active' | 'done'>('all');
+  activeTab = signal<'mine' | 'shared'>('mine');
 
   // Replays entrance animations on every tab visit (see .pg-in in global.scss)
   readonly pageIn = signal(true);
@@ -628,25 +774,47 @@ export class ReminderListComponent implements OnInit {
     return total ? Math.round((this.doneCount() / total) * 100) : 0;
   });
 
+  // Per-day rollup of reminder statuses — shared by the strip and the month sheet
+  private readonly dayStatusMap = computed(() => {
+    const map = new Map<string, { missed: boolean; pending: boolean; done: boolean }>();
+    for (const r of [...this.reminders(), ...this.receivedReminders()]) {
+      const key = this.localDateStr(new Date(r.date));
+      const day = map.get(key) ?? { missed: false, pending: false, done: false };
+      if (r.status === 'missed') day.missed = true;
+      else if (r.status === 'pending' || r.status === 'snoozed') day.pending = true;
+      else if (r.status === 'done') day.done = true;
+      map.set(key, day);
+    }
+    return map;
+  });
+
   readonly calendarDays = computed(() => {
-    const own      = this.reminders();
-    const received = this.receivedReminders();
-    const today    = new Date();
-    return Array.from({ length: 7 }, (_, i) => {
+    const byDay = this.dayStatusMap();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 3 days back → 30 ahead, stretched to keep the selected date reachable
+    let start = -3, end = 30;
+    const sel = this.selectedDate();
+    if (sel) {
+      const diff = Math.round((new Date(sel + 'T00:00:00').getTime() - today.getTime()) / 86_400_000);
+      if (diff < start) start = diff;
+      if (diff > end)   end   = diff;
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => {
       const d = new Date(today);
-      d.setDate(today.getDate() - 3 + i);
+      d.setDate(today.getDate() + start + i);
       const dateStr = this.localDateStr(d);
-      const dayOwn      = own.filter(r => this.localDateStr(new Date(r.date)) === dateStr);
-      const dayReceived = received.filter(r => this.localDateStr(new Date(r.date)) === dateStr);
-      const all         = [...dayOwn, ...dayReceived];
+      const day     = byDay.get(dateStr);
       return {
         dateStr,
         num:        d.getDate(),
         weekday:    d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
-        isToday:    i === 3,
-        hasMissed:  all.some(r => r.status === 'missed'),
-        hasPending: all.some(r => r.status === 'pending' || r.status === 'snoozed'),
-        hasDone:    all.some(r => r.status === 'done'),
+        isToday:    dateStr === this.todayDateStr,
+        hasMissed:  !!day?.missed,
+        hasPending: !!day?.pending,
+        hasDone:    !!day?.done,
       };
     });
   });
@@ -665,7 +833,7 @@ export class ReminderListComponent implements OnInit {
     return all.filter(r => this.localDateStr(new Date(r.date)) === sel);
   });
 
-  private readonly todayDateStr = this.localDateStr(new Date());
+  readonly todayDateStr = this.localDateStr(new Date());
 
   isToday(dateStr: string): boolean {
     return this.localDateStr(new Date(dateStr)) === this.todayDateStr;
@@ -699,7 +867,11 @@ export class ReminderListComponent implements OnInit {
         const aToday = this.isToday(a.date), bToday = this.isToday(b.date);
         if (aToday !== bToday) return aToday ? -1 : 1;
       }
-      return new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime();
+      // r.date is a full ISO string (…T00:00:00.000Z); take just the day part
+      // so the combined "dayThh:mm" stays a valid parseable local datetime.
+      const at = new Date(`${String(a.date).slice(0, 10)}T${a.time}`).getTime();
+      const bt = new Date(`${String(b.date).slice(0, 10)}T${b.time}`).getTime();
+      return at - bt;
     });
   }
 
@@ -715,6 +887,12 @@ export class ReminderListComponent implements OnInit {
 
   readonly fromFriends = computed(() =>
     this.sortReceived(this.filteredReceived().filter(r => this.receivedMatchesFilter(r)))
+  );
+
+  // Total shared reminders (unfiltered) — drives the badge on the Shared tab.
+  readonly sharedTotal = computed(() =>
+    this.reminders().filter(r => r.assignedTo && typeof r.assignedTo === 'object').length +
+    this.receivedReminders().length
   );
 
   constructor() {
@@ -734,6 +912,16 @@ export class ReminderListComponent implements OnInit {
   // Fires every time this tab is entered — always do a silent background refresh
   ionViewWillEnter(): void {
     this.pageIn.set(true);
+    // A reminder was just created — focus its day + tab so it's visible even if
+    // a stale calendar-day filter or status filter (this page is kept alive by
+    // ion-tabs) would otherwise hide it.
+    const reveal = this.reminderService.consumePendingReveal();
+    if (reveal !== null) {
+      this.selectedDate.set(reveal.date);
+      this.statusFilter.set('all');
+      this.activeTab.set(reveal.tab);
+      this.scrollStripTo(reveal.date);
+    }
     this.reminderService.getAll({ limit: 100 }).subscribe();
     this.reminderService.getReceived().subscribe();
   }
@@ -751,6 +939,75 @@ export class ReminderListComponent implements OnInit {
 
   toggleDay(dateStr: string): void {
     this.selectedDate.update(cur => cur === dateStr ? '' : dateStr);
+  }
+
+  // ── Jump-to-date sheet ────────────────────────────────────────────────
+  private readonly calStripRef = viewChild<ElementRef<HTMLDivElement>>('calStrip');
+
+  readonly calSheetOpen = signal(false);
+  readonly viewYear  = signal(new Date().getFullYear());
+  readonly viewMonth = signal(new Date().getMonth());
+  readonly dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  readonly monthLabel = computed(() =>
+    new Date(this.viewYear(), this.viewMonth(), 1)
+      .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  );
+
+  readonly monthCells = computed<({ num: number; dateStr: string; dot: string | null } | null)[]>(() => {
+    const y = this.viewYear(), m = this.viewMonth();
+    const byDay = this.dayStatusMap();
+    const first = new Date(y, m, 1);
+    const days  = new Date(y, m + 1, 0).getDate();
+    const lead  = (first.getDay() + 6) % 7;               // Monday-first offset
+    return [
+      ...Array<null>(lead).fill(null),
+      ...Array.from({ length: days }, (_, i) => {
+        const dateStr = this.localDateStr(new Date(y, m, i + 1));
+        const day = byDay.get(dateStr);
+        const dot = day?.missed ? '#EF4444' : day?.pending ? '#F97316' : day?.done ? '#10B981' : null;
+        return { num: i + 1, dateStr, dot };
+      }),
+    ];
+  });
+
+  openCalSheet(): void {
+    const base = this.selectedDate()
+      ? new Date(this.selectedDate() + 'T00:00:00')
+      : new Date();
+    this.viewYear.set(base.getFullYear());
+    this.viewMonth.set(base.getMonth());
+    this.calSheetOpen.set(true);
+  }
+
+  navMonth(delta: number): void {
+    const d = new Date(this.viewYear(), this.viewMonth() + delta, 1);
+    this.viewYear.set(d.getFullYear());
+    this.viewMonth.set(d.getMonth());
+  }
+
+  pickDate(dateStr: string): void {
+    this.toggleDay(dateStr);
+    this.calSheetOpen.set(false);
+    if (this.selectedDate()) this.scrollStripTo(dateStr);
+  }
+
+  clearDateFilter(): void {
+    this.selectedDate.set('');
+    this.calSheetOpen.set(false);
+  }
+
+  // Center the given day chip in the strip (waits a tick so stretched days render first)
+  private scrollStripTo(dateStr: string): void {
+    setTimeout(() => {
+      const strip = this.calStripRef()?.nativeElement;
+      const chip  = strip?.querySelector<HTMLElement>(`[data-date="${dateStr}"]`);
+      if (!strip || !chip) return;
+      strip.scrollTo({
+        left: chip.offsetLeft - strip.clientWidth / 2 + chip.clientWidth / 2,
+        behavior: 'smooth',
+      });
+    }, 80);
   }
 
   openDetail(id: string): void {
