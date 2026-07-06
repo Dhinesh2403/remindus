@@ -39,6 +39,10 @@ export class LoggerService {
   private buffer: LogEntry[] = [];
   private flushing = false;
   private started = false;
+  // After a failed flush, don't retry before this time. Prevents a burst of
+  // errors (each of which requests a flush) from hammering /logs/device — the
+  // periodic interval will pick the buffer back up once the cooldown passes.
+  private cooldownUntil = 0;
 
   /** Wire up global capture + periodic/lifecycle flushing. Call once on boot. */
   init(): void {
@@ -86,6 +90,7 @@ export class LoggerService {
 
   private async flush(): Promise<void> {
     if (this.flushing || this.buffer.length === 0) return;
+    if (Date.now() < this.cooldownUntil) return; // backing off after a failure
     if (!this.tokenService.getAccessToken()) return; // only when logged in
 
     this.flushing = true;
@@ -93,9 +98,10 @@ export class LoggerService {
     const device = await this.deviceMeta();
 
     this.http.post(this.API, { device, logs: batch }, { headers: { 'X-Skip-Loading': '1' } }).subscribe({
-      next: () => { this.buffer.splice(0, batch.length); this.flushing = false; },
-      // Keep the buffer for a later retry. NEVER log this failure (would recurse).
-      error: () => { this.flushing = false; },
+      next: () => { this.buffer.splice(0, batch.length); this.cooldownUntil = 0; this.flushing = false; },
+      // Keep the buffer for a later retry, but back off so repeated errors don't
+      // flood the endpoint. NEVER log this failure (would recurse).
+      error: () => { this.cooldownUntil = Date.now() + FLUSH_MS; this.flushing = false; },
     });
   }
 

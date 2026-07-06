@@ -1,30 +1,21 @@
 // src/app/notes/notes.component.ts
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import {
-  IonContent,
-  IonIcon,
-  IonModal,
-  IonInput,
-  IonTextarea,
-  IonSpinner,
-} from '@ionic/angular/standalone';
+import { IonContent, IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  menuOutline,
+  arrowBackOutline,
   addOutline,
-  closeOutline,
   bookmarkOutline,
   bookmark,
   searchOutline,
-  checkmark,
+  closeOutline,
   gridOutline,
   swapVerticalOutline,
 } from 'ionicons/icons';
 import { NoteService, Note, NoteCollaborator } from '../core/services/note.service';
 import { AuthService } from '../core/services/auth.service';
-import { FriendService, Friend } from '../core/services/friend.service';
 import { FriendAvatarComponent } from '../core/components/friend-avatar.component';
 
 type Section = 'pinned' | 'other';
@@ -33,29 +24,39 @@ type Tab = 'mine' | 'shared';
 @Component({
   selector: 'app-notes',
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonModal, IonInput, IonTextarea, IonSpinner, FriendAvatarComponent],
+  imports: [CommonModule, IonContent, IonIcon, FriendAvatarComponent],
   template: `
     <ion-content [scrollY]="true" class="page">
       <div class="hdr">
         <div class="hdr-row">
           <button class="icon-btn" (click)="back()">
-            <ion-icon name="menu-outline"></ion-icon>
+            <ion-icon name="arrow-back-outline"></ion-icon>
           </button>
-          <div class="search-row">
-            <ion-icon name="search-outline"></ion-icon>
-            <input class="search-input" placeholder="Search notes"
-              [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
+          <div class="title-block">
+            <h1 class="page-title">Notes</h1>
+            <p class="page-sub">Jot it down, keep it close</p>
           </div>
-          <button class="icon-btn">
-            <ion-icon name="grid-outline"></ion-icon>
+          <button class="icon-btn" [class.active]="searchOpen()" (click)="toggleSearch()" aria-label="Search notes">
+            <ion-icon name="search-outline"></ion-icon>
           </button>
-          <button class="icon-btn">
-            <ion-icon name="swap-vertical-outline"></ion-icon>
-          </button>
-          <button class="avatar-btn" (click)="openProfile()">
-            <app-friend-avatar [name]="myName()" [avatar]="myAvatar()" [gender]="myGender()" [size]="34"></app-friend-avatar>
+          <button class="icon-btn" (click)="newNote()" aria-label="New note">
+            <ion-icon name="add-outline"></ion-icon>
           </button>
         </div>
+
+        <!-- Search collapses to just the icon above; expands to a full bar on tap -->
+        <div class="search-wrap" [class.open]="searchOpen()">
+          <div class="search-row">
+            <ion-icon name="search-outline"></ion-icon>
+            <input #searchInput class="search-input" placeholder="Search notes"
+              [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)"
+              (keydown.escape)="closeSearch()" (blur)="onSearchBlur()" />
+            <button class="clear-btn" (mousedown)="$event.preventDefault()" (click)="closeSearch()" aria-label="Close search">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </div>
+        </div>
+
         <div class="tabs-row">
           <button class="tab-btn" [class.active]="activeTab() === 'mine'" (click)="activeTab.set('mine')">My Notes</button>
           <button class="tab-btn" [class.active]="activeTab() === 'shared'" (click)="activeTab.set('shared')">Shared</button>
@@ -63,11 +64,10 @@ type Tab = 'mine' | 'shared';
       </div>
 
       <div class="body">
-        <div class="loading" *ngIf="loading()"><ion-spinner name="crescent"></ion-spinner></div>
-        <div class="empty" *ngIf="!loading() && tabNotes().length === 0">
+        <div class="empty" *ngIf="loaded() && tabNotes().length === 0">
           {{ activeTab() === 'shared' ? 'No shared notes yet.' : 'No notes yet. Tap + to jot one down.' }}
         </div>
-        <div class="empty" *ngIf="!loading() && tabNotes().length > 0 && filteredNotes().length === 0">No notes match "{{ searchTerm() }}".</div>
+        <div class="empty" *ngIf="loaded() && tabNotes().length > 0 && filteredNotes().length === 0">No notes match "{{ searchTerm() }}".</div>
 
         <!-- Pinned -->
         <ng-container *ngIf="displayedPinned().length">
@@ -127,71 +127,46 @@ type Tab = 'mine' | 'shared';
         </div>
       </div>
 
-      <button class="fab" (click)="openCompose()">
+      <button class="fab" (click)="newNote()">
         <ion-icon name="add-outline"></ion-icon>
       </button>
     </ion-content>
-
-    <!-- Compose sheet -->
-    <ion-modal [isOpen]="composing()" (didDismiss)="composing.set(false)" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
-      <ng-template>
-        <div class="sheet">
-          <div class="sheet-hdr">
-            <div class="sheet-title">New Note</div>
-            <button class="circle-btn dark" (click)="composing.set(false)">
-              <ion-icon name="close-outline"></ion-icon>
-            </button>
-          </div>
-          <div class="sheet-body">
-            <ion-input class="title-input" placeholder="Title (optional)"
-              [value]="draftTitle()" (ionInput)="draftTitle.set($any($event.target).value)"></ion-input>
-            <ion-textarea class="ta" placeholder="Type a note…" [autoGrow]="true" [rows]="4"
-              [value]="draft()" (ionInput)="draft.set($any($event.target).value)"></ion-textarea>
-
-            <div class="share-section" *ngIf="composeFriends().length">
-              <div class="field-label">Share with (optional)</div>
-              <div class="friend-chip" *ngFor="let f of composeFriends()" [class.selected]="isSelected(f._id)" (click)="toggleSelected(f._id)">
-                <app-friend-avatar [name]="f.name" [avatar]="f.avatar" [gender]="f.gender" [size]="28"></app-friend-avatar>
-                <span class="friend-chip-name">{{ f.name }}</span>
-                <ion-icon *ngIf="isSelected(f._id)" name="checkmark" class="friend-chip-check"></ion-icon>
-              </div>
-            </div>
-
-            <button class="save-btn" (click)="save()">Save Note</button>
-          </div>
-        </div>
-      </ng-template>
-    </ion-modal>
   `,
   styles: [`
     @keyframes rmFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 
     .page { --background: var(--rm-bg); position: relative; }
-    .hdr { background: var(--rm-bg); padding: calc(env(safe-area-inset-top) + 14px) 16px 10px; animation: rmFadeUp .35s ease both; }
+    .hdr { background: linear-gradient(160deg, #4259E8 0%, #5B73F6 100%); padding: calc(env(safe-area-inset-top) + 16px) 16px 16px; border-radius: 0 0 22px 22px; box-shadow: 0 6px 20px rgba(61,90,241,.28); animation: rmFadeUp .35s ease both; }
     .hdr-row { display: flex; align-items: center; gap: 8px; }
-    .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: none; color: var(--rm-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 21px; cursor: pointer; flex: none; }
-    .icon-btn:active { background: var(--rm-surface); }
-    .avatar-btn { border: none; background: none; padding: 0; margin-left: 2px; cursor: pointer; border-radius: 50%; flex: none; }
+    .title-block { flex: 1; min-width: 0; margin-left: 4px; }
+    .page-title { margin: 0; color: #fff; font-size: 24px; font-weight: 800; line-height: 1.15; }
+    .page-sub { margin: 2px 0 0; color: rgba(255,255,255,.82); font-size: 13px; font-weight: 500; }
+    .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,.16); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 21px; cursor: pointer; flex: none; transition: background .2s ease, transform .15s ease; }
+    .icon-btn:active { transform: scale(.9); }
+    .icon-btn.active { background: #fff; color: var(--rm-purple); }
 
-    .search-row { flex: 1; display: flex; align-items: center; gap: 9px; background: var(--rm-surface); border-radius: 24px; padding: 9px 16px; color: var(--rm-text-primary); }
-    .search-row ion-icon { font-size: 17px; color: var(--rm-text-muted); flex: none; }
-    .search-input { flex: 1; border: none; background: none; outline: none; color: var(--rm-text-primary); font-size: 14px; font-weight: 500; font-family: inherit; }
-    .search-input::placeholder { color: var(--rm-text-muted); }
+    /* Collapsible search: max-height 0 → open, so the icon-only state has no bar */
+    .search-wrap { max-height: 0; margin-top: 0; opacity: 0; overflow: hidden; transition: max-height .28s ease, margin-top .28s ease, opacity .2s ease; }
+    .search-wrap.open { max-height: 52px; margin-top: 14px; opacity: 1; }
+    .search-row { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.18); border-radius: 24px; padding: 10px 14px; color: #fff; }
+    .search-row > ion-icon { font-size: 17px; color: rgba(255,255,255,.85); flex: none; }
+    .search-input { flex: 1; min-width: 0; border: none; background: none; outline: none; color: #fff; font-size: 14px; font-weight: 500; font-family: inherit; }
+    .search-input::placeholder { color: rgba(255,255,255,.7); }
+    .clear-btn { border: none; background: none; padding: 0; color: rgba(255,255,255,.85); font-size: 18px; display: flex; align-items: center; cursor: pointer; flex: none; }
 
-    .tabs-row { display: flex; gap: 8px; margin-top: 14px; background: var(--rm-surface); border-radius: 12px; padding: 4px; }
-    .tab-btn { flex: 1; border: none; background: none; color: var(--rm-text-muted); font-size: 13px; font-weight: 700; padding: 8px 0; border-radius: 9px; cursor: pointer; }
-    .tab-btn.active { background: var(--rm-card); color: var(--rm-purple); }
+    .tabs-row { display: flex; gap: 8px; margin-top: 14px; background: rgba(255,255,255,.14); border-radius: 12px; padding: 4px; }
+    .tab-btn { flex: 1; border: none; background: none; color: rgba(255,255,255,.85); font-size: 13px; font-weight: 700; padding: 8px 0; border-radius: 9px; cursor: pointer; transition: background .2s ease, color .2s ease; }
+    .tab-btn.active { background: #fff; color: var(--rm-purple); }
 
     .body { padding: 18px 16px calc(env(safe-area-inset-bottom) + 100px); }
     .empty { text-align: center; padding: 60px 24px; color: var(--rm-text-secondary); font-size: 14.5px; font-weight: 600; }
-    .loading { display: flex; justify-content: center; padding: 60px 0; }
     .section-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .6px; text-transform: uppercase; margin-bottom: 11px; }
 
     .masonry { column-count: 2; column-gap: 12px; margin-bottom: 18px; }
     .note { position: relative; break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 12px; border-radius: 16px; padding: 14px; background: var(--rm-card); border: 1px solid var(--rm-border); animation: rmFadeUp .35s ease both; touch-action: pan-y; user-select: none; }
     .note.dragging { z-index: 10; opacity: .92; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: none; }
-    .note-title { font-size: 14.5px; font-weight: 800; color: var(--rm-text-primary); margin-bottom: 4px; }
+    .note-title { font-size: 15.5px; font-weight: 800; color: var(--rm-text-primary); line-height: 1.3; margin-bottom: 5px; word-break: break-word; }
     .note-text { font-size: 14px; font-weight: 500; color: var(--rm-text-primary); line-height: 1.45; white-space: pre-wrap; }
     .note-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
     .note-foot-left { display: flex; align-items: center; gap: 8px; }
@@ -207,24 +182,6 @@ type Tab = 'mine' | 'shared';
 
     .fab { position: fixed; right: 20px; bottom: calc(env(safe-area-inset-bottom) + 24px); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--rm-purple); color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.35); z-index: 5; }
     .fab:active { transform: scale(.92); }
-
-    .sheet { background: var(--rm-card); height: 100%; display: flex; flex-direction: column; }
-    .sheet-hdr { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 6px; }
-    .sheet-title { font-size: 20px; font-weight: 800; color: var(--rm-text-primary); }
-    .sheet-body { padding: 14px 22px calc(env(safe-area-inset-bottom) + 28px); display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
-    .circle-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; flex: none; }
-    .circle-btn.dark { background: var(--rm-surface); color: var(--rm-text-secondary); }
-    .title-input { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 12px; --padding-bottom: 12px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 700; font-size: 15px; }
-    .ta { --background: var(--rm-surface); --color: var(--rm-text-primary); --padding-start: 16px; --padding-end: 16px; --padding-top: 14px; border: 1.5px solid var(--rm-border); border-radius: 14px; font-weight: 600; }
-    .save-btn { width: 100%; height: 52px; border-radius: 14px; border: none; background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
-
-    .share-section { border-top: 1px solid var(--rm-border); padding-top: 14px; display: flex; flex-direction: column; gap: 2px; }
-    .field-label { font-size: 12px; font-weight: 800; color: var(--rm-text-muted); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; }
-    .friend-chip { display: flex; align-items: center; gap: 12px; padding: 9px 4px; cursor: pointer; border-radius: 12px; }
-    .friend-chip:active { background: var(--rm-surface); }
-    .friend-chip.selected { background: var(--rm-purple-light); }
-    .friend-chip-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--rm-text-primary); }
-    .friend-chip-check { font-size: 17px; color: var(--rm-purple); }
   `],
 })
 export class NotesComponent implements OnInit {
@@ -232,16 +189,12 @@ export class NotesComponent implements OnInit {
   private router = inject(Router);
   private noteService = inject(NoteService);
   private authService = inject(AuthService);
-  private friendService = inject(FriendService);
 
   readonly notes = this.noteService.notes;
-  readonly loading = signal(true);
-
-  readonly composing = signal(false);
-  readonly draft = signal('');
-  readonly draftTitle = signal('');
-  readonly composeFriends = signal<Friend[]>([]);
-  readonly selectedFriendIds = signal<string[]>([]);
+  // Notes load silently in the background (no spinner). `loaded` only gates the
+  // empty-state so it never flashes before the first fetch resolves; cached
+  // notes from a previous visit render instantly regardless.
+  readonly loaded = signal(false);
 
   readonly activeTab = signal<Tab>('mine');
   readonly myId = computed(() => this.authService.currentUser()?._id ?? '');
@@ -284,8 +237,11 @@ export class NotesComponent implements OnInit {
     this.dragSection === 'other' && this.dragWorkingIds() ? this.reorderedFrom(this.dragWorkingIds()!) : this.otherNotes()
   );
 
+  readonly searchOpen = signal(false);
+  @ViewChild('searchInput') searchInputRef?: ElementRef<HTMLInputElement>;
+
   constructor() {
-    addIcons({ menuOutline, addOutline, closeOutline, bookmarkOutline, bookmark, searchOutline, checkmark, gridOutline, swapVerticalOutline });
+    addIcons({ arrowBackOutline, addOutline, bookmarkOutline, bookmark, searchOutline, closeOutline, gridOutline, swapVerticalOutline });
   }
 
   ngOnInit(): void {
@@ -293,17 +249,50 @@ export class NotesComponent implements OnInit {
     if (tab === 'shared' || tab === 'mine') this.activeTab.set(tab);
 
     this.noteService.getAll().subscribe({
-      next: () => this.loading.set(false),
-      error: () => this.loading.set(false),
+      next: () => this.loaded.set(true),
+      error: () => this.loaded.set(true),
     });
   }
 
-  back(): void { this.router.navigate(['/app/dashboard']); }
-  openProfile(): void { this.router.navigate(['/app/settings/profile']); }
+  back(): void { this.blurActive(); this.router.navigate(['/app/dashboard']); }
+  openProfile(): void { this.blurActive(); this.router.navigate(['/app/settings/profile']); }
+
+  toggleSearch(): void {
+    this.searchOpen() ? this.closeSearch() : this.openSearch();
+  }
+
+  openSearch(): void {
+    this.searchOpen.set(true);
+    // Focus once the field has expanded into view.
+    setTimeout(() => this.searchInputRef?.nativeElement.focus(), 60);
+  }
+
+  closeSearch(): void {
+    this.searchOpen.set(false);
+    this.searchTerm.set('');
+  }
+
+  // Collapse back to just the icon when the field is left empty.
+  onSearchBlur(): void {
+    if (!this.searchTerm().trim()) this.searchOpen.set(false);
+  }
   trackNote(_: number, n: Note): string { return n._id; }
 
+  newNote(): void {
+    this.blurActive();
+    this.router.navigate(['/app/notes', 'new'], { queryParams: { tab: this.activeTab() } });
+  }
+
   open(n: Note): void {
+    this.blurActive();
     this.router.navigate(['/app/notes', n._id], { queryParams: { tab: this.activeTab() } });
+  }
+
+  // Ionic marks the leaving page aria-hidden="true" during the route transition;
+  // if the tapped button still holds focus the browser warns that focus is
+  // trapped inside an aria-hidden subtree. Drop focus before we navigate away.
+  private blurActive(): void {
+    (document.activeElement as HTMLElement | null)?.blur();
   }
 
   // Everyone attached to this note besides me — the owner if I'm a collaborator,
@@ -317,39 +306,26 @@ export class NotesComponent implements OnInit {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
+  // The card shows a bold, title-like heading + body text. Prefer the note's
+  // own title; when it has none, treat the first line of the body as the
+  // heading so every card reads with a title-like first line.
+  noteHeading(n: Note): string {
+    const title = (n.title ?? '').trim();
+    if (title) return title;
+    const text = (n.text ?? '').replace(/^\s+/, '');
+    const nl = text.indexOf('\n');
+    return nl === -1 ? text : text.slice(0, nl);
+  }
+
+  noteBody(n: Note): string {
+    if ((n.title ?? '').trim()) return n.text ?? '';
+    const text = (n.text ?? '').replace(/^\s+/, '');
+    const nl = text.indexOf('\n');
+    return nl === -1 ? '' : text.slice(nl + 1);
+  }
+
   togglePin(n: Note): void {
     this.noteService.togglePin(n._id).subscribe();
-  }
-
-  openCompose(): void {
-    this.draft.set('');
-    this.draftTitle.set('');
-    this.selectedFriendIds.set([]);
-    this.composing.set(true);
-    this.friendService.getFriends().subscribe(({ friends }) => this.composeFriends.set(friends));
-  }
-
-  toggleSelected(friendId: string): void {
-    this.selectedFriendIds.update((ids) =>
-      ids.includes(friendId) ? ids.filter((id) => id !== friendId) : [...ids, friendId]
-    );
-  }
-  isSelected(friendId: string): boolean {
-    return this.selectedFriendIds().includes(friendId);
-  }
-
-  save(): void {
-    const text = this.draft().trim();
-    if (!text) return;
-    const title = this.draftTitle().trim();
-    const collaboratorIds = this.selectedFriendIds();
-    this.noteService
-      .create({
-        text,
-        title: title || undefined,
-        collaboratorIds: collaboratorIds.length ? collaboratorIds : undefined,
-      })
-      .subscribe(() => this.composing.set(false));
   }
 
   // ─── Drag reorder handlers ──────────────────────────────────────────────

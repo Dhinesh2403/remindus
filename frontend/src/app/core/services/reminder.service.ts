@@ -30,6 +30,7 @@ export interface AssignedUser {
   _id: string;
   name: string;
   avatar?: string;
+  gender?: 'male' | 'female' | 'other' | null;
 }
 
 export interface ReceivedReminder {
@@ -126,6 +127,27 @@ export class ReminderService {
     const done = all.filter((r) => r.status === 'done').length;
     return Math.round((done / all.length) * 100);
   });
+
+  // ─── Post-create "reveal" hand-off ─────────────────────────────────────────
+  // The reminders list page is kept alive by <ion-tabs>, so a calendar-day the
+  // user tapped earlier survives the round-trip through the create screen and
+  // would otherwise hide the brand-new reminder (it lands on a different day
+  // than the one still selected). After a create we stash the new reminder's
+  // day + which tab it belongs on ('shared' when assigned to a friend); the
+  // list consumes it on its next entry and focuses that day/tab so the
+  // reminder is always visible.
+  private _pendingReveal = signal<{ date: string; tab: 'mine' | 'shared' } | null>(null);
+
+  setPendingRevealDate(dateStr: string, tab: 'mine' | 'shared' = 'mine'): void {
+    this._pendingReveal.set({ date: dateStr, tab });
+  }
+
+  /** Returns the stashed reveal (or null) and clears it — read-once. */
+  consumePendingReveal(): { date: string; tab: 'mine' | 'shared' } | null {
+    const v = this._pendingReveal();
+    if (v !== null) this._pendingReveal.set(null);
+    return v;
+  }
 
   readonly reminderBadgeCount = computed(() => {
     const today = this.todayStr();

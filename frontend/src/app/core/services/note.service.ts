@@ -32,6 +32,10 @@ export interface CreateNoteDto {
   collaboratorIds?: string[];
 }
 
+// Notes render their own list/optimistic states and autosave silently —
+// never trigger the global loading spinner for any note request.
+const SKIP_LOADER = { headers: { 'X-Skip-Loading': '1' } };
+
 @Injectable({ providedIn: 'root' })
 export class NoteService {
   private http = inject(HttpClient);
@@ -48,7 +52,7 @@ export class NoteService {
 
   getAll(): Observable<Note[]> {
     return this.http
-      .get<{ data: Note[] }>(this.API)
+      .get<{ data: Note[] }>(this.API, SKIP_LOADER)
       .pipe(
         // Notes saved before collaborators/order/title existed may come back without
         // them (older/un-updated backends) — normalize so the template's
@@ -67,7 +71,7 @@ export class NoteService {
   }
 
   create(dto: CreateNoteDto): Observable<Note> {
-    return this.http.post<{ data: Note }>(this.API, dto).pipe(
+    return this.http.post<{ data: Note }>(this.API, dto, SKIP_LOADER).pipe(
       map((r) => r.data),
       tap((created) => this._notes.update((list) => this.sortNotes([created, ...list])))
     );
@@ -75,36 +79,36 @@ export class NoteService {
 
   update(id: string, dto: Partial<CreateNoteDto & { pinned: boolean }>): Observable<Note> {
     return this.http
-      .put<{ data: Note }>(`${this.API}/${id}`, dto)
+      .put<{ data: Note }>(`${this.API}/${id}`, dto, SKIP_LOADER)
       .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
   }
 
   togglePin(id: string): Observable<Note> {
     return this.http
-      .patch<{ data: Note }>(`${this.API}/${id}/pin`, {})
+      .patch<{ data: Note }>(`${this.API}/${id}/pin`, {}, SKIP_LOADER)
       .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
   }
 
   markViewed(id: string): Observable<Note> {
     return this.http
-      .patch<{ data: Note }>(`${this.API}/${id}/view`, {})
+      .patch<{ data: Note }>(`${this.API}/${id}/view`, {}, SKIP_LOADER)
       .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
   }
 
   delete(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API}/${id}`).pipe(
+    return this.http.delete<void>(`${this.API}/${id}`, SKIP_LOADER).pipe(
       tap(() => this._notes.update((list) => list.filter((n) => n._id !== id)))
     );
   }
 
   share(id: string, friendId: string): Observable<Note> {
     return this.http
-      .post<{ data: Note }>(`${this.API}/${id}/share`, { friendId })
+      .post<{ data: Note }>(`${this.API}/${id}/share`, { friendId }, SKIP_LOADER)
       .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
   }
 
   unshare(id: string, friendId: string): Observable<void> {
-    return this.http.delete<void>(`${this.API}/${id}/share/${friendId}`).pipe(
+    return this.http.delete<void>(`${this.API}/${id}/share/${friendId}`, SKIP_LOADER).pipe(
       tap(() => {
         this._notes.update((list) =>
           list.map((n) =>
@@ -117,7 +121,7 @@ export class NoteService {
 
   reorder(id: string, order: number): Observable<Note> {
     return this.http
-      .patch<{ data: Note }>(`${this.API}/${id}/order`, { order })
+      .patch<{ data: Note }>(`${this.API}/${id}/order`, { order }, SKIP_LOADER)
       .pipe(map((r) => r.data), tap((updated) => this.upsertSorted(updated)));
   }
 

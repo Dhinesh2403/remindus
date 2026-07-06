@@ -80,8 +80,8 @@ exports.getById = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [{ userId: uid }, { assignedTo: uid }],
   })
-    .populate('userId',     'name avatar')
-    .populate('assignedTo', 'name avatar email');
+    .populate('userId',     'name avatar gender')
+    .populate('assignedTo', 'name avatar gender email');
   if (!reminder) throw new AppError('Reminder not found', 404);
   res.json(reminder);
 });

@@ -72,7 +72,8 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
         </div>
 
         <!-- ── Title input ────────────────────────────────────────── -->
-        <input class="nr-title a-fu" [style.--i]="2" [(ngModel)]="titleVal"
+        <input class="nr-title a-fu" [style.--i]="2" [ngModel]="titleVal()"
+               (ngModelChange)="titleVal.set($event)"
                placeholder="What do you want to be reminded of?" maxlength="100" />
 
         <!-- ── Date & time ────────────────────────────────────────── -->
@@ -154,15 +155,29 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
           <div class="nr-friends a-fu">
             @if (friends().length === 0) {
               <div class="nr-no-friends">No friends yet — add one from the Friends tab.</div>
-            }
-            @for (f of friends(); track f._id) {
-              <button class="nr-friend rm-press" [class.active]="selectedFriend() === f._id" (click)="selectedFriend.set(f._id)">
-                @if (f.avatar) {
-                  <img [src]="f.avatar" alt="" />
+            } @else {
+              <button class="nr-friend-sel rm-press" (click)="openFriendPicker()">
+                @if (selectedFriendObj(); as f) {
+                  @if (f.avatar) {
+                    <img class="nr-fs-ava" [src]="f.avatar" alt="" />
+                  } @else {
+                    <span class="nr-fs-ava nr-fs-initial">{{ f.name.charAt(0) | uppercase }}</span>
+                  }
+                  <span class="nr-fs-txt">
+                    <span class="nr-fs-name">{{ f.name }}</span>
+                    <span class="nr-fs-sub">{{ '@' + f.username }}</span>
+                  </span>
+                  <span class="nr-fs-change">Change</span>
                 } @else {
-                  <span class="nr-friend-initial">{{ f.name.charAt(0) | uppercase }}</span>
+                  <span class="nr-fs-ava nr-fs-ph">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
+                  </span>
+                  <span class="nr-fs-txt">
+                    <span class="nr-fs-name muted">Choose a friend…</span>
+                    <span class="nr-fs-sub">{{ friends().length }} friends</span>
+                  </span>
+                  <svg class="nr-fs-chev" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 }
-                <span class="nr-friend-name">{{ f.name }}</span>
               </button>
             }
           </div>
@@ -323,6 +338,54 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
           </div>
         </div>
       }
+
+      <!-- ══ Friend picker sheet ══ -->
+      @if (friendPickerOpen()) {
+        <div class="ds-backdrop" (click)="friendPickerOpen.set(false)"></div>
+        <div class="fp-sheet">
+          <div class="fp-head">
+            <div class="fp-head-txt">
+              <h3>Choose a friend</h3>
+              <p>{{ friends().length }} friends</p>
+            </div>
+            <button class="nr-close rm-press" (click)="friendPickerOpen.set(false)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <div class="fp-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input type="text" placeholder="Search by name or username…"
+                   [ngModel]="friendQuery()" (ngModelChange)="friendQuery.set($event)" />
+            @if (friendQuery()) {
+              <button class="fp-clear rm-press" (click)="friendQuery.set('')">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+              </button>
+            }
+          </div>
+
+          <div class="fp-list">
+            @for (f of filteredFriends(); track f._id) {
+              <button class="fp-row rm-press" [class.active]="selectedFriend() === f._id" (click)="pickFriend(f)">
+                @if (f.avatar) {
+                  <img class="fp-ava" [src]="f.avatar" alt="" />
+                } @else {
+                  <span class="fp-ava fp-initial">{{ f.name.charAt(0) | uppercase }}</span>
+                }
+                <span class="fp-txt">
+                  <span class="fp-name">{{ f.name }}</span>
+                  <span class="fp-sub">{{ '@' + f.username }}</span>
+                </span>
+                @if (selectedFriend() === f._id) {
+                  <svg class="fp-check" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                }
+              </button>
+            } @empty {
+              <div class="fp-empty">No friends match “{{ friendQuery() }}”</div>
+            }
+          </div>
+        </div>
+      }
     </ion-content>
   `,
   styles: [`
@@ -427,21 +490,29 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
     }
     .nr-for-btn.active { background: var(--rm-card); color: var(--rm-text-primary); box-shadow: var(--rm-shadow-sm); }
 
-    .nr-friends { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 12px 2px 2px; }
-    .nr-friends::-webkit-scrollbar { display: none; }
+    .nr-friends { padding: 12px 2px 2px; }
     .nr-no-friends { font-size: 12.5px; color: var(--rm-text-muted); font-weight: 600; padding: 4px 2px; }
-    .nr-friend {
-      display: flex; align-items: center; gap: 7px; flex-shrink: 0;
-      padding: 6px 12px 6px 6px; border-radius: 20px; cursor: pointer; font-family: inherit;
+    .nr-friend-sel {
+      width: 100%; display: flex; align-items: center; gap: 11px; text-align: left;
+      padding: 9px 12px; border-radius: 14px; cursor: pointer; font-family: inherit;
       border: 1.5px solid transparent; background: var(--rm-surface);
     }
-    .nr-friend.active { border-color: var(--rm-purple); background: var(--rm-purple-light); }
-    .nr-friend img, .nr-friend-initial {
-      width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
-      background: var(--rm-purple); color: #fff; font-size: 12px; font-weight: 800;
+    .nr-fs-ava {
+      width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      background: var(--rm-purple); color: #fff; font-size: 14px; font-weight: 800;
       display: flex; align-items: center; justify-content: center;
     }
-    .nr-friend-name { font-size: 12.5px; font-weight: 700; color: var(--rm-text-primary); white-space: nowrap; }
+    .nr-fs-ph { background: var(--rm-purple-light); color: var(--rm-purple); }
+    .nr-fs-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .nr-fs-name { font-size: 13.5px; font-weight: 800; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nr-fs-name.muted { color: var(--rm-text-muted); font-weight: 700; }
+    .nr-fs-sub { font-size: 11px; font-weight: 600; color: var(--rm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nr-fs-change {
+      flex-shrink: 0; padding: 6px 12px; border-radius: 9px;
+      background: var(--rm-purple-light); color: var(--rm-purple);
+      font-size: 11.5px; font-weight: 800;
+    }
+    .nr-fs-chev { flex-shrink: 0; color: var(--rm-text-muted); }
 
     /* ── CTA ── */
     .nr-cta {
@@ -600,6 +671,52 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
       font-size: 13.5px; font-weight: 800; color: var(--rm-text-secondary); padding: 8px 10px;
     }
     .tp-act.tp-ok { color: var(--rm-purple); }
+
+    /* ══ Friend picker sheet ══ */
+    .fp-sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+      background: var(--rm-card); border-radius: 24px 24px 0 0;
+      padding: 16px 16px calc(12px + env(safe-area-inset-bottom));
+      height: min(72vh, 560px);
+      display: flex; flex-direction: column;
+      animation: dsUp .28s var(--rm-ease-out, ease-out);
+    }
+    .fp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .fp-head-txt { flex: 1; min-width: 0; }
+    .fp-head-txt h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--rm-text-primary); font-family: 'Nunito', sans-serif; }
+    .fp-head-txt p  { margin: 2px 0 0; font-size: 11.5px; font-weight: 600; color: var(--rm-text-muted); }
+    .fp-search {
+      display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+      background: var(--rm-surface); border-radius: 12px; padding: 0 12px;
+      color: var(--rm-text-muted); margin-bottom: 10px;
+    }
+    .fp-search input {
+      flex: 1; min-width: 0; height: 42px; border: none; outline: none; background: none;
+      font-size: 13.5px; font-weight: 600; color: var(--rm-text-primary); font-family: inherit;
+    }
+    .fp-search input::placeholder { color: var(--rm-text-muted); font-weight: 500; }
+    .fp-clear {
+      width: 22px; height: 22px; border: none; border-radius: 50%; cursor: pointer; flex-shrink: 0;
+      background: var(--rm-border); color: var(--rm-text-secondary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fp-list { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: 8px; }
+    .fp-row {
+      width: 100%; display: flex; align-items: center; gap: 11px; text-align: left;
+      padding: 9px 10px; border-radius: 13px; cursor: pointer; font-family: inherit;
+      border: 1.5px solid transparent; background: none; margin-bottom: 2px;
+    }
+    .fp-row.active { border-color: var(--rm-purple); background: var(--rm-purple-light); }
+    .fp-ava {
+      width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      background: var(--rm-purple); color: #fff; font-size: 15px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fp-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .fp-name { font-size: 14px; font-weight: 800; color: var(--rm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fp-sub  { font-size: 11.5px; font-weight: 600; color: var(--rm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fp-check { flex-shrink: 0; color: var(--rm-purple); }
+    .fp-empty { text-align: center; padding: 32px 12px; font-size: 13px; font-weight: 600; color: var(--rm-text-muted); }
   `],
 })
 export class ReminderCreateComponent implements OnInit {
@@ -613,7 +730,7 @@ export class ReminderCreateComponent implements OnInit {
   private time    = inject(TimeService);
 
   // ── Form state ────────────────────────────────────────────────────────
-  titleVal = '';
+  titleVal = signal('');
   // Preload with trusted now + 5 min (server-synced, not the raw device clock).
   private readonly initAt = this.time.plusMinutes(5);
   readonly dateVal   = signal(this.initAt.date);
@@ -625,6 +742,18 @@ export class ReminderCreateComponent implements OnInit {
   readonly forSelf   = signal(true);
   readonly friends   = signal<Friend[]>([]);
   readonly selectedFriend = signal<string | null>(null);
+  readonly friendPickerOpen = signal(false);
+  readonly friendQuery = signal('');
+  readonly selectedFriendObj = computed(() =>
+    this.friends().find(f => f._id === this.selectedFriend()) ?? null
+  );
+  readonly filteredFriends = computed(() => {
+    const q = this.friendQuery().trim().toLowerCase();
+    if (!q) return this.friends();
+    return this.friends().filter(f =>
+      f.name.toLowerCase().includes(q) || f.username.toLowerCase().includes(q)
+    );
+  });
   readonly offsetMin = signal(0);
   readonly duration  = signal<number | null>(null);
   readonly saving    = signal(false);
@@ -662,7 +791,7 @@ export class ReminderCreateComponent implements OnInit {
   readonly ampm = computed(() => Number(this.timeVal().slice(0, 2)) >= 12 ? 'PM' : 'AM');
 
   readonly canSave = computed(() =>
-    !this.saving() && this.titleVal.trim().length > 0 && (this.forSelf() || !!this.selectedFriend())
+    !this.saving() && this.titleVal().trim().length > 0 && (this.forSelf() || this.selectedFriend())
   );
 
   // ── Picker sheet state (remindus 19/21) ───────────────────────────────
@@ -788,9 +917,23 @@ export class ReminderCreateComponent implements OnInit {
   // ── Set-reminder-for ──────────────────────────────────────────────────
   selectFriendMode(): void {
     this.forSelf.set(false);
-    if (!this.selectedFriend() && this.friends().length === 1) {
-      this.selectedFriend.set(this.friends()[0]._id);
+    if (!this.selectedFriend()) {
+      if (this.friends().length === 1) {
+        this.selectedFriend.set(this.friends()[0]._id);
+      } else if (this.friends().length > 1) {
+        this.openFriendPicker();
+      }
     }
+  }
+
+  openFriendPicker(): void {
+    this.friendQuery.set('');
+    this.friendPickerOpen.set(true);
+  }
+
+  pickFriend(f: Friend): void {
+    this.selectedFriend.set(f._id);
+    this.friendPickerOpen.set(false);
   }
 
   // ── Date/Duration sheet ───────────────────────────────────────────────
@@ -941,7 +1084,7 @@ export class ReminderCreateComponent implements OnInit {
     const notifyAt = new Date(fireAt.getTime() - this.offsetMin() * 60_000);
 
     const dto: CreateReminderDto = {
-      title:                 this.titleVal.trim(),
+      title:                 this.titleVal().trim(),
       type:                  cat?.type ?? 'personal',
       date:                  this.dateVal(),
       time:                  this.timeVal(),
@@ -956,6 +1099,10 @@ export class ReminderCreateComponent implements OnInit {
 
     this.svc.create(dto).subscribe({
       next: async () => {
+        // The list page is kept alive by ion-tabs, so a calendar-day the user
+        // tapped earlier would still be selected and hide this new reminder.
+        // Hand off its day + tab so the list focuses it and it's visible.
+        this.svc.setPendingRevealDate(this.dateVal(), this.forSelf() ? 'mine' : 'shared');
         if (this.notifType() === 'alarm') {
           try {
             await this.alarmSvc.scheduleAt(
