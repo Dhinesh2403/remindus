@@ -1,10 +1,11 @@
 // src/app/friends/friend-activity/friend-activity.component.ts
 // Shared activity with one friend (docs/screens/remindus (16).png):
 // hero header with Message/Assign, stats, All/Tasks/Reminders tabs, the list
-// of everything assigned between the two of you, and an assign bottom sheet.
+// of everything assigned between the two of you. Assign opens a small
+// Task/Reminder chooser that hands off to the full create pages with this
+// friend pre-selected (?assignTo=<friendId>).
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent, IonIcon, ToastController, AlertController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
