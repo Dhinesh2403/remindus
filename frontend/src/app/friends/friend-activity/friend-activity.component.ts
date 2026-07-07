@@ -6,6 +6,7 @@
 // friend pre-selected (?assignTo=<friendId>).
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent, IonIcon, ToastController, AlertController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -42,7 +43,7 @@ interface ActivityItem {
 @Component({
   selector: 'app-friend-activity',
   standalone: true,
-  imports: [CommonModule, FormsModule, IonContent, IonIcon, FriendAvatarComponent],
+  imports: [CommonModule, IonContent, IonIcon, FriendAvatarComponent],
   providers: [TimeAmPmPipe],
   template: `
     <ion-content class="fa-content">
@@ -167,7 +168,7 @@ interface ActivityItem {
       <div class="fa-bottom-space"></div>
     </ion-content>
 
-    <!-- ── Assign sheet ─────────────────────────────────────────────── -->
+    <!-- ── Assign chooser — hands off to the full create pages ──────── -->
     @if (sheetOpen()) {
       <div class="as-backdrop" (click)="closeSheet()"></div>
       <div class="as-sheet">
@@ -179,38 +180,17 @@ interface ActivityItem {
           </button>
         </div>
 
+        <div class="as-hint">What would you like to send {{ firstName() }}?</div>
         <div class="as-kind">
-          <button class="as-kind-btn" [class.active]="sheetKind() === 'task'" (click)="sheetKind.set('task')">
+          <button class="as-kind-btn as-kind-lg rm-press" (click)="chooseAndAssign('task')">
             <ion-icon name="checkbox-outline"></ion-icon>
             Task
           </button>
-          <button class="as-kind-btn" [class.active]="sheetKind() === 'reminder'" (click)="sheetKind.set('reminder')">
+          <button class="as-kind-btn as-kind-lg rm-press" (click)="chooseAndAssign('reminder')">
             <ion-icon name="notifications-outline"></ion-icon>
             Reminder
           </button>
         </div>
-
-        <input class="as-input" type="text" [placeholder]="sheetKind() === 'task' ? 'What should they do?' : 'What should they be reminded of?'"
-          [(ngModel)]="form.title" />
-
-        <div class="as-field-label">{{ sheetKind() === 'task' ? 'Due date (optional)' : 'Date & time' }}</div>
-        <div class="as-row">
-          <input class="as-input as-half" type="date" [(ngModel)]="form.date" />
-          <input class="as-input as-half" type="time" [(ngModel)]="form.time" />
-        </div>
-
-        <div class="as-field-label">Priority</div>
-        <div class="as-priority-row">
-          @for (p of visiblePriorities(); track p.value) {
-            <button class="as-priority" [class.active]="form.priority === p.value" (click)="form.priority = p.value">
-              {{ p.label }}
-            </button>
-          }
-        </div>
-
-        <button class="as-send" [disabled]="assigning()" (click)="submitAssign()">
-          {{ assigning() ? 'Sending…' : 'Send ' + (sheetKind() === 'task' ? 'task' : 'reminder') + ' to ' + firstName() }}
-        </button>
       </div>
     }
   `,
@@ -298,20 +278,13 @@ interface ActivityItem {
     .as-head{display:flex;align-items:center;justify-content:space-between}
     .as-title{font-size:19px;font-weight:800;color:var(--rm-text-primary)}
     .as-close{width:32px;height:32px;border:none;border-radius:50%;background:var(--rm-surface);color:var(--rm-text-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
-    .as-kind{display:flex;gap:10px;margin-top:16px}
+    .as-hint{margin-top:14px;font-size:13px;font-weight:600;color:var(--rm-text-muted)}
+    .as-kind{display:flex;gap:10px;margin-top:12px;margin-bottom:6px}
     .as-kind-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border:1.5px solid var(--rm-border);border-radius:13px;background:var(--rm-card);color:var(--rm-text-secondary);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
     .as-kind-btn ion-icon{font-size:17px}
-    .as-kind-btn.active{border-color:var(--rm-purple);background:var(--rm-purple-light);color:var(--rm-purple)}
-    .as-input{width:100%;margin-top:14px;padding:13px 14px;border:1.5px solid var(--rm-border);border-radius:12px;background:var(--rm-surface);color:var(--rm-text-primary);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box}
-    .as-input:focus{border-color:var(--rm-purple)}
-    .as-field-label{font-size:11px;font-weight:700;color:var(--rm-text-muted);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 -6px}
-    .as-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .as-half{min-width:0}
-    .as-priority-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
-    .as-priority{padding:8px 13px;border:1.5px solid var(--rm-border);border-radius:9px;background:var(--rm-card);color:var(--rm-text-secondary);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
-    .as-priority.active{border-color:var(--rm-purple);background:var(--rm-purple-light);color:var(--rm-purple)}
-    .as-send{width:100%;margin-top:20px;padding:15px;background:var(--rm-purple);color:#fff;border:none;border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
-    .as-send:disabled{opacity:.6;cursor:default}
+    .as-kind-lg{flex-direction:column;gap:9px;padding:20px 13px;font-size:15px;font-weight:800;color:var(--rm-text-primary)}
+    .as-kind-lg ion-icon{font-size:26px;color:var(--rm-purple)}
+    .as-kind-lg:active{border-color:var(--rm-purple);background:var(--rm-purple-light)}
   `],
 })
 export class FriendActivityComponent implements OnInit, OnDestroy {
@@ -333,17 +306,8 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
   readonly loading   = signal(true);
   readonly tab       = signal<Tab>('all');
 
-  // Assign sheet
+  // Assign chooser
   readonly sheetOpen = signal(false);
-  readonly sheetKind = signal<'task' | 'reminder'>('reminder');
-  readonly assigning = signal(false);
-  form = { title: '', date: this.todayStr(), time: '09:00', priority: 'medium' };
-  private readonly priorities = [
-    { value: 'low',    label: '🟢 Low' },
-    { value: 'medium', label: '🟡 Medium' },
-    { value: 'high',   label: '🔴 High' },
-    { value: 'urgent', label: '🚨 Urgent' },   // reminders only
-  ];
 
   private currentUserId = computed(() => this.authService.currentUser()?._id ?? '');
   private subs: Subscription[] = [];
@@ -354,16 +318,15 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.loadFriend();
-    this.loadActivity();
-
-    // ?assign=task|reminder → open the sheet pre-set (from chat quick actions)
+    // ?assign=task|reminder → straight to the create page pre-set (from chat quick actions)
     const assign = this.route.snapshot.queryParamMap.get('assign');
     if (assign === 'task' || assign === 'reminder') {
-      this.sheetKind.set(assign);
-      this.sheetOpen.set(true);
-      this.router.navigate([], { queryParams: {}, replaceUrl: true });
+      this.chooseAndAssign(assign);
+      return;
     }
+
+    this.loadFriend();
+    this.loadActivity();
 
     // Live status updates while the page is open
     this.subs.push(
@@ -496,15 +459,8 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Assign sheet ────────────────────────────────────────────────────────
-  visiblePriorities() {
-    return this.sheetKind() === 'task'
-      ? this.priorities.filter(p => p.value !== 'urgent')
-      : this.priorities;
-  }
-
+  // ── Assign chooser ──────────────────────────────────────────────────────
   openSheet(): void {
-    this.form = { title: '', date: this.todayStr(), time: this.nextHourStr(), priority: 'medium' };
     this.sheetOpen.set(true);
   }
 
@@ -512,45 +468,11 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
     this.sheetOpen.set(false);
   }
 
-  async submitAssign(): Promise<void> {
-    if (!this.form.title.trim()) {
-      const t = await this.toastCtrl.create({ message: 'Please enter a title', duration: 2000, color: 'warning', position: 'top' });
-      t.present(); return;
-    }
-    // Tasks accept only low/medium/high
-    if (this.sheetKind() === 'task' && this.form.priority === 'urgent') this.form.priority = 'high';
-
-    this.assigning.set(true);
-    const done = async (ok: boolean) => {
-      this.assigning.set(false);
-      if (ok) {
-        this.closeSheet();
-        this.loadActivity();
-      }
-      const t = await this.toastCtrl.create({
-        message: ok
-          ? `${this.sheetKind() === 'task' ? 'Task' : 'Reminder'} sent to ${this.firstName()}!`
-          : 'Failed to send. Please try again.',
-        duration: 2500, color: ok ? 'success' : 'danger', position: 'top',
-      });
-      t.present();
-    };
-
-    if (this.sheetKind() === 'task') {
-      this.friendService.sendTask(this.friendId, {
-        title:     this.form.title.trim(),
-        dueDate:   this.form.date ? new Date(`${this.form.date}T${this.form.time || '09:00'}`).toISOString() : null,
-        startTime: this.form.time || null,
-        priority:  this.form.priority,
-      }).subscribe({ next: () => done(true), error: () => done(false) });
-    } else {
-      this.friendService.sendReminder(this.friendId, {
-        title:    this.form.title.trim(),
-        date:     this.form.date,
-        time:     this.form.time,
-        priority: this.form.priority,
-      }).subscribe({ next: () => done(true), error: () => done(false) });
-    }
+  /** Hand off to the full create page with this friend pre-selected. */
+  chooseAndAssign(kind: 'task' | 'reminder'): void {
+    this.sheetOpen.set(false);
+    const path = kind === 'task' ? '/app/tasks/new' : '/app/reminders/create';
+    this.router.navigate([path], { queryParams: { assignTo: this.friendId } });
   }
 
   // ── Remove friend ───────────────────────────────────────────────────────
@@ -599,15 +521,5 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
   private shortDate(iso: string): string {
     const d = new Date(iso);
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  }
-
-  private todayStr(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  private nextHourStr(): string {
-    const d = new Date(); d.setHours(d.getHours() + 1, 0);
-    return `${String(d.getHours()).padStart(2, '0')}:00`;
   }
 }

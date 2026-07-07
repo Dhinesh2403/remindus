@@ -129,12 +129,96 @@
     </div>
   </div>
 
+  <!-- Assign to (self or a friend) -->
+  <div class="tc-section">
+    <div class="tc-section-label">ASSIGN TO</div>
+    <div class="tc-for">
+      <button class="tc-for-btn" [class.active]="forSelf()" (click)="forSelf.set(true)">Me</button>
+      <button class="tc-for-btn" [class.active]="!forSelf()" (click)="selectFriendMode()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M15 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        A Friend
+      </button>
+    </div>
+
+    @if (!forSelf()) {
+      <div class="tc-friends">
+        @if (friends().length === 0) {
+          <div class="tc-no-friends">No friends yet — add one from the Friends tab.</div>
+        } @else {
+          <button class="tc-friend-sel" (click)="openFriendPicker()">
+            @if (selectedFriendObj(); as f) {
+              @if (f.avatar) {
+                <img class="tc-fs-ava" [src]="f.avatar" alt="" />
+              } @else {
+                <span class="tc-fs-ava tc-fs-initial">{{ f.name.charAt(0) | uppercase }}</span>
+              }
+              <span class="tc-fs-txt">
+                <span class="tc-fs-name">{{ f.name }}</span>
+                <span class="tc-fs-sub">{{ '@' + f.username }}</span>
+              </span>
+              <span class="tc-fs-change">Change</span>
+            } @else {
+              <span class="tc-fs-ava tc-fs-ph">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>
+              </span>
+              <span class="tc-fs-txt">
+                <span class="tc-fs-name muted">Choose a friend…</span>
+                <span class="tc-fs-sub">{{ friends().length }} friends</span>
+              </span>
+            }
+          </button>
+        }
+      </div>
+    }
+  </div>
+
   <!-- Save -->
   <div class="tc-save-wrap">
     <button class="tc-save-btn" [disabled]="isSaving()" (click)="save()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-      {{ isSaving() ? 'Saving…' : 'Save Task' }}
+      {{ isSaving() ? 'Saving…' : (forSelf() ? 'Save Task' : 'Assign Task') }}
     </button>
   </div>
+
+  <!-- Friend picker sheet -->
+  @if (friendPickerOpen()) {
+    <div class="tc-fp-backdrop" (click)="friendPickerOpen.set(false)"></div>
+    <div class="tc-fp-sheet">
+      <div class="tc-fp-head">
+        <div class="tc-fp-head-txt">
+          <h3>Choose a friend</h3>
+          <p>{{ friends().length }} friends</p>
+        </div>
+        <button class="tc-fp-close" (click)="friendPickerOpen.set(false)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="tc-fp-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input type="text" placeholder="Search by name or username…"
+               [value]="friendQuery()" (input)="friendQuery.set($any($event.target).value)" />
+      </div>
+      <div class="tc-fp-list">
+        @for (f of filteredFriends(); track f._id) {
+          <button class="tc-fp-row" [class.active]="selectedFriend() === f._id" (click)="pickFriend(f)">
+            @if (f.avatar) {
+              <img class="tc-fp-ava" [src]="f.avatar" alt="" />
+            } @else {
+              <span class="tc-fp-ava tc-fp-initial">{{ f.name.charAt(0) | uppercase }}</span>
+            }
+            <span class="tc-fp-txt">
+              <span class="tc-fp-name">{{ f.name }}</span>
+              <span class="tc-fp-sub">{{ '@' + f.username }}</span>
+            </span>
+            @if (selectedFriend() === f._id) {
+              <svg class="tc-fp-check" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            }
+          </button>
+        } @empty {
+          <div class="tc-fp-empty">No friends match “{{ friendQuery() }}”</div>
+        }
+      </div>
+    </div>
+  }
 
 </ion-content>

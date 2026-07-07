@@ -5,7 +5,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonContent, ToastController, AlertController, ActionSheetController,
 } from '@ionic/angular/standalone';
@@ -721,6 +721,7 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
 })
 export class ReminderCreateComponent implements OnInit {
   private router  = inject(Router);
+  private route   = inject(ActivatedRoute);
   private svc     = inject(ReminderService);
   private friendSvc = inject(FriendService);
   private alarmSvc  = inject(AlarmService);
@@ -757,6 +758,8 @@ export class ReminderCreateComponent implements OnInit {
   readonly offsetMin = signal(0);
   readonly duration  = signal<number | null>(null);
   readonly saving    = signal(false);
+  // Set when we arrive from the friend activity page (?assignTo=): return there after save.
+  private returnToFriendId: string | null = null;
 
   readonly quickChips: QuickChip[] = [
     { label: 'In 30 min',  minutes: 30  },
@@ -853,8 +856,17 @@ export class ReminderCreateComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // ?assignTo=<friendId> (from the friend activity page) → pre-select that friend.
+    const assignTo = this.route.snapshot.queryParamMap.get('assignTo');
     this.friendSvc.getFriends().subscribe({
-      next: ({ friends }) => this.friends.set(friends),
+      next: ({ friends }) => {
+        this.friends.set(friends);
+        if (assignTo && friends.some(f => f._id === assignTo)) {
+          this.forSelf.set(false);
+          this.selectedFriend.set(assignTo);
+          this.returnToFriendId = assignTo;
+        }
+      },
       error: () => {},
     });
   }
@@ -1119,7 +1131,11 @@ export class ReminderCreateComponent implements OnInit {
           duration: 1800, color: 'success', position: 'top',
         });
         await t.present();
-        this.router.navigate(['/app/reminders']);
+        if (this.returnToFriendId && dto.assignedTo === this.returnToFriendId) {
+          this.router.navigate(['/app/friends', this.returnToFriendId, 'activity']);
+        } else {
+          this.router.navigate(['/app/reminders']);
+        }
       },
       error: async () => {
         this.saving.set(false);

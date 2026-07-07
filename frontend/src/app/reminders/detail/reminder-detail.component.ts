@@ -15,7 +15,6 @@ import { Subscription } from 'rxjs';
 import { ReminderService, Reminder, ReminderStatus } from '../../core/services/reminder.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
-import { FriendService } from '../../core/services/friend.service';
 import { FriendAvatarComponent, AvatarGender } from '../../core/components/friend-avatar.component';
 
 const CAT_COLOR: Record<string, string> = {
@@ -167,7 +166,7 @@ interface PersonRef {
       --background: var(--rm-card);
       --min-height: 56px;
       --padding-start: 10px; --padding-end: 10px;
-      --padding-top: 6px; --padding-bottom: 6px;
+      --padding-top: calc(env(safe-area-inset-top) + 8px); --padding-bottom: 8px;
       border-bottom: 1px solid var(--rm-border);
     }
     .det-bar-title { font-size: 17px; font-weight: 700; color: var(--rm-text-primary); margin-left: 6px; }
