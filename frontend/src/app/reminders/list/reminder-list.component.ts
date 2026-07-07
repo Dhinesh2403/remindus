@@ -892,10 +892,25 @@ export class ReminderListComponent implements OnInit {
     this.sortReceived(this.filteredReceived().filter(r => this.receivedMatchesFilter(r)))
   );
 
-  // Total shared reminders (unfiltered) — drives the badge on the Shared tab.
-  readonly sharedTotal = computed(() =>
-    this.reminders().filter(r => r.assignedTo && typeof r.assignedTo === 'object').length +
-    this.receivedReminders().length
+  // Active (not-completed) counts — unfiltered by date — drive the tab badges.
+  // "Mine" = own reminders not assigned to a friend, still pending/snoozed.
+  readonly mineActiveTotal = computed(() =>
+    this.reminders().filter(r =>
+      (!r.assignedTo || typeof r.assignedTo !== 'object') &&
+      (r.status === 'pending' || r.status === 'snoozed')
+    ).length
+  );
+
+  // "Shared" = reminders sent to friends + received from friends, still active
+  // (not completed / skipped).
+  readonly sharedActiveTotal = computed(() =>
+    this.reminders().filter(r =>
+      r.assignedTo && typeof r.assignedTo === 'object' &&
+      (r.status === 'pending' || r.status === 'snoozed')
+    ).length +
+    this.receivedReminders().filter(r =>
+      r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped'
+    ).length
   );
 
   constructor() {

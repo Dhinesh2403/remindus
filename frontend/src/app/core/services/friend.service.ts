@@ -121,16 +121,6 @@ export class FriendService {
     return this.http.delete<void>(`${this.API}/${friendshipId}`);
   }
 
-  sendReminder(friendId: string, payload: { title: string; date: string; time: string; priority: string }): Observable<any> {
-    // Compute nextFireAt from user's local date+time so the server schedules correctly
-    const nextFireAt = new Date(`${payload.date}T${payload.time}`).toISOString();
-    return this.http.post(`${environment.apiUrl}/reminders`, {
-      ...payload,
-      assignedTo: friendId,
-      nextFireAt,
-    });
-  }
-
   getSharedReminders(friendId: string): Observable<{ data: SharedReminder[] }> {
     return this.http.get<{ data: SharedReminder[] }>(`${environment.apiUrl}/reminders/shared/${friendId}`);
   }
@@ -138,13 +128,6 @@ export class FriendService {
   /** Everything shared with one friend — tasks + reminders, both directions. */
   getSharedActivity(friendId: string): Observable<SharedActivity> {
     return this.http.post<SharedActivity>(`${this.API}/shared-activity`, { friendId });
-  }
-
-  sendTask(friendId: string, payload: { title: string; dueDate: string | null; startTime: string | null; priority: string }): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/tasks`, {
-      ...payload,
-      assignedTo: friendId,
-    });
   }
 
   toggleTask(taskId: string): Observable<{ data: SharedTask }> {
