@@ -80,6 +80,25 @@ export class FriendService {
   private _pendingCount = signal(0);
   readonly pendingCount = this._pendingCount.asReadonly();
 
+  // ─── Post-assign "reveal" hand-off ─────────────────────────────────────────
+  // The friend-activity page is kept alive by IonicRouteStrategy, so returning
+  // from the create screen reuses the same instance (ngOnInit won't re-run).
+  // After assigning a task/reminder we stash the target friend + which tab the
+  // new item lands on; the activity page consumes it on its next entry to
+  // refresh the list and switch to that tab so the item is always visible.
+  private _pendingReveal = signal<{ friendId: string; tab: 'task' | 'reminder' } | null>(null);
+
+  setPendingActivityReveal(friendId: string, tab: 'task' | 'reminder'): void {
+    this._pendingReveal.set({ friendId, tab });
+  }
+
+  /** Returns the stashed reveal (or null) and clears it — read-once. */
+  consumePendingActivityReveal(): { friendId: string; tab: 'task' | 'reminder' } | null {
+    const v = this._pendingReveal();
+    if (v !== null) this._pendingReveal.set(null);
+    return v;
+  }
+
   constructor() {
     // Increment badge in real-time when a friend request arrives via socket
     this.socket.on<{ type: string }>('notification:new').subscribe(n => {

@@ -9,10 +9,19 @@ import {
   ToastController,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../core/services/auth.service';
-import { ReminderService } from '../core/services/reminder.service';
+import { ReminderService, ReceivedReminder, ReminderType } from '../core/services/reminder.service';
 import { CountUpDirective } from '../core/directives/count-up.directive';
+import { FriendAvatarComponent } from '../core/components/friend-avatar.component';
+import { TimeAmPmPipe } from '../core/pipes/time-ampm.pipe';
 
 type DashTab = 'dashboard' | 'today' | 'upcoming';
+
+// Emoji per reminder category, mirrored from the reminders list.
+const CATEGORY_EMOJI: Record<ReminderType, string> = {
+  birthday: '🎂', wedding: '💍', medicine: '💊', bill: '💰', study: '📚',
+  work: '💼', general: '📌', custom: '✨', personal: '👤', health: '❤️',
+  finance: '💵', family: '👨‍👩‍👧', travel: '✈️', shopping: '🛒',
+};
 
 interface DashModule {
   label: string;
@@ -37,7 +46,7 @@ interface UpcomingItem {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent, CountUpDirective],
+  imports: [CommonModule, IonContent, IonRefresher, IonRefresherContent, CountUpDirective, FriendAvatarComponent, TimeAmPmPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -58,7 +67,37 @@ export class DashboardComponent implements OnInit {
   // Replays entrance animations on every tab visit (see .pg-in in global.scss)
   readonly pageIn = signal(true);
 
-  ionViewWillEnter(): void { this.pageIn.set(true); }
+  // ── Reminders friends sent me ─────────────────────────────────────────────
+  // Surfaced right on Home so they're never buried behind the Reminders → Shared
+  // sub-tab. Only the active ones (not completed / skipped), soonest first.
+  private readonly activeFromFriends = computed(() =>
+    [...this.reminderService.receivedReminders()]
+      .filter(r => r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped')
+      .sort((a, b) => this.dueTime(a) - this.dueTime(b))
+  );
+
+  readonly friendReminderCount = computed(() => this.activeFromFriends().length);
+  // Preview the first few on the card; the rest are one tap away via "See all".
+  readonly friendRemindersPreview = computed(() => this.activeFromFriends().slice(0, 3));
+
+  private dueTime(r: ReceivedReminder): number {
+    const t = new Date(`${String(r.date).slice(0, 10)}T${r.time}`).getTime();
+    return isNaN(t) ? Number.MAX_SAFE_INTEGER : t;
+  }
+
+  categoryEmoji(type: ReminderType): string {
+    return CATEGORY_EMOJI[type] ?? CATEGORY_EMOJI.general;
+  }
+
+  senderFirstName(r: ReceivedReminder): string {
+    return r.userId?.name?.split(' ')[0] ?? 'Friend';
+  }
+
+  ionViewWillEnter(): void {
+    this.pageIn.set(true);
+    // Keep the "From Friends" card fresh on every return to Home.
+    this.reminderService.getReceived().subscribe();
+  }
   ionViewDidLeave(): void  { this.pageIn.set(false); }
 
   readonly firstName = computed(() => {
@@ -130,11 +169,32 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.reminderService.loadStats().subscribe();
+    this.reminderService.getReceived().subscribe();
   }
 
   doRefresh(event: CustomEvent): void {
-    this.reminderService.loadStats().subscribe({
-      complete: () => (event.target as HTMLIonRefresherElement).complete(),
+    Promise.all([
+      this.reminderService.loadStats().toPromise(),
+      this.reminderService.getReceived().toPromise(),
+    ]).finally(() => (event.target as HTMLIonRefresherElement).complete());
+  }
+
+  /** Open the Reminders → Shared tab (where "From Friends" lives). */
+  openFriendReminders(): void {
+    this.reminderService.requestTab('shared');
+    this.nav.navigate(['/app/reminders']);
+  }
+
+  async completeFriendReminder(r: ReceivedReminder, ev: Event): Promise<void> {
+    ev.stopPropagation();
+    this.reminderService.updateSharedStatus(r._id, 'completed').subscribe({
+      next: async () => {
+        const t = await this.toast.create({
+          message: `✅ "${r.title}" marked as completed!`,
+          duration: 2000, color: 'success', position: 'top',
+        });
+        await t.present();
+      },
     });
   }
 

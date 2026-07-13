@@ -9,7 +9,7 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  arrowBackOutline, checkmarkCircleOutline, trashOutline, chevronForwardOutline,
+  arrowBackOutline, checkmarkCircleOutline, trashOutline, chevronForwardOutline, timeOutline,
 } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { ReminderService, Reminder, ReminderStatus } from '../../core/services/reminder.service';
@@ -82,20 +82,31 @@ interface PersonRef {
             <div class="det-type" [style.color]="color()">{{ reminder()!.type | titlecase }}</div>
             <h1 class="det-title">{{ reminder()!.title }}</h1>
             @if (reminder()!.description) { <p class="det-desc">{{ reminder()!.description }}</p> }
-            @if (isRecipient() && reminder()!.sharedStatus) {
-              <span
-                class="det-chip"
-                [style.background]="sharedStatusColor() + '1A'"
-                [style.color]="sharedStatusColor()"
-              >{{ sharedStatusLabel() }}</span>
-            } @else {
-              <span class="det-chip" [class]="'status-' + reminder()!.status">{{ reminder()!.status }}</span>
-            }
+            <div class="det-chip-row">
+              @if (isRecipient() && reminder()!.sharedStatus) {
+                <span
+                  class="det-chip"
+                  [style.background]="sharedStatusColor() + '1A'"
+                  [style.color]="sharedStatusColor()"
+                >{{ sharedStatusLabel() }}</span>
+              } @else {
+                <span class="det-chip" [class]="'status-' + reminder()!.status">{{ reminder()!.status }}</span>
+              }
+              @if (dueLabel(); as dl) {
+                <span class="det-chip due" [class.overdue]="dueIsPast()">
+                  <ion-icon name="time-outline"></ion-icon>{{ dl }}
+                </span>
+              }
+            </div>
           </div>
 
           <!-- ── Details ──────────────────────────────────────────────── -->
           <div class="det-label">Details</div>
           <div class="det-card">
+            <div class="det-row">
+              <span class="det-k">Type</span>
+              <span class="det-v"><i class="det-dot" [style.background]="color()"></i>{{ reminder()!.type | titlecase }}</span>
+            </div>
             <div class="det-row">
               <span class="det-k">Date</span>
               <span class="det-v">{{ reminder()!.date | date:'EEE, MMM d, yyyy' }}</span>
@@ -112,6 +123,12 @@ interface PersonRef {
               <span class="det-k">Priority</span>
               <span class="det-v"><i class="det-dot" [style.background]="priorityColor()"></i>{{ reminder()!.priority | titlecase }}</span>
             </div>
+            @if (createdLabel(); as cl) {
+              <div class="det-row">
+                <span class="det-k">Created</span>
+                <span class="det-v">{{ cl }}</span>
+              </div>
+            }
           </div>
 
           <!-- ── Assignee / assigner ──────────────────────────────────── -->
@@ -195,13 +212,16 @@ interface PersonRef {
     .det-type { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
     .det-title { font-size: 21px; font-weight: 800; color: var(--rm-text-primary); margin: 0 0 6px; line-height: 1.3; }
     .det-desc { font-size: 14px; color: var(--rm-text-secondary); margin: 0 0 12px; line-height: 1.5; }
-    .det-overview .det-chip { margin-top: 4px; }
+    .det-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 
     .det-chip {
-      display: inline-block; padding: 5px 14px; border-radius: var(--rm-radius-full);
-      font-size: 12px; font-weight: 700; text-transform: capitalize;
+      display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
+      border-radius: var(--rm-radius-full); font-size: 12px; font-weight: 700; text-transform: capitalize;
     }
+    .det-chip ion-icon { font-size: 13px; }
     .det-chip.small { padding: 3px 10px; font-size: 11px; flex-shrink: 0; }
+    .det-chip.due { background: rgba(61,90,241,0.12); color: var(--rm-purple); text-transform: none; }
+    .det-chip.due.overdue { background: rgba(239,68,68,0.12); color: #EF4444; }
     .status-pending { background: rgba(59,130,246,0.12);  color: #3B82F6; }
     .status-done    { background: rgba(16,185,129,0.12);  color: #10B981; }
     .status-missed  { background: rgba(239,68,68,0.12);   color: #EF4444; }
@@ -259,13 +279,64 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
   private actionSheetCtrl  = inject(ActionSheetController);
 
   private socketSub: Subscription | undefined;
+  private tick: ReturnType<typeof setInterval> | undefined;
 
   loading  = signal(true);
   reminder = signal<Reminder | null>(null);
+  /** Ticks every second so the countdown / "created … ago" labels stay live. */
+  private now = signal(Date.now());
 
   color = () => CAT_COLOR[this.reminder()?.type ?? 'general'] ?? '#3D5AF1';
   priorityColor = () => PRIORITY_COLOR[this.reminder()?.priority ?? 'medium'] ?? '#F59E0B';
   repeatLabel = () => REPEAT_LABEL[this.reminder()?.repeatType ?? 'none'] ?? this.reminder()?.repeatType;
+
+  /** Local Date the reminder is scheduled to fire (its date's Y/M/D + wall-clock time). */
+  private fireDate = computed<Date | null>(() => {
+    const r = this.reminder();
+    if (!r) return null;
+    const d = new Date(r.date);
+    const [hh, mm] = (r.time ?? '00:00').split(':').map(Number);
+    d.setHours(hh || 0, mm || 0, 0, 0);
+    return d;
+  });
+
+  /** Countdown to the fire time: "in 2d" ahead, "3h ago" once passed. */
+  dueLabel = computed(() => {
+    const fd = this.fireDate();
+    if (!fd) return '';
+    const ms = fd.getTime() - this.now();
+    const rel = this.compactDuration(ms);
+    return ms >= 0 ? `in ${rel}` : `${rel} ago`;
+  });
+  dueIsPast = computed(() => {
+    const fd = this.fireDate();
+    return !!fd && fd.getTime() - this.now() < 0;
+  });
+
+  /** "5 min ago" style label for when the reminder was created. */
+  createdLabel = computed(() => {
+    const r = this.reminder();
+    if (!r?.createdAt) return '';
+    const ms = new Date(r.createdAt).getTime() - this.now();
+    return `${this.compactDuration(ms)} ago`;
+  });
+
+  /** Signed magnitude of a ms delta as one compact unit: s / min / h / d / w / mo / y. */
+  private compactDuration(ms: number): string {
+    const s = Math.floor(Math.abs(ms) / 1000);
+    if (s < 60)  return `${s}s`;
+    const min = Math.floor(s / 60);
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24)   return `${h}h`;
+    const d = Math.floor(h / 24);
+    if (d < 7)    return `${d}d`;
+    const w = Math.floor(d / 7);
+    if (w < 5)    return `${w}w`;
+    const mo = Math.floor(d / 30);
+    if (mo < 12)  return `${mo}mo`;
+    return `${Math.floor(d / 365)}y`;
+  }
 
   /** True when the currently logged-in user is the recipient (assignedTo), not the creator */
   isRecipient = computed(() => {
@@ -297,7 +368,7 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
   });
 
   constructor() {
-    addIcons({ arrowBackOutline, checkmarkCircleOutline, trashOutline, chevronForwardOutline });
+    addIcons({ arrowBackOutline, checkmarkCircleOutline, trashOutline, chevronForwardOutline, timeOutline });
   }
 
   ngOnInit(): void {
@@ -317,10 +388,13 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
           );
         }
       });
+
+    this.tick = setInterval(() => this.now.set(Date.now()), 1000);
   }
 
   ngOnDestroy(): void {
     this.socketSub?.unsubscribe();
+    if (this.tick) clearInterval(this.tick);
   }
 
   /** Assignee/assigner card → their shared-activity page (friends module). */

@@ -318,17 +318,8 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // ?assign=task|reminder → straight to the create page pre-set (from chat quick actions)
-    const assign = this.route.snapshot.queryParamMap.get('assign');
-    if (assign === 'task' || assign === 'reminder') {
-      this.chooseAndAssign(assign);
-      return;
-    }
-
-    this.loadFriend();
-    this.loadActivity();
-
-    // Live status updates while the page is open
+    // Live status updates while the page is open — set up once, kept for the
+    // lifetime of this (kept-alive) instance so re-entries still get updates.
     this.subs.push(
       this.socketService.on<{ _id: string; sharedStatus: SharedStatus }>('reminder:sharedStatus')
         .subscribe(({ _id, sharedStatus }) => {
@@ -339,6 +330,25 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
           this.tasks.update(list => list.map(t => t._id === _id ? { ...t, status } : t));
         }),
     );
+
+    // ?assign=task|reminder → straight to the create page pre-set (from chat quick actions)
+    const assign = this.route.snapshot.queryParamMap.get('assign');
+    if (assign === 'task' || assign === 'reminder') {
+      this.chooseAndAssign(assign);
+    }
+  }
+
+  // Fires on every entry — including returning from the create page, where this
+  // page is kept alive by IonicRouteStrategy so ngOnInit does NOT re-run. Always
+  // refresh, and reveal the tab a just-assigned item landed on so it's visible.
+  ionViewWillEnter(): void {
+    this.loadFriend();
+    this.loadActivity();
+
+    const reveal = this.friendService.consumePendingActivityReveal();
+    if (reveal && reveal.friendId === this.friendId) {
+      this.tab.set(reveal.tab);
+    }
   }
 
   ngOnDestroy(): void {

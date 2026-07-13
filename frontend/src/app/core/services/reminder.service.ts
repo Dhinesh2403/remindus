@@ -149,6 +149,24 @@ export class ReminderService {
     return v;
   }
 
+  // ─── "Open this tab" hand-off ──────────────────────────────────────────────
+  // Lets another screen (e.g. the Home dashboard's "From Friends" card) send the
+  // user straight to a specific reminders sub-tab. Unlike the reveal above this
+  // carries no date, so the list clears any stale calendar-day filter and shows
+  // every item in that tab.
+  private _pendingTab = signal<'mine' | 'shared' | null>(null);
+
+  requestTab(tab: 'mine' | 'shared'): void {
+    this._pendingTab.set(tab);
+  }
+
+  /** Returns the requested tab (or null) and clears it — read-once. */
+  consumePendingTab(): 'mine' | 'shared' | null {
+    const v = this._pendingTab();
+    if (v !== null) this._pendingTab.set(null);
+    return v;
+  }
+
   readonly reminderBadgeCount = computed(() => {
     const today = this.todayStr();
     const own      = this._reminders().filter(r =>

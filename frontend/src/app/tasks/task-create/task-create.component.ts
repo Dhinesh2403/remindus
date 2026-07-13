@@ -154,6 +154,9 @@ export class TaskCreateComponent implements OnInit {
         });
         await t.present();
         if (this.returnToFriendId && assignedTo === this.returnToFriendId) {
+          // The activity page is kept alive; tell it to refresh + reveal the
+          // Tasks tab so the just-assigned task is visible on return.
+          this.friendSvc.setPendingActivityReveal(this.returnToFriendId, 'task');
           this.nav.navigate(['/app/friends', this.returnToFriendId, 'activity']);
         } else {
           this.nav.navigate(['/app/tasks']);
