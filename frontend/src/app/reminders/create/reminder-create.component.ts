@@ -84,9 +84,12 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </div>
           <div class="nr-segs">
-            <span class="nr-seg">{{ dd() }}</span><span class="nr-sep">/</span>
-            <span class="nr-seg">{{ mm() }}</span><span class="nr-sep">/</span>
-            <span class="nr-seg">{{ yyyy() }}</span>
+            <input class="nr-seg nr-seg-in" inputmode="numeric" maxlength="2" [value]="dd()"
+                   (focus)="selectAll($event)" (change)="setDatePart('d', $event)" aria-label="Day" /><span class="nr-sep">/</span>
+            <input class="nr-seg nr-seg-in" inputmode="numeric" maxlength="2" [value]="mm()"
+                   (focus)="selectAll($event)" (change)="setDatePart('m', $event)" aria-label="Month" /><span class="nr-sep">/</span>
+            <input class="nr-seg nr-seg-in nr-seg-yr" inputmode="numeric" maxlength="4" [value]="yyyy()"
+                   (focus)="selectAll($event)" (change)="setDatePart('y', $event)" aria-label="Year" />
           </div>
           <button class="nr-pick rm-press" (click)="openSheet('date')">Pick</button>
         </div>
@@ -96,8 +99,10 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </div>
           <div class="nr-segs">
-            <span class="nr-seg">{{ hour12() }}</span><span class="nr-sep">:</span>
-            <span class="nr-seg">{{ minutePad() }}</span>
+            <input class="nr-seg nr-seg-in" inputmode="numeric" maxlength="2" [value]="hour12()"
+                   (focus)="selectAll($event)" (change)="setHourInput($event)" aria-label="Hour" /><span class="nr-sep">:</span>
+            <input class="nr-seg nr-seg-in" inputmode="numeric" maxlength="2" [value]="minutePad()"
+                   (focus)="selectAll($event)" (change)="setMinuteInput($event)" aria-label="Minute" />
             <button class="nr-ampm rm-press" (click)="toggleAmPm()">{{ ampm() }}</button>
           </div>
           <button class="nr-pick rm-press" (click)="openClock('main')">Pick</button>
@@ -304,9 +309,13 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
           <div class="tp-title">Time</div>
 
           <div class="tp-display">
-            <button class="tp-big" [class.on]="clockMode() === 'hour'" (click)="clockMode.set('hour')">{{ clockH12() }}</button>
+            <input class="tp-big" [class.on]="clockMode() === 'hour'" inputmode="numeric" maxlength="2"
+                   [value]="clockH12()" (focus)="clockMode.set('hour'); selectAll($event)"
+                   (change)="setClockHour($event)" aria-label="Hour" />
             <span class="tp-colon">:</span>
-            <button class="tp-big" [class.on]="clockMode() === 'minute'" (click)="clockMode.set('minute')">{{ pad(clockMin()) }}</button>
+            <input class="tp-big" [class.on]="clockMode() === 'minute'" inputmode="numeric" maxlength="2"
+                   [value]="pad(clockMin())" (focus)="clockMode.set('minute'); selectAll($event)"
+                   (change)="setClockMinute($event)" aria-label="Minute" />
             <div class="tp-ampm">
               <button [class.on]="clockAmpm() === 'AM'" (click)="clockAmpm.set('AM')">AM</button>
               <button [class.on]="clockAmpm() === 'PM'" (click)="clockAmpm.set('PM')">PM</button>
@@ -439,6 +448,13 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
     }
     .nr-segs { flex: 1; display: flex; align-items: center; gap: 8px; }
     .nr-seg { font-size: 17px; font-weight: 800; color: var(--rm-text-primary); font-family: 'Nunito', sans-serif; }
+    .nr-seg-in {
+      width: 2.4ch; padding: 3px 0; border: none; outline: none; background: transparent;
+      text-align: center; border-bottom: 1.5px solid transparent; -moz-appearance: textfield;
+    }
+    .nr-seg-in.nr-seg-yr { width: 4.4ch; }
+    .nr-seg-in:focus { border-bottom-color: var(--rm-purple); }
+    .nr-seg-in::-webkit-inner-spin-button, .nr-seg-in::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .nr-sep { font-size: 15px; font-weight: 600; color: var(--rm-text-muted); }
     .nr-ampm {
       margin-left: 4px; padding: 4px 10px; border: none; border-radius: 8px;
@@ -631,6 +647,9 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
       font-size: 52px; font-weight: 800; color: var(--rm-text-muted); line-height: 1;
     }
     .tp-big.on { color: var(--rm-purple); }
+    input.tp-big { width: 74px; text-align: center; outline: none; border-bottom: 2px solid transparent; -moz-appearance: textfield; }
+    input.tp-big.on { border-bottom-color: var(--rm-purple); }
+    input.tp-big::-webkit-inner-spin-button, input.tp-big::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .tp-colon { font-size: 44px; font-weight: 800; color: var(--rm-text-muted); line-height: 1; margin-top: -6px; }
     .tp-ampm { display: flex; flex-direction: column; gap: 2px; margin-left: 10px; }
     .tp-ampm button {
@@ -893,6 +912,47 @@ export class ReminderCreateComponent implements OnInit {
     this.quickSel.set(null);
   }
 
+  // ── Typed date/time entry (main add page) ─────────────────────────────
+  selectAll(e: Event): void { (e.target as HTMLInputElement).select(); }
+
+  setHourInput(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    let h = parseInt(el.value, 10);
+    if (isNaN(h)) h = Number(this.hour12());
+    h = Math.min(12, Math.max(1, h));
+    const h24 = (h % 12) + (this.ampm() === 'PM' ? 12 : 0);
+    this.timeVal.set(`${this.pad(h24)}:${this.timeVal().slice(3, 5)}`);
+    this.quickSel.set(null);
+    el.value = this.pad(h);
+  }
+
+  setMinuteInput(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    let m = parseInt(el.value, 10);
+    if (isNaN(m)) m = Number(this.minutePad());
+    m = Math.min(59, Math.max(0, m));
+    this.timeVal.set(`${this.timeVal().slice(0, 2)}:${this.pad(m)}`);
+    this.quickSel.set(null);
+    el.value = this.pad(m);
+  }
+
+  setDatePart(part: 'd' | 'm' | 'y', e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const n = parseInt(el.value, 10);
+    let [y, m, d] = this.dateVal().split('-').map(Number);
+    if (!isNaN(n)) {
+      if (part === 'd') d = n;
+      else if (part === 'm') m = n;
+      else y = n;
+    }
+    m = Math.min(12, Math.max(1, m));
+    y = Math.min(2100, Math.max(2000, y));
+    d = Math.min(new Date(y, m, 0).getDate(), Math.max(1, d));   // clamp to month length
+    this.dateVal.set(`${y}-${this.pad(m)}-${this.pad(d)}`);
+    this.quickSel.set(null);
+    el.value = part === 'y' ? String(y) : this.pad(part === 'd' ? d : m);
+  }
+
   // ── Categories ────────────────────────────────────────────────────────
   async addCategory(): Promise<void> {
     const alert = await this.alertCtrl.create({
@@ -1065,6 +1125,26 @@ export class ReminderCreateComponent implements OnInit {
     return this.clockMode() === 'minute' ? this.clockMin() === value : this.clockH12() === value;
   }
 
+  // Type any hour/minute directly in the big display — lets you pick minutes
+  // the 5-step dial skips (e.g. :07).
+  setClockHour(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    let h = parseInt(el.value, 10);
+    if (isNaN(h)) h = this.clockH12();
+    h = Math.min(12, Math.max(1, h));
+    this.clockH12.set(h);
+    el.value = String(h);
+  }
+
+  setClockMinute(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    let m = parseInt(el.value, 10);
+    if (isNaN(m)) m = this.clockMin();
+    m = Math.min(59, Math.max(0, m));
+    this.clockMin.set(m);
+    el.value = this.pad(m);
+  }
+
   setFromNative(v: string): void {
     if (!/^\d{2}:\d{2}$/.test(v || '')) return;
     const [h, m] = v.split(':').map(Number);
@@ -1132,6 +1212,9 @@ export class ReminderCreateComponent implements OnInit {
         });
         await t.present();
         if (this.returnToFriendId && dto.assignedTo === this.returnToFriendId) {
+          // The activity page is kept alive; tell it to refresh + reveal the
+          // Reminders tab so the just-assigned reminder is visible on return.
+          this.friendSvc.setPendingActivityReveal(this.returnToFriendId, 'reminder');
           this.router.navigate(['/app/friends', this.returnToFriendId, 'activity']);
         } else {
           this.router.navigate(['/app/reminders']);

@@ -67,6 +67,40 @@
 
   <!-- ── DASHBOARD TAB ───────────────────────────────────────────────────── -->
   @if (activeTab() === 'dashboard') {
+    <!-- From Friends — reminders friends sent me, surfaced so they're never missed -->
+    @if (friendReminderCount() > 0) {
+      <div class="dash-friends a-fu" [style.--i]="0">
+        <div class="dash-friends-head" (click)="openFriendReminders()">
+          <div class="dash-friends-titlewrap">
+            <span class="dash-friends-title">From your friends</span>
+            <span class="dash-friends-count">{{ friendReminderCount() }}</span>
+          </div>
+          <span class="dash-friends-seeall">
+            See all
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </span>
+        </div>
+        <div class="dash-friends-list">
+          @for (r of friendRemindersPreview(); track r._id) {
+            <div class="dash-friend-item rm-press" (click)="openFriendReminders()">
+              <app-friend-avatar [name]="r.userId.name" [avatar]="r.userId.avatar" [size]="40" />
+              <div class="dash-friend-body">
+                <div class="dash-friend-title">{{ categoryEmoji(r.type) }} {{ r.title }}</div>
+                <div class="dash-friend-meta">
+                  <span class="dash-friend-from">{{ senderFirstName(r) }}</span>
+                  <span class="dash-friend-dot">·</span>
+                  <span>{{ r.time | timeAmPm }}</span>
+                </div>
+              </div>
+              <button class="dash-friend-check" (click)="completeFriendReminder(r, $event)" title="Mark completed">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     <!-- Progress nudge card -->
     <div class="dash-nudge a-fu" [style.--i]="1">
       <div class="dash-nudge-icon">

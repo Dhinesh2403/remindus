@@ -7,13 +7,13 @@ import {
   IonRefresher, IonRefresherContent,
   IonItemSliding, IonItemOptions, IonItemOption, IonItem,
   IonSkeletonText,
-  AlertController, ToastController, ActionSheetController,
+  AlertController, ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   addOutline, checkmarkCircleOutline, timeOutline,
   trashOutline, personOutline, arrowDownOutline,
-  playSkipForwardOutline,
+  playSkipForwardOutline, syncOutline, eyeOutline,
 } from 'ionicons/icons';
 import {
   ReminderService, Reminder, ReceivedReminder,
@@ -316,6 +316,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                     class="rem-card from-card"
                     [class.done-card]="r.sharedStatus === 'completed'"
                     [style.border-left-color]="meta(r.type).color"
+                    (click)="openDetail(r._id)"
                   >
                     <div class="card-row">
                       <button class="card-check" [class.checked]="r.sharedStatus === 'completed'"
@@ -354,9 +355,10 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                     </div>
                     @if (r.sharedStatus !== 'completed' && r.sharedStatus !== 'skipped') {
                       <div class="from-action-strip" (click)="$event.stopPropagation()">
-                        <button class="fas-btn fas-done rm-press"   (click)="completeReceived(r)">✅ Done</button>
-                        <button class="fas-btn fas-update rm-press" (click)="changeReceivedStatus(r)">🔄 Status</button>
-                        <button class="fas-btn fas-skip rm-press"   (click)="skipReceived(r)">⏭️ Skip</button>
+                        <button class="fas-btn fas-update rm-press" (click)="changeReceivedStatus(r)">
+                          <ion-icon name="sync-outline"></ion-icon>
+                          Update status
+                        </button>
                       </div>
                     }
                   </div>
@@ -433,6 +435,25 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
                   @if (cell.dot) { <span class="ds-cell-dot" [style.background]="cell.dot"></span> }
                 </button>
               }
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ══ Received-status sheet (notes-page style bottom sheet) ══ -->
+      @if (statusSheetFor(); as r) {
+        <div class="opts-scrim" (click)="statusSheetFor.set(null)">
+          <div class="opts-sheet" (click)="$event.stopPropagation()">
+            <div class="opts-grip"></div>
+            <div class="opts-head">
+              <div class="opts-title">{{ r.title }}</div>
+              <div class="opts-sub">Update your status on this reminder</div>
+            </div>
+            @for (opt of statusOptions; track opt.value) {
+              <button class="opt-row rm-press" (click)="pickReceivedStatus(r, opt.value)">
+                <ion-icon [name]="opt.icon"></ion-icon>
+                <span class="opt-label">{{ opt.label }}</span>
+              </button>
             }
           </div>
         </div>
@@ -688,11 +709,40 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     }
     .card-chevron { flex-shrink: 0; color: var(--rm-text-muted); align-self: center; }
 
-    .from-action-strip { display:flex; gap:6px; margin-top:10px; border-top:1px solid var(--rm-border); padding-top:8px; }
-    .fas-btn { flex:1; padding:8px 4px; border:none; border-radius:10px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
-    .fas-done   { background:rgba(16,185,129,0.12); color:#10B981; }
-    .fas-update { background:rgba(139,92,246,0.12); color:#8B5CF6; }
-    .fas-skip   { background:rgba(156,163,175,0.12); color:#6B7280; }
+    .from-action-strip { margin-top:10px; border-top:1px solid var(--rm-border); padding-top:10px; }
+    .fas-btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      width:100%; padding:9px 4px; border:none; border-radius:10px;
+      font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+    }
+    .fas-btn ion-icon { font-size:15px; }
+    .fas-update { background:rgba(61,90,241,0.12); color:var(--rm-purple); }
+
+    /* ══ Received-status bottom sheet (matches notes-page opts-sheet) ══ */
+    @keyframes optsFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes optsUp   { from { transform: translateY(100%); } to { transform: none; } }
+    .opts-scrim {
+      position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.45);
+      display: flex; align-items: flex-end; animation: optsFade .2s ease both;
+    }
+    .opts-sheet {
+      width: 100%; background: var(--rm-card); border-radius: 22px 22px 0 0;
+      padding: 6px 8px calc(env(safe-area-inset-bottom) + 14px);
+      animation: optsUp .28s cubic-bezier(.32,.72,0,1) both;
+    }
+    .opts-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--rm-border); margin: 8px auto 6px; }
+    .opts-head { padding: 4px 18px 10px; text-align: center; }
+    .opts-title { font-size: 16px; font-weight: 800; color: var(--rm-text-primary); }
+    .opts-sub { font-size: 12.5px; font-weight: 600; color: var(--rm-text-muted); margin-top: 2px; }
+    .opt-row {
+      display: flex; align-items: center; gap: 16px; width: 100%;
+      border: none; background: none; padding: 15px 18px; border-radius: 14px;
+      cursor: pointer; text-align: left; color: var(--rm-text-primary); font-family: inherit;
+    }
+    .opt-row:active { background: var(--rm-surface); }
+    .opt-row ion-icon { font-size: 22px; color: var(--rm-text-secondary); flex: none; }
+    .opt-label { font-size: 16px; font-weight: 600; }
+    @media (prefers-reduced-motion: reduce) { .opts-scrim, .opts-sheet { animation: none; } }
 
     /* ── Skeleton ── */
     .skeleton-card { display: flex; align-items: center; padding: 14px; background: var(--rm-card); border-radius: 18px; }
@@ -725,12 +775,20 @@ export class ReminderListComponent implements OnInit {
   private reminderService     = inject(ReminderService);
   private alertCtrl           = inject(AlertController);
   private toastCtrl           = inject(ToastController);
-  private actionSheetCtrl     = inject(ActionSheetController);
 
   isLoading = signal(true);
   selectedDate = signal<string>('');
   statusFilter = signal<'all' | 'active' | 'done'>('all');
   activeTab = signal<'mine' | 'shared'>('mine');
+
+  // Received reminder whose status sheet is currently open (null = closed)
+  readonly statusSheetFor = signal<ReceivedReminder | null>(null);
+  readonly statusOptions = [
+    { label: 'Acknowledged', icon: 'eye-outline',              value: 'acknowledged' },
+    { label: 'In Progress',  icon: 'sync-outline',             value: 'processing'   },
+    { label: 'Completed',    icon: 'checkmark-circle-outline', value: 'completed'    },
+    { label: 'Skip',         icon: 'play-skip-forward-outline', value: 'skipped'     },
+  ];
 
   // Replays entrance animations on every tab visit (see .pg-in in global.scss)
   readonly pageIn = signal(true);
@@ -914,7 +972,7 @@ export class ReminderListComponent implements OnInit {
   );
 
   constructor() {
-    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline, playSkipForwardOutline });
+    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline, playSkipForwardOutline, syncOutline, eyeOutline });
   }
 
   ngOnInit(): void {
@@ -939,6 +997,14 @@ export class ReminderListComponent implements OnInit {
       this.statusFilter.set('all');
       this.activeTab.set(reveal.tab);
       this.scrollStripTo(reveal.date);
+    }
+    // Arriving from a deep-link (e.g. Home "From Friends" card): open the asked
+    // tab and drop any stale date/status filter so all its items are visible.
+    const wantTab = this.reminderService.consumePendingTab();
+    if (wantTab !== null) {
+      this.activeTab.set(wantTab);
+      this.statusFilter.set('all');
+      this.selectedDate.set('');
     }
     this.reminderService.getAll({ limit: 100 }).subscribe();
     this.reminderService.getReceived().subscribe();
@@ -1076,22 +1142,13 @@ export class ReminderListComponent implements OnInit {
     });
   }
 
-  async changeReceivedStatus(r: ReceivedReminder): Promise<void> {
-    const sheet = await this.actionSheetCtrl.create({
-      header: r.title,
-      subHeader: 'Update your status on this reminder',
-      buttons: [
-        { text: '👀 Acknowledged',  data: 'acknowledged' },
-        { text: '🔄 In Progress',   data: 'processing'   },
-        { text: '✅ Completed',     data: 'completed'    },
-        { text: '⏭️ Skip',         data: 'skipped'      },
-        { text: 'Cancel',           role: 'cancel'       },
-      ],
-    });
-    await sheet.present();
-    const { data } = await sheet.onWillDismiss();
-    if (!data) return;
-    this.reminderService.updateSharedStatus(r._id, data).subscribe();
+  changeReceivedStatus(r: ReceivedReminder): void {
+    this.statusSheetFor.set(r);
+  }
+
+  pickReceivedStatus(r: ReceivedReminder, status: string): void {
+    this.statusSheetFor.set(null);
+    this.reminderService.updateSharedStatus(r._id, status).subscribe();
   }
 
   async confirmDelete(r: Reminder): Promise<void> {

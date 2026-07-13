@@ -191,7 +191,12 @@ async function doMarkDone(reminderId, userId, actorName = null) {
 
   await updateStreak(userId);
 
-  if (reminder.assignedBy) {
+  // Notify the assigner only when someone OTHER than the assigner marked it done.
+  // The owner (userId) is always the assigner (assignedBy === userId for assigned
+  // reminders), so without this guard the assigner marking their own reminder done
+  // would notify themselves. The assignee-completes-it flow is handled separately
+  // by doSharedStatus, which correctly notifies assignedBy.
+  if (reminder.assignedBy && String(reminder.assignedBy) !== String(userId)) {
     const name = actorName || (await User.findById(userId).select('name').lean())?.name || 'A friend';
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
@@ -238,8 +243,10 @@ async function doSnooze(reminderId, userId, minutes, actorName = null) {
   );
   if (!reminder) return null;
 
-  // If snooze count > 3, escalate notification to assigner
-  if (reminder.assignedBy && reminder.snoozeCount > 3) {
+  // If snooze count > 3, escalate notification to assigner. Guard against the
+  // assigner snoozing their own reminder (assignedBy === userId) — that would
+  // notify themselves. The assignee-snoozes flow is handled by doSnoozeAssigned.
+  if (reminder.assignedBy && String(reminder.assignedBy) !== String(userId) && reminder.snoozeCount > 3) {
     const name = actorName || (await User.findById(userId).select('name').lean())?.name || 'A friend';
     await notifService.createAndPush({
       userId:  reminder.assignedBy,
