@@ -323,8 +323,10 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
           </div>
 
           @if (!nativeTime()) {
-            <div class="tp-dial">
+            <div class="tp-dial" (pointerdown)="dialDown($event)" (pointermove)="dialMove($event)"
+                 (pointerup)="dialUp()" (pointerleave)="dialUp()">
               <div class="tp-hand" [style.transform]="'rotate(' + handAngle() + 'deg)'"></div>
+              <div class="tp-dot" [style.transform]="'rotate(' + handAngle() + 'deg)'"></div>
               <div class="tp-center"></div>
               @for (n of dialNumbers(); track n.value) {
                 <button class="tp-n" [class.sel]="dialSelected(n.value)"
@@ -661,6 +663,13 @@ const CUSTOM_CATS_KEY = 'rm_custom_categories';
     .tp-dial {
       position: relative; width: 232px; height: 232px; margin: 0 auto 8px;
       border-radius: 50%; background: var(--rm-surface);
+      touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    /* marker at the hand tip — shows the exact minute even between labels (e.g. :42) */
+    .tp-dot {
+      position: absolute; left: calc(50% - 16px); top: calc(50% - 96px);
+      width: 32px; height: 32px; border-radius: 50%; background: var(--rm-purple);
+      opacity: .3; transform-origin: 16px 96px; z-index: 1; pointer-events: none;
     }
     .tp-n {
       position: absolute; width: 34px; height: 34px; border-radius: 50%;
@@ -1123,6 +1132,38 @@ export class ReminderCreateComponent implements OnInit {
 
   dialSelected(value: number): boolean {
     return this.clockMode() === 'minute' ? this.clockMin() === value : this.clockH12() === value;
+  }
+
+  // Tap or drag anywhere on the dial to pick any value — the 5-step number
+  // labels are just guides; this lets you land on minutes like :42.
+  private dialDragging = false;
+
+  dialDown(e: PointerEvent): void {
+    // Let the number buttons keep their own tap (hour → minute hand-off).
+    if ((e.target as HTMLElement).classList.contains('tp-n')) return;
+    this.dialDragging = true;
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    this.pickFromPointer(e);
+  }
+
+  dialMove(e: PointerEvent): void {
+    if (this.dialDragging) this.pickFromPointer(e);
+  }
+
+  dialUp(): void { this.dialDragging = false; }
+
+  private pickFromPointer(e: PointerEvent): void {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    let ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;   // 0° at 12 o'clock, clockwise
+    if (ang < 0) ang += 360;
+    if (this.clockMode() === 'minute') {
+      this.clockMin.set(Math.round(ang / 6) % 60);       // 60 steps → every minute
+    } else {
+      const hr = Math.round(ang / 30) % 12;
+      this.clockH12.set(hr === 0 ? 12 : hr);
+    }
   }
 
   // Type any hour/minute directly in the big display — lets you pick minutes

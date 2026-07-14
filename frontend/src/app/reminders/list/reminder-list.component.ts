@@ -14,6 +14,7 @@ import {
   addOutline, checkmarkCircleOutline, timeOutline,
   trashOutline, personOutline, arrowDownOutline,
   playSkipForwardOutline, syncOutline, eyeOutline,
+  paperPlaneOutline, downloadOutline,
 } from 'ionicons/icons';
 import {
   ReminderService, Reminder, ReceivedReminder,
@@ -238,11 +239,24 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
             }
           }
 
-          <!-- ── Shared tab: sent to friends ── -->
-          @if (activeTab() === 'shared' && sentToFriends().length > 0) {
-            <div class="section-label a-fu" [style.--i]="5">
-              Sent to Friends
+          <!-- ── Shared tab: Sent / From sub-toggle ── -->
+          @if (activeTab() === 'shared') {
+            <div class="shared-seg a-fu" [style.--i]="5">
+              <button type="button" class="sseg-btn sent" [class.active]="sharedSub() === 'sent'" (click)="sharedSub.set('sent')">
+                <ion-icon name="paper-plane-outline"></ion-icon>
+                <span class="sseg-label">Sent</span>
+                @if (sentToFriends().length > 0) { <span class="sseg-badge">{{ sentToFriends().length }}</span> }
+              </button>
+              <button type="button" class="sseg-btn from" [class.active]="sharedSub() === 'from'" (click)="sharedSub.set('from')">
+                <ion-icon name="download-outline"></ion-icon>
+                <span class="sseg-label">From</span>
+                @if (fromFriends().length > 0) { <span class="sseg-badge">{{ fromFriends().length }}</span> }
+              </button>
             </div>
+          }
+
+          <!-- ── Shared tab: sent to friends ── -->
+          @if (activeTab() === 'shared' && sharedSub() === 'sent' && sentToFriends().length > 0) {
             @for (r of sentToFriends(); track r._id) {
               <ion-item-sliding class="a-fu" [style.--i]="$index + 6">
 
@@ -296,12 +310,7 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
           }
 
           <!-- ── Shared tab: from friends ── -->
-          @if (activeTab() === 'shared' && fromFriends().length > 0) {
-            <div class="section-label from-label a-fu" [style.--i]="5"
-              [style.margin-top]="sentToFriends().length > 0 ? '20px' : '0'">
-              <ion-icon name="arrow-down-outline" style="font-size:11px;margin-right:4px;vertical-align:middle"></ion-icon>
-              From Friends
-            </div>
+          @if (activeTab() === 'shared' && sharedSub() === 'from' && fromFriends().length > 0) {
             @for (r of fromFriends(); track r._id) {
               <ion-item-sliding class="a-fu" [style.--i]="$index + 6">
 
@@ -382,11 +391,18 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
               <p>{{ selectedDate() ? 'Try another date or tap +' : 'Tap + to create your first reminder' }}</p>
             </div>
           }
-          @if (activeTab() === 'shared' && sentToFriends().length === 0 && fromFriends().length === 0) {
-            <div class="empty-state a-fu" [style.--i]="5">
-              <div class="empty-emoji">🤝</div>
-              <h3>No shared reminders</h3>
-              <p>{{ selectedDate() ? 'Nothing shared on this day' : 'Reminders you send to or get from friends show up here' }}</p>
+          @if (activeTab() === 'shared' && sharedSub() === 'sent' && sentToFriends().length === 0) {
+            <div class="empty-state a-fu" [style.--i]="6">
+              <div class="empty-emoji">📤</div>
+              <h3>Nothing sent yet</h3>
+              <p>{{ selectedDate() ? 'Nothing sent on this day' : 'Reminders you assign to friends show up here' }}</p>
+            </div>
+          }
+          @if (activeTab() === 'shared' && sharedSub() === 'from' && fromFriends().length === 0) {
+            <div class="empty-state a-fu" [style.--i]="6">
+              <div class="empty-emoji">📥</div>
+              <h3>Nothing from friends</h3>
+              <p>{{ selectedDate() ? 'Nothing received on this day' : 'Reminders friends assign to you show up here' }}</p>
             </div>
           }
 
@@ -627,17 +643,47 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
 
     /* ── List body ── */
     .list-body { padding: 12px 16px 130px; display: flex; flex-direction: column; gap: 8px; }
-    .section-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--rm-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 4px 2px 6px;
+    /* ── Shared sub-toggle: Sent / From segmented control ── */
+    .shared-seg {
       display: flex;
-      align-items: center;
+      gap: 6px;
+      padding: 5px;
+      border-radius: 15px;
+      background: var(--rm-surface);
+      border: 1px solid var(--rm-border);
+      margin-bottom: 4px;
     }
-    .from-label { color: #10B981; }
+    .sseg-btn {
+      flex: 1;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 6px;
+      border: none; border-radius: 11px;
+      background: transparent;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      color: var(--rm-text-muted); cursor: pointer;
+      transition: background .2s, color .2s, box-shadow .2s;
+    }
+    .sseg-btn ion-icon { font-size: 16px; }
+    .sseg-btn:active { transform: scale(0.97); }
+    .sseg-badge {
+      min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 9px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800;
+      background: var(--rm-border); color: var(--rm-text-secondary);
+    }
+    /* Sent → outgoing, brand blue */
+    .sseg-btn.sent.active {
+      background: var(--rm-purple); color: #fff;
+      box-shadow: 0 4px 12px rgba(61,90,241,.35);
+    }
+    .sseg-btn.sent.active .sseg-badge { background: rgba(255,255,255,.28); color: #fff; }
+    /* From → incoming, green */
+    .sseg-btn.from.active {
+      background: #10B981; color: #fff;
+      box-shadow: 0 4px 12px rgba(16,185,129,.35);
+    }
+    .sseg-btn.from.active .sseg-badge { background: rgba(255,255,255,.28); color: #fff; }
 
     /* ── Cards ── */
     .slide-item { --padding-start: 0; --inner-padding-end: 0; --background: transparent; }
@@ -654,8 +700,14 @@ const SHARED_STATUS_META: Record<string, { label: string; color: string }> = {
     .rem-card:active { transform: scale(0.98); }
     .done-card   { opacity: 0.55; }
     .missed-card { opacity: 0.7; }
-    .friend-card { border-left-style: dashed; }
-    .from-card   { border-left-style: dotted; border-left-width: 4px; }
+    .friend-card {
+      border-left-style: dashed;
+      background: linear-gradient(90deg, rgba(61,90,241,0.06), var(--rm-card) 60%);
+    }
+    .from-card {
+      border-left-style: solid;
+      background: linear-gradient(90deg, rgba(16,185,129,0.06), var(--rm-card) 60%);
+    }
 
     .card-row { display: flex; align-items: flex-start; gap: 12px; }
     .card-mid { flex: 1; min-width: 0; }
@@ -780,6 +832,8 @@ export class ReminderListComponent implements OnInit {
   selectedDate = signal<string>('');
   statusFilter = signal<'all' | 'active' | 'done'>('all');
   activeTab = signal<'mine' | 'shared'>('mine');
+  /** Within the Shared tab: whether to show reminders sent-to or received-from friends. */
+  sharedSub = signal<'sent' | 'from'>('sent');
 
   // Received reminder whose status sheet is currently open (null = closed)
   readonly statusSheetFor = signal<ReceivedReminder | null>(null);
@@ -972,7 +1026,7 @@ export class ReminderListComponent implements OnInit {
   );
 
   constructor() {
-    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline, playSkipForwardOutline, syncOutline, eyeOutline });
+    addIcons({ addOutline, checkmarkCircleOutline, timeOutline, trashOutline, personOutline, arrowDownOutline, playSkipForwardOutline, syncOutline, eyeOutline, paperPlaneOutline, downloadOutline });
   }
 
   ngOnInit(): void {
@@ -996,13 +1050,16 @@ export class ReminderListComponent implements OnInit {
       this.selectedDate.set(reveal.date);
       this.statusFilter.set('all');
       this.activeTab.set(reveal.tab);
+      // A just-created shared reminder is always one you assigned → the Sent view.
+      if (reveal.tab === 'shared') this.sharedSub.set('sent');
       this.scrollStripTo(reveal.date);
     }
     // Arriving from a deep-link (e.g. Home "From Friends" card): open the asked
     // tab and drop any stale date/status filter so all its items are visible.
     const wantTab = this.reminderService.consumePendingTab();
     if (wantTab !== null) {
-      this.activeTab.set(wantTab);
+      this.activeTab.set(wantTab.tab);
+      if (wantTab.sub) this.sharedSub.set(wantTab.sub);
       this.statusFilter.set('all');
       this.selectedDate.set('');
     }

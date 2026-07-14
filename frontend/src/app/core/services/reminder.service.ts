@@ -154,14 +154,14 @@ export class ReminderService {
   // user straight to a specific reminders sub-tab. Unlike the reveal above this
   // carries no date, so the list clears any stale calendar-day filter and shows
   // every item in that tab.
-  private _pendingTab = signal<'mine' | 'shared' | null>(null);
+  private _pendingTab = signal<{ tab: 'mine' | 'shared'; sub?: 'sent' | 'from' } | null>(null);
 
-  requestTab(tab: 'mine' | 'shared'): void {
-    this._pendingTab.set(tab);
+  requestTab(tab: 'mine' | 'shared', sub?: 'sent' | 'from'): void {
+    this._pendingTab.set({ tab, sub });
   }
 
-  /** Returns the requested tab (or null) and clears it — read-once. */
-  consumePendingTab(): 'mine' | 'shared' | null {
+  /** Returns the requested tab (+ optional Shared sub-view) or null, and clears it — read-once. */
+  consumePendingTab(): { tab: 'mine' | 'shared'; sub?: 'sent' | 'from' } | null {
     const v = this._pendingTab();
     if (v !== null) this._pendingTab.set(null);
     return v;

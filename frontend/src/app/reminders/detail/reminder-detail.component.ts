@@ -15,6 +15,7 @@ import { Subscription } from 'rxjs';
 import { ReminderService, Reminder, ReminderStatus } from '../../core/services/reminder.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
+import { TimeService } from '../../core/services/time.service';
 import { FriendAvatarComponent, AvatarGender } from '../../core/components/friend-avatar.component';
 
 const CAT_COLOR: Record<string, string> = {
@@ -277,6 +278,7 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
   private socketService    = inject(SocketService);
   private alertCtrl        = inject(AlertController);
   private actionSheetCtrl  = inject(ActionSheetController);
+  private time             = inject(TimeService);
 
   private socketSub: Subscription | undefined;
   private tick: ReturnType<typeof setInterval> | undefined;
@@ -284,7 +286,10 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
   loading  = signal(true);
   reminder = signal<Reminder | null>(null);
   /** Ticks every second so the countdown / "created … ago" labels stay live. */
-  private now = signal(Date.now());
+  // Trusted server-synced clock (not the raw device clock) so "created … ago"
+  // is accurate even when the device clock is off — otherwise a brand-new
+  // reminder can read "1 min ago" instantly.
+  private now = signal(this.time.nowMs());
 
   color = () => CAT_COLOR[this.reminder()?.type ?? 'general'] ?? '#3D5AF1';
   priorityColor = () => PRIORITY_COLOR[this.reminder()?.priority ?? 'medium'] ?? '#F59E0B';
@@ -324,7 +329,8 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
   /** Signed magnitude of a ms delta as one compact unit: s / min / h / d / w / mo / y. */
   private compactDuration(ms: number): string {
     const s = Math.floor(Math.abs(ms) / 1000);
-    if (s < 60)  return `${s}s`;
+    if (s < 5)   return `1s`;                       // brand new
+    if (s < 60)  return `${Math.floor(s / 5) * 5}s`; // 5s, 10s, 15s … 55s
     const min = Math.floor(s / 60);
     if (min < 60) return `${min} min`;
     const h = Math.floor(min / 60);
@@ -389,7 +395,7 @@ export class ReminderDetailComponent implements OnInit, OnDestroy {
         }
       });
 
-    this.tick = setInterval(() => this.now.set(Date.now()), 1000);
+    this.tick = setInterval(() => this.now.set(this.time.nowMs()), 1000);
   }
 
   ngOnDestroy(): void {

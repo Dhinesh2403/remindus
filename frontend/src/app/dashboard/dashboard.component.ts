@@ -181,7 +181,7 @@ export class DashboardComponent implements OnInit {
 
   /** Open the Reminders → Shared tab (where "From Friends" lives). */
   openFriendReminders(): void {
-    this.reminderService.requestTab('shared');
+    this.reminderService.requestTab('shared', 'from');
     this.nav.navigate(['/app/reminders']);
   }
 
