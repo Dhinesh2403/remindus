@@ -128,16 +128,18 @@ interface ActivityItem {
         <div class="fa-list">
           @for (item of visibleItems(); track item.kind + item.id) {
             <div class="fa-item">
-              <div class="fa-item-head">
-                <span class="fa-chip" [class.chip-task]="item.kind === 'task'" [class.chip-rem]="item.kind === 'reminder'">
-                  <ion-icon [name]="item.kind === 'task' ? 'checkbox-outline' : 'notifications-outline'"></ion-icon>
-                  {{ item.kind === 'task' ? 'Task' : 'Reminder' }}
-                </span>
-                <span class="fa-status" [class]="'fa-status status-' + item.statusKey">{{ item.statusLabel }}</span>
-              </div>
-              <div class="fa-item-title">{{ item.title }}</div>
-              <div class="fa-item-meta">
-                {{ item.dateLabel }} · {{ item.byMe ? 'assigned by you' : 'assigned by ' + firstName() }}
+              <div class="fa-item-body rm-press" (click)="openItem(item)">
+                <div class="fa-item-head">
+                  <span class="fa-chip" [class.chip-task]="item.kind === 'task'" [class.chip-rem]="item.kind === 'reminder'">
+                    <ion-icon [name]="item.kind === 'task' ? 'checkbox-outline' : 'notifications-outline'"></ion-icon>
+                    {{ item.kind === 'task' ? 'Task' : 'Reminder' }}
+                  </span>
+                  <span class="fa-status" [class]="'fa-status status-' + item.statusKey">{{ item.statusLabel }}</span>
+                </div>
+                <div class="fa-item-title">{{ item.title }}</div>
+                <div class="fa-item-meta">
+                  {{ item.dateLabel }} · {{ item.byMe ? 'assigned by you' : 'assigned by ' + firstName() }}
+                </div>
               </div>
 
               <!-- Reminder actions — only for reminders assigned to me and still open -->
@@ -234,6 +236,7 @@ interface ActivityItem {
     /* Items */
     .fa-list{display:flex;flex-direction:column;gap:10px;margin:0 16px}
     .fa-item{background:var(--rm-card);border-radius:15px;box-shadow:var(--rm-shadow-sm);padding:13px 14px}
+    .fa-item-body{cursor:pointer}
     .fa-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .fa-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;padding:4px 9px;border-radius:8px}
     .fa-chip ion-icon{font-size:13px}
@@ -433,6 +436,12 @@ export class FriendActivityComponent implements OnInit, OnDestroy {
   // ── Navigation ──────────────────────────────────────────────────────────
   goBack(): void {
     this.router.navigate(['/app/friends']);
+  }
+
+  /** Tap a shared item → open its full detail page. */
+  openItem(item: ActivityItem): void {
+    const path = item.kind === 'task' ? '/app/tasks' : '/app/reminders';
+    this.router.navigate([path, item.id]);
   }
 
   /** Message → back to the friends tab with the chat overlay open. */
