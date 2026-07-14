@@ -1,47 +1,155 @@
-<ion-content class="qa-content">
+<ion-content class="scContent">
   <!-- Header -->
-  <div class="qa-header">
-    <button class="qa-back" (click)="nav.navigate(['/app/home'])">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
-    <div>
-      <h1 class="qa-title">Quick Alarms</h1>
-      <p class="qa-sub">Always on time, always reliable</p>
+  <div class="scHeader">
+    <div class="scHeaderRow">
+      <button class="scIconBtn" (click)="nav.navigate(['/app/home'])" aria-label="Back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="scTitleBlock">
+        <h1 class="scTitle">Quick Alarm</h1>
+        <p class="scSub">Set alarms in seconds</p>
+      </div>
+      <button class="scIconBtn" [class.scActive]="searchOpen()" (click)="toggleSearch()" aria-label="Search alarms">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="scIconBtn" (click)="openNewAlarmForm()" aria-label="Add alarm">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <button class="qa-add-btn" (click)="showForm.set(true)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-    </button>
+
+    <!-- Collapsible search -->
+    <div class="scSearchWrap" [class.scOpen]="searchOpen()">
+      <div class="scSearchRow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input #qaSearchInput class="scSearchInput" placeholder="Search alarms"
+               [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)"
+               (keydown.escape)="closeSearch()" (blur)="onSearchBlur()" />
+        <button class="scSearchClear" (mousedown)="$event.preventDefault()" (click)="closeSearch()" aria-label="Close search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Segmented control -->
+    <div class="scTabsRow">
+      <button class="scTabBtn scActive">Quick Alarms</button>
+      <button class="scTabBtn">Custom Alarms</button>
+    </div>
+
+    <!-- Dashboard stats -->
+    @if (alarms().length > 0) {
+      <div class="scStatsRow">
+        <div class="scStatTile">
+          <span class="scStatValue">{{ nextAlarmLabel() }}</span>
+          <span class="scStatLabel">Next Alarm</span>
+        </div>
+        <div class="scStatTile">
+          <span class="scStatValue">{{ totalActive() }}</span>
+          <span class="scStatLabel">Active</span>
+        </div>
+        <div class="scStatTile">
+          <span class="scStatValue">{{ todayCount() }}</span>
+          <span class="scStatLabel">Today</span>
+        </div>
+        <div class="scStatTile">
+          <span class="scStatValue">{{ upcomingCount() }}</span>
+          <span class="scStatLabel">Upcoming</span>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- Empty state -->
   @if (alarms().length === 0) {
-    <div class="qa-empty">
-      <div class="qa-empty-icon">
+    <div class="scEmpty">
+      <div class="scEmptyIcon">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="#D1D5DB" stroke-width="1.5"/><path d="M12 9v4l2.5 2.5" stroke="#D1D5DB" stroke-width="1.5" stroke-linecap="round"/><path d="M5 3L2 6M19 3l3 3" stroke="#D1D5DB" stroke-width="1.5" stroke-linecap="round"/></svg>
       </div>
       <p>No alarms yet</p>
       <span>Tap + to add a Quick Alarm</span>
-      <button class="qa-add-alarm-btn" (click)="showForm.set(true)">+ Add Alarm</button>
+      <button class="scAddAlarmBtn" (click)="openNewAlarmForm()">+ Add Alarm</button>
+    </div>
+  } @else if (filteredAlarms().length === 0) {
+    <div class="scEmpty">
+      <p>No matches</p>
+      <span>Try a different search term</span>
     </div>
   }
 
   <!-- Alarm list -->
-  <div class="qa-list">
-    @for (alarm of alarms(); track alarm.id) {
-      <div class="qa-alarm-card">
-        <div class="qa-alarm-main">
-          <div class="qa-alarm-time">{{ formatTime(alarm.hour, alarm.minute) }}</div>
-          <div class="qa-alarm-meta">{{ alarm.label }} · {{ daysLabel(alarm.days) }}</div>
+  <div class="scList">
+    @for (alarm of filteredAlarms(); track alarm.id) {
+      <div class="scAlarmCard" [class.scNext]="alarm.id === nextAlarmId()" [class.scDisabled]="!alarm.enabled">
+        @if (alarm.id === nextAlarmId()) {
+          <div class="scNextTag">Next</div>
+        }
+
+        <div class="scAlarmTop">
+          <div class="scAlarmTimeBlock">
+            <span class="scAlarmTime">{{ formatTime(alarm.hour, alarm.minute) }}</span>
+          </div>
+          <div class="scCategoryChip" [style.background]="categoryDef(alarm.category).color + '22'" [style.color]="categoryDef(alarm.category).color">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path [attr.d]="categoryDef(alarm.category).icon" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ categoryDef(alarm.category).label }}
+          </div>
           <ion-toggle [checked]="alarm.enabled" (ionChange)="toggleAlarm(alarm.id)"></ion-toggle>
         </div>
-        <div class="qa-alarm-days">
-          @for (d of dayLabels; track d; let i = $index) {
-            <div class="qa-day-dot" [class.active]="alarm.days[i]">{{ d }}</div>
+
+        <div class="scAlarmName">{{ alarm.label }}</div>
+        @if (alarm.description) {
+          <div class="scAlarmDesc">{{ alarm.description }}</div>
+        }
+
+        <div class="scAlarmMetaRow">
+          <span class="scStatusBadge" [class.scOn]="alarm.enabled">{{ alarm.enabled ? 'Active' : 'Inactive' }}</span>
+          <span class="scRepeatLabel">{{ repeatLabel(alarm) }}</span>
+          @if (alarm.enabled) {
+            <span class="scNextInfo">{{ nextTriggerLabel(alarm) }} · {{ firesInLabel(alarm) }}</span>
           }
         </div>
-        <div class="qa-alarm-actions">
-          <button class="qa-del-btn" (click)="deleteAlarm(alarm.id)">Delete</button>
-          <button class="qa-edit-btn">Edit</button>
+
+        <div class="scWeekRow">
+          @for (d of dayLabels; track d; let i = $index) {
+            <div class="scWeekDot" [class.scActive]="alarm.days[i]">{{ d }}</div>
+          }
+        </div>
+
+        <div class="scIndicatorRow">
+          <span class="scIndicator">
+            @if (alarm.soundName !== 'silent') {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            } @else {
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M17 9l4 6M21 9l-4 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            }
+            {{ alarm.soundName === 'silent' ? 'Silent' : 'Sound' }}
+          </span>
+          @if (alarm.vibration) {
+            <span class="scIndicator">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="7" y="4" width="10" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Vibrate
+            </span>
+          }
+          @if (alarm.snoozeEnabled) {
+            <span class="scIndicator">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Snooze {{ alarm.snoozeMinutes ?? 10 }}m
+            </span>
+          }
+        </div>
+
+        @if (alarm.createdAt) {
+          <div class="scFooterMeta">
+            Created {{ alarm.createdAt | date:'MMM d, y' }}
+            @if (alarm.updatedAt && alarm.updatedAt !== alarm.createdAt) {
+              · Edited {{ alarm.updatedAt | date:'MMM d, y' }}
+            }
+          </div>
+        }
+
+        <div class="scActionsRow">
+          <button class="scEditBtn" (click)="startEdit(alarm)">Edit</button>
+          <button class="scDupBtn" (click)="duplicateAlarm(alarm.id)">Duplicate</button>
+          <button class="scDelBtn" (click)="deleteAlarm(alarm.id)">Delete</button>
         </div>
       </div>
     }
@@ -49,49 +157,134 @@
 
   <!-- Toast -->
   @if (toastMsg()) {
-    <div class="qa-toast">
+    <div class="scToast">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
       {{ toastMsg() }}
     </div>
   }
 
-  <!-- New Alarm sheet -->
+  <!-- Add / Edit Alarm sheet -->
   @if (showForm()) {
-    <div class="qa-overlay" (click)="showForm.set(false)"></div>
-    <div class="qa-sheet">
-      <div class="qa-sheet-handle"></div>
-      <h2 class="qa-sheet-title">New Alarm</h2>
+    <div class="scOverlay" (click)="closeForm()"></div>
+    <div class="scSheet">
+      <div class="scSheetHandle"></div>
+      <div class="scSheetHeaderRow">
+        <h2 class="scSheetTitle">{{ editingId() ? 'Edit Alarm' : 'New Alarm' }}</h2>
+        <button class="scCloseBtn" (click)="closeForm()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
 
       <!-- Time (shared picker — opens the system clock, AM/PM handled there) -->
-      <div class="qa-time-big">{{ formatTime(newAlarm().hour, newAlarm().minute) }}</div>
+      <div class="scTimeBig">{{ formatTime(newAlarm().hour, newAlarm().minute) }}</div>
       <rm-datetime mode="time" [chips]="false" [time]="timeValue()" (timeChange)="setTime($event)"></rm-datetime>
 
-      @if (firesIn()) {
-        <div class="qa-fires-in">
+      <div class="scCurrentDateRow">Today is {{ todayDisplay }}</div>
+
+      @if (draftFiresIn()) {
+        <div class="scFiresIn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="#3D5AF1" stroke-width="1.7"/></svg>
-          Alarm fires in {{ firesIn() }}
+          Alarm fires {{ draftFiresIn() }}
         </div>
       }
 
-      <!-- Label -->
-      <div class="qa-label-row">
+      <!-- Name -->
+      <div class="scLabelRow">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="#6B7280" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <input class="qa-label-input" [value]="newAlarm().label"
+        <input class="scLabelInput" placeholder="Alarm name" [value]="newAlarm().label"
                (input)="updateLabel($any($event.target).value)" />
       </div>
 
-      <!-- Repeat days -->
-      <div class="qa-repeat-label">REPEAT</div>
-      <div class="qa-day-row">
-        @for (d of dayLabels; track d; let i = $index) {
-          <button class="qa-day-btn" [class.active]="newAlarm().days[i]" (click)="toggleDay(i)">{{ d }}</button>
-        }
+      <!-- Description -->
+      <div class="scSectionLabel">DESCRIPTION (OPTIONAL)</div>
+      <textarea class="scDescInput" rows="2" placeholder="Add a note for this alarm"
+                [value]="newAlarm().description" (input)="updateDescription($any($event.target).value)"></textarea>
+
+      <!-- Repeat -->
+      <div class="scSectionLabel">REPEAT</div>
+      <div class="scRepeatChipRow">
+        <button class="scRepeatChip" [class.scActive]="newAlarm().repeatMode === 'never'" (click)="setRepeatMode('never')">Never</button>
+        <button class="scRepeatChip" [class.scActive]="newAlarm().repeatMode === 'daily'" (click)="setRepeatMode('daily')">Daily</button>
+        <button class="scRepeatChip" [class.scActive]="newAlarm().repeatMode === 'weekdays'" (click)="setRepeatMode('weekdays')">Weekdays</button>
+        <button class="scRepeatChip" [class.scActive]="newAlarm().repeatMode === 'weekends'" (click)="setRepeatMode('weekends')">Weekends</button>
+        <button class="scRepeatChip" [class.scActive]="newAlarm().repeatMode === 'custom'" (click)="setRepeatMode('custom')">Custom</button>
       </div>
-      @if (isWeekdays()) {
-        <div class="qa-days-hint">Weekdays</div>
+
+      @if (newAlarm().repeatMode === 'custom') {
+        <div class="scDayRow">
+          @for (d of dayLabels; track d; let i = $index) {
+            <button class="scDayBtn" [class.scActive]="newAlarm().days[i]" (click)="toggleDay(i)">{{ d }}</button>
+          }
+        </div>
       }
 
-      <button class="qa-save-btn" (click)="addAlarm()">Set Alarm</button>
+      @if (newAlarm().repeatMode === 'never') {
+        <div class="scSectionLabel">DATE</div>
+        <rm-datetime mode="date" [chips]="false" [date]="newAlarm().customDate ?? ''" (dateChange)="setCustomDate($event)"></rm-datetime>
+      }
+
+      <!-- Category / Quick Presets -->
+      <div class="scSectionLabel">CATEGORY &amp; QUICK PRESETS</div>
+      <div class="scCategoryGrid">
+        @for (cat of categories; track cat.key) {
+          <button class="scCategoryChipBtn" [class.scActive]="newAlarm().category === cat.key" (click)="applyPreset(cat.key)">
+            <span class="scCategoryIcon" [style.color]="cat.color">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path [attr.d]="cat.icon" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span>{{ cat.label }}</span>
+          </button>
+        }
+      </div>
+
+      <!-- Sound -->
+      <div class="scSectionLabel">SOUND</div>
+      <div class="scSoundRow">
+        <div class="scSoundSeg">
+          <button class="scSoundBtn" [class.scActive]="newAlarm().soundName === 'default'" (click)="setSound('default')">Default</button>
+          <button class="scSoundBtn" [class.scActive]="newAlarm().soundName === 'silent'" (click)="setSound('silent')">Silent</button>
+        </div>
+        <button class="scPreviewBtn" (click)="previewSound()" [disabled]="newAlarm().soundName === 'silent'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l9-6v18l-9-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          Preview
+        </button>
+      </div>
+
+      <!-- Vibration -->
+      <div class="scToggleRow">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="7" y="4" width="10" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9v6M21 9v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="scToggleLabel">Vibration</span>
+        <ion-toggle [checked]="newAlarm().vibration" (ionChange)="toggleVibration()"></ion-toggle>
+      </div>
+
+      <!-- Snooze -->
+      <div class="scToggleRow">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M12 9v4l2.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="scToggleLabel">Snooze</span>
+        <ion-toggle [checked]="newAlarm().snoozeEnabled" (ionChange)="toggleSnooze()"></ion-toggle>
+      </div>
+      @if (newAlarm().snoozeEnabled) {
+        <div class="scStepperRow">
+          <span class="scStepperLabel">Snooze duration</span>
+          <div class="scStepper">
+            <button (click)="adjustSnoozeMinutes(-5)" aria-label="Decrease snooze minutes">−</button>
+            <span>{{ newAlarm().snoozeMinutes }} min</span>
+            <button (click)="adjustSnoozeMinutes(5)" aria-label="Increase snooze minutes">+</button>
+          </div>
+        </div>
+      }
+
+      <!-- Summary -->
+      <div class="scSectionLabel">SUMMARY</div>
+      <div class="scSummaryCard">
+        <div class="scSummaryRow"><span>Time</span><strong>{{ formatTime(newAlarm().hour, newAlarm().minute) }}</strong></div>
+        <div class="scSummaryRow"><span>Repeat</span><strong>{{ repeatLabel(newAlarm()) }}</strong></div>
+        <div class="scSummaryRow"><span>Next trigger</span><strong>{{ nextTriggerLabel(newAlarm()) }}</strong></div>
+        <div class="scSummaryRow"><span>Sound</span><strong>{{ newAlarm().soundName === 'silent' ? 'Silent' : 'Default' }}</strong></div>
+        <div class="scSummaryRow"><span>Vibration</span><strong>{{ newAlarm().vibration ? 'On' : 'Off' }}</strong></div>
+        <div class="scSummaryRow"><span>Snooze</span><strong>{{ newAlarm().snoozeEnabled ? (newAlarm().snoozeMinutes + ' min') : 'Off' }}</strong></div>
+      </div>
+
+      <button class="scSaveBtn" (click)="editingId() ? updateAlarm() : addAlarm()">{{ editingId() ? 'Save Changes' : 'Set Alarm' }}</button>
     </div>
   }
 </ion-content>
