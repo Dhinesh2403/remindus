@@ -33,13 +33,13 @@ describe('QuickAlarmsComponent', () => {
   it('creates and starts with the default weekday alarm draft', () => {
     expect(component).toBeTruthy();
     expect(component.newAlarm().days).toEqual([true, true, true, true, true, false, false]);
-    expect(component.isWeekdays()).toBe(true);
+    expect(component.newAlarm().repeatMode).toBe('weekdays');
   });
 
-  it('toggleDay() flips a single day and updates isWeekdays', () => {
+  it('toggleDay() flips a single day and switches repeat mode to custom', () => {
     component.toggleDay(5); // enable Saturday
     expect(component.newAlarm().days[5]).toBe(true);
-    expect(component.isWeekdays()).toBe(false);
+    expect(component.newAlarm().repeatMode).toBe('custom');
   });
 
   it('formatTime() renders 12-hour clock with AM/PM', () => {
@@ -68,15 +68,15 @@ describe('QuickAlarmsComponent', () => {
     expect(component.timeValue()).toBe('06:05');
   });
 
-  it('firesIn() counts down to the next enabled day', () => {
+  it('firesInLabel() counts down to the next enabled day', () => {
     // Wed 2026-07-01 10:00 local time
     const now = new Date(2026, 6, 1, 10, 0, 0);
-    component.newAlarm.set({ hour: 12, minute: 30, label: 'x', days: [true, true, true, true, true, true, true] });
-    expect(component.firesIn(now)).toBe('2h 30m');
+    component.newAlarm.set({ hour: 12, minute: 30, label: 'x', days: [true, true, true, true, true, true, true], repeatMode: 'daily' });
+    expect(component.firesInLabel(component.newAlarm(), now)).toBe('in 2h 30m');
 
-    // Only Monday enabled → Wed 10:00 → Mon 09:00 is 4d 23h away
-    component.newAlarm.set({ hour: 9, minute: 0, label: 'x', days: [true, false, false, false, false, false, false] });
-    expect(component.firesIn(now)).toBe('4d 23h');
+    // Only Monday enabled → Wed 10:00 → Mon 09:00 is 4 days away
+    component.newAlarm.set({ hour: 9, minute: 0, label: 'x', days: [true, false, false, false, false, false, false], repeatMode: 'custom' });
+    expect(component.firesInLabel(component.newAlarm(), now)).toBe('in 4 days');
   });
 
   it('addAlarm() appends, persists to localStorage and schedules via AlarmService', async () => {
