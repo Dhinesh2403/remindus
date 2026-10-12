@@ -1,4 +1,5 @@
 # ─── Node ────────────────────────────────────────────────────────────────────
+docs/
 node_modules/
 .npm
 npm-debug.log*
@@ -12,6 +13,9 @@ yarn-error.log*
 .env.production
 *.env
 !.env.example
+
+README.md
+*.md
 
 environment.staging.ts
 environment.prod.ts
