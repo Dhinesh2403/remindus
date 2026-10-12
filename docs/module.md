@@ -91,7 +91,7 @@ The core. `Reminder` model already supports type, priority, repeat, snooze, stat
 - ✅ **Stats** — `GET /reminders/stats/summary` for dashboard.
 - ✅ **Repeat** — `none|daily|weekly|monthly|yearly`; scheduler recomputes `nextFireAt` after each fire.
 - ✅ **Multi-channel delivery** — `notificationTypes: [push,email,sms,whatsapp]` honored against the user's `notifPrefs` + premium gating.
-- ✅ **Pre-alert window** — `reminderWindowMinutes` fires an early heads-up (`preAlertSent` guard prevents double-send — see the re-firing bug fix in `[[feedback_reminder_notif_bugs]]`).
+- ✅ **Pre-alert window** — `reminderWindowMinutes` fires an early heads-up (`preAlertSent` guard prevents double-send).
 - 🟡 **Recurrence after completion** — confirm a `done` recurring reminder regenerates the next occurrence (don't leave it `done` forever).
 - ⬜ **Missed handling** — a sweeper flips overdue `pending` → `missed`; surface a "mark done / reschedule" action.
 
